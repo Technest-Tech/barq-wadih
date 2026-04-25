@@ -5,6 +5,9 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header/Header';
 import CategoryTabs from '@/components/layout/CategoryTabs/CategoryTabs';
 import Footer from '@/components/layout/Footer/Footer';
+import BottomNav from '@/components/layout/BottomNav/BottomNav';
+import MobileDrawer from '@/components/layout/MobileDrawer/MobileDrawer';
+import AuthModal from '@/components/auth/AuthModal';
 import { fetchAllCities, type Region, type City } from '@/lib/api/regions';
 import { fetchAds, searchAds, type AdListItem, type AdsFilters } from '@/lib/api/ads';
 import { fetchCategories, type Category } from '@/lib/api/categories';
@@ -58,13 +61,15 @@ export default function HomePage() {
   const [lastPage, setLastPage]   = useState(1);
   const [total, setTotal]         = useState(0);
   const [viewMode, setViewMode]   = useState<'list' | 'grid'>('list');
-  const [newOnly, setNewOnly]     = useState(false);
+  const [nearMe, setNearMe]     = useState(false);
 
   // Categories (quick nav & dropdown)
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showMoreCats, setShowMoreCats] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [authOpen, setAuthOpen]     = useState(false);
 
   // Sidebar searchable category dropdown
   const [sbDropOpen, setSbDropOpen]       = useState(false);
@@ -172,9 +177,11 @@ export default function HomePage() {
       <div className={styles.heroBar} dir="rtl">
         <div className={styles.heroInner}>
 
-          {/* Location dropdown — flat searchable city list */}
-          <div className={styles.locWrap} ref={locationRef}>
-            <button
+          {/* Location & Near Me Group */}
+          <div className={styles.locGroup}>
+            {/* Location dropdown — flat searchable city list */}
+            <div className={styles.locWrap} ref={locationRef}>
+              <button
               id="location-dropdown-btn"
               className={styles.locBtn}
               onClick={() => { setLocationOpen(o => !o); setCitySearch(''); }}
@@ -249,134 +256,16 @@ export default function HomePage() {
                 </div>
               </div>
             )}
+            </div>
+
+            {/* Near Me Toggle */}
+            <label className={`${styles.nearMeToggle} ${nearMe ? styles.nearMeActive : ''}`}>
+              <input type="checkbox" checked={nearMe} onChange={e => setNearMe(e.target.checked)} className={styles.srOnly} />
+              القريب مني
+            </label>
           </div>
 
-          {/* Live search input */}
-          <div className={styles.searchWrap} ref={searchRef}>
-            <form className={styles.searchForm} onSubmit={handleSearchSubmit}>
-              <div className={styles.searchInputWrap}>
-                <input
-                  id="main-search"
-                  className={styles.searchInput}
-                  placeholder="ابحث عن سلعة"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  onFocus={() => setSearchOpen(true)}
-                  autoComplete="off"
-                />
-                {query && (
-                  <button type="button" className={styles.searchClear} onClick={() => { setQuery(''); setSearchOpen(true); }}>✕</button>
-                )}
-              </div>
-              <button type="submit" className={styles.searchBtnLeft}>
-                <span className={styles.searchBtnIcon}>🔍</span>
-              </button>
-            </form>
 
-            {/* Live search results & Default Suggestions */}
-            {searchOpen && (
-              <div className={styles.searchDropdown}>
-                {query ? (
-                  <>
-                    {searchLoading && (
-                      <div className={styles.searchLoading}>
-                        <span className={styles.searchSpinner} /> جارٍ البحث...
-                      </div>
-                    )}
-                    {!searchLoading && searchResults.length === 0 && (
-                      <div className={styles.searchEmpty}>لا توجد نتائج لـ «{query}»</div>
-                    )}
-                    {!searchLoading && searchResults.map(ad => (
-                      <Link
-                        key={ad.id}
-                        href={`/ar/ads/${ad.id}`}
-                        className={styles.searchResult}
-                        onClick={() => setSearchOpen(false)}
-                      >
-                        <div className={styles.searchResultImg}>
-                          {ad.primary_image ? <img src={ad.primary_image.thumbnail_url} alt="" /> : '📷'}
-                        </div>
-                        <div className={styles.searchResultInfo}>
-                          <div className={styles.searchResultTitle}>{ad.title}</div>
-                          <div className={styles.searchResultMeta}>
-                            <span>{ad.city?.name_ar}</span>
-                            <span>•</span>
-                            <span className={styles.searchTime}>{new Date(ad.created_at).toLocaleDateString('ar-SA')}</span>
-                          </div>
-                        </div>
-                        <div className={styles.searchResultPrice}>
-                          {ad.is_free ? <strong className={styles.freeTag}>بدون مقابل</strong> : ad.price ? <strong>{ad.price} ر.س</strong> : <span>على السوم</span>}
-                        </div>
-                      </Link>
-                    ))}
-                    {!searchLoading && searchResults.length > 0 && (
-                      <Link
-                        href={`/ar/search?q=${encodeURIComponent(query)}`}
-                        className={styles.searchViewAll}
-                        onClick={() => setSearchOpen(false)}
-                      >
-                        عرض كل النتائج →
-                      </Link>
-                    )}
-                  </>
-                ) : (
-                  /* Default panel when query is empty */
-                  <div className={styles.searchDefPanel}>
-                    {/* Header: Clear History */}
-                    <div className={styles.searchDefHeader}>
-                      <button className={styles.searchClearHist}>
-                        <span className={styles.trashText}>مسح سجل البحث</span>
-                        <span className={styles.trashIcon}>🗑️</span>
-                      </button>
-                    </div>
-
-                    {/* History items */}
-                    <div className={styles.searchHistList}>
-                      {['الرئيسية', 'اطعمة'].map(item => (
-                        <div key={item} className={styles.searchHistItem}>
-                          {/* Rightmost in RTL */}
-                          <span className={styles.searchHistIcon}>🕒</span>
-                          <span className={styles.searchHistText}>{item}</span>
-                          {/* Leftmost in RTL */}
-                          <button className={styles.searchHistDel}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Trending Header */}
-                    <div className={styles.searchTrendHeader}>
-                      {/* Rightmost */}
-                      <span className={styles.searchTrendIcon}>📈</span>
-                      <span className={styles.searchTrendText}>رائج</span>
-                    </div>
-
-                    {/* Trending items */}
-                    <div className={styles.searchTrendList}>
-                      {['تموينات للبيع', 'شحن', 'تذاكر الاهلي', 'سداد', 'حوش للبيع', 'مكيف سبيلت', 'منسق ورد', 'غرفة عامل'].map(item => (
-                        <button
-                          key={item}
-                          className={styles.searchTrendItem}
-                          onClick={() => {
-                            setQuery(item);
-                            setSearchOpen(false);
-                            window.location.href = `/ar/search?q=${encodeURIComponent(item)}`;
-                          }}
-                        >
-                          <span className={styles.searchTrendIcon}>🔥</span>
-                          <span className={styles.searchTrendText}>{item}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Post ad button */}
-          <Link href="/ar/post-ad" className={styles.postAdBtn} id="post-ad-hero-btn">
-            <span>+</span> إضافة عرض
-          </Link>
         </div>
       </div>
 
@@ -491,14 +380,14 @@ export default function HomePage() {
                   </div>
                   {/* Condition */}
                   <div className={styles.sbFilterSection}>
-                    <div className={styles.sbFilterLabel}>الحالة</div>
+                    <div className={styles.sbFilterLabel}>المسافة</div>
                     <label className={styles.radioItem}>
-                      <input type="radio" name="condition-sb" className={styles.radio} checked={!newOnly} onChange={() => setNewOnly(false)} />
+                      <input type="radio" name="condition-sb" className={styles.radio} checked={!nearMe} onChange={() => setNearMe(false)} />
                       الكل
                     </label>
                     <label className={styles.radioItem}>
-                      <input type="radio" name="condition-sb" className={styles.radio} checked={newOnly} onChange={() => setNewOnly(true)} />
-                      جديد فقط
+                      <input type="radio" name="condition-sb" className={styles.radio} checked={nearMe} onChange={() => setNearMe(true)} />
+                      القريب مني
                     </label>
                   </div>
                   {/* Cities from allCities filtered by selectedRegion */}
@@ -567,27 +456,7 @@ export default function HomePage() {
           {/* ── Feed ───────────────────────────────────────────────────── */}
           <div className={styles.feed}>
 
-            {/* Mobile city pill strip */}
-            <div className={styles.mobilePills}>
-              <button
-                className={`${styles.pill} ${!selectedCity && !selectedRegion ? styles.pillActive : ''}`}
-                onClick={() => { setSelectedRegion(null); setSelectedCity(null); }}
-              >
-                🌍 كل المدن
-              </button>
-              {allCities.slice(0, 8).map(c => (
-                <button
-                  key={c.id}
-                  className={`${styles.pill} ${selectedCity?.id === c.id ? styles.pillActive : ''}`}
-                  onClick={() => {
-                    setSelectedCity(c);
-                    setSelectedRegion(c.region ? { id: c.region.id, name_ar: c.region.name_ar, name_en: c.region.name_en, slug: c.region.slug, sort_order: 0, cities_count: 0 } : null);
-                  }}
-                >
-                  {c.name_ar}
-                </button>
-              ))}
-            </div>
+
 
             {/* Active filter chip */}
             {(selectedRegion || selectedCity) && (
@@ -604,40 +473,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Toolbar */}
-            <div className={styles.toolbar}>
-              <span className={styles.toolbarCount}>
-                {adsLoading
-                  ? <span className={styles.toolbarSkeleton} />
-                  : <><strong>{total.toLocaleString('ar-SA')}</strong> إعلان</>
-                }
-              </span>
-              <div className={styles.toolbarActions}>
-                <label className={`${styles.newOnlyToggle} ${newOnly ? styles.newOnlyActive : ''}`}>
-                  <input type="checkbox" checked={newOnly} onChange={e => setNewOnly(e.target.checked)} className={styles.srOnly} />
-                  جديد فقط
-                </label>
-                <select
-                  className={styles.sortSelect}
-                  value={sort}
-                  onChange={e => setSort(e.target.value as AdsFilters['sort'])}
-                >
-                  {SORT_OPTS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </select>
-                <div className={styles.viewControls}>
-                  <button
-                    className={`${styles.viewToggle} ${viewMode === 'list' ? styles.viewActive : ''}`}
-                    onClick={() => setViewMode('list')}
-                    title="قائمة"
-                  >≡</button>
-                  <button
-                    className={`${styles.viewToggle} ${viewMode === 'grid' ? styles.viewActive : ''}`}
-                    onClick={() => setViewMode('grid')}
-                    title="شبكة"
-                  >⊞</button>
-                </div>
-              </div>
-            </div>
 
             {/* Banner */}
             <BannerCarousel position="home_top" />
@@ -690,6 +525,28 @@ export default function HomePage() {
       </main>
 
       <Footer />
+
+      {/* ── Mobile Bottom Nav ───────────────────────────────────────── */}
+      <BottomNav
+        onCategoriesOpen={() => setDrawerOpen(true)}
+        onAuthOpen={() => setAuthOpen(true)}
+      />
+
+      {/* ── Mobile Categories & Filter Drawer ──────────────────────── */}
+      <MobileDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        sort={sort}
+        onSortChange={setSort}
+        nearMe={nearMe}
+        onNearMeChange={setNearMe}
+      />
+
+      {/* ── Auth Modal ─────────────────────────────────────────────── */}
+      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
     </>
   );
 }
@@ -713,31 +570,36 @@ function AdListRow({ ad }: { ad: AdListItem }) {
         <h3 className={styles.adListTitleHaraj}>{ad.title}</h3>
         
         <div className={styles.adListBottomRow}>
-          <div className={styles.adListMetaItem}>
-            <span className={styles.metaIcon}>👤</span>
+          <div className={styles.adListMetaGroup}>
+            <div className={styles.adListMetaItem}>
+              <span className={styles.metaText}>{ad.city?.name_ar || 'السعودية'}</span>
+              <span className={styles.metaIcon}>📍</span>
+            </div>
+            <div className={styles.adListMetaItem} dir="rtl">
+              <span className={styles.metaText}>{relativeTime(ad.published_at ?? ad.created_at)}</span>
+              <span className={styles.metaIcon}>🕐</span>
+            </div>
+          </div>
+
+          <div className={styles.adListUserGroup}>
             <span className={styles.metaText}>{ad.user?.name || `user_${ad.user_id}`}</span>
-          </div>
-
-          <div className={styles.adListMetaItem}>
-            <span className={styles.metaIcon}>📍</span>
-            <span className={styles.metaText}>{ad.city?.name_ar || 'السعودية'}</span>
-          </div>
-
-          <div className={styles.adListMetaItem} dir="rtl">
-            <span className={styles.metaIcon}>🕐</span>
-            <span className={styles.metaText}>{relativeTime(ad.published_at ?? ad.created_at)}</span>
+            <div className={styles.userAvatarSm}>
+              {(ad.user?.name || 'م').charAt(0).toUpperCase()}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 2) Image and Price on Left Side (RTL End) */}
+      {/* 2) Price beside the image */}
+      <div className={styles.adListPriceBox}>
+        {priceText} {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
+      </div>
+
+      {/* 3) Image on Left Side (RTL End) */}
       <div className={styles.adListMediaLeft}>
         <div className={styles.adListImgWrapper}>
           <img src={imgSrc} alt={ad.title} className={styles.adListImgReal} />
           {ad.is_boosted && <span className={styles.boostBadgeTop}>⭐ مميز</span>}
-        </div>
-        <div className={styles.adListPriceBox}>
-          {priceText} {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
         </div>
       </div>
     </Link>

@@ -16,14 +16,24 @@
 
 .heroInner {
   max-width: 1280px;
-  margin-inline: auto;
-  padding-inline: var(--space-4);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
   display: flex;
   gap: var(--space-3);
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ── Location Dropdown ───────────────────────────────────────────────────────── */
+/* ── Location Dropdown & Near Me Group ───────────────────────────────────────── */
+.locGroup {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
 .locWrap {
   position: relative;
   flex-shrink: 0;
@@ -206,295 +216,7 @@
   animation: shimmer 1.4s infinite linear;
 }
 
-/* ── Search Input ────────────────────────────────────────────────────────────── */
-.searchWrap {
-  flex: 1;
-  position: relative;
-}
 
-.searchForm {
-  display: flex;
-  align-items: stretch;
-  border: 1.5px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: #fff;
-  overflow: hidden;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.searchForm:focus-within {
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.12);
-}
-
-.searchInputWrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  position: relative;
-  background: transparent;
-}
-
-.searchInput {
-  flex: 1;
-  padding: 12px 16px;
-  border: none;
-  outline: none;
-  font-family: inherit;
-  font-size: var(--text-base);
-  color: var(--text-primary);
-  background: transparent;
-  text-align: right;
-  direction: rtl;
-}
-
-.searchInput::placeholder { color: var(--text-tertiary); }
-
-.searchClear {
-  padding: 0 var(--space-3);
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-.searchClear:hover { color: var(--color-error); }
-
-.searchBtnLeft {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-primary-600);
-  color: #fff;
-  border: none;
-  width: 52px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--transition-fast);
-}
-.searchBtnLeft:hover { background: var(--color-primary-700); }
-.searchBtnIcon { font-size: 1.1rem; }
-
-.searchDropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0; right: 0;
-  z-index: var(--z-dropdown);
-  background: #fff;
-  border: 1.5px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
-  overflow: hidden;
-  animation: dropIn 0.15s ease;
-  direction: rtl;
-}
-
-.searchLoading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.searchSpinner {
-  width: 16px; height: 16px;
-  border: 2px solid var(--border-default);
-  border-top-color: var(--color-primary-500);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.searchEmpty {
-  padding: var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
-.searchResult {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
-  text-decoration: none;
-  transition: background var(--transition-fast);
-}
-
-/* Default panel logic */
-.searchDefPanel {
-  display: flex;
-  flex-direction: column;
-}
-
-.searchDefHeader {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--color-neutral-100);
-}
-
-.searchClearHist {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--color-error);
-  font-size: var(--text-sm);
-  direction: rtl;
-}
-
-.trashText { font-weight: var(--font-medium); }
-
-.searchHistList {
-  display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid var(--color-neutral-100);
-}
-
-.searchHistItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--color-neutral-100);
-  background: #fff;
-}
-.searchHistItem:last-child { border-bottom: none; }
-
-.searchHistDel {
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.searchHistText {
-  flex: 1;
-  text-align: right;
-  padding-right: 12px;
-  font-size: var(--text-base);
-  color: var(--text-secondary);
-}
-
-.searchHistIcon {
-  color: var(--text-tertiary);
-  font-size: 1.1rem;
-}
-
-.searchTrendHeader {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 16px 16px 8px;
-}
-
-.searchTrendText {
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-}
-
-.searchTrendIcon { font-size: 1.1rem; color: #F5A623; }
-
-.searchTrendList {
-  display: flex;
-  flex-direction: column;
-}
-
-.searchTrendItem {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 12px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--text-base);
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--color-neutral-100);
-  direction: rtl;
-}
-.searchTrendItem:last-child { border-bottom: none; }
-.searchTrendItem:hover { background: var(--surface-secondary); color: var(--color-primary-700); }
-.searchResult:last-of-type { border-bottom: none; }
-.searchResult:hover { background: var(--surface-secondary); }
-
-.searchResultImg {
-  width: 48px; height: 48px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-tertiary);
-  font-size: 1.4rem;
-}
-
-.searchResultImg img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.searchResultInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  text-align: right;
-  min-width: 0;
-}
-
-.searchResultTitle {
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.searchResultMeta {
-  display: flex;
-  gap: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  justify-content: flex-end;
-}
-
-.searchResultMeta strong { color: var(--color-success); }
-.freeTag { color: var(--color-success); }
-
-.searchViewAll {
-  display: block;
-  padding: var(--space-3) var(--space-4);
-  text-align: center;
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: var(--color-primary-600);
-  text-decoration: none;
-  background: var(--surface-secondary);
-  transition: background var(--transition-fast);
-}
-.searchViewAll:hover { background: var(--color-primary-50); }
 
 /* ── Post-ad Button ──────────────────────────────────────────────────────────── */
 .postAdBtn {
@@ -525,8 +247,10 @@
 
 .layout {
   max-width: 1280px;
-  margin-inline: auto;
-  padding-inline: var(--space-4);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-5);
@@ -535,6 +259,16 @@
 
 @media (min-width: 960px) {
   .layout { grid-template-columns: 230px 1fr; }
+}
+
+/* Feed — main content column (must have min-width:0 in grid) */
+.feed {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow: hidden;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────────── */
@@ -749,42 +483,31 @@
   gap: 12px;
 }
 
-/* Modern Pill Toggle */
-.newOnlyToggle {
+.nearMeToggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: var(--space-2);
+  padding: 9px var(--space-3);
   border: 1.5px solid var(--border-default);
-  background: var(--surface-primary);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-family: inherit;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
 }
 
-.newOnlyToggle::before {
-  content: '';
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--border-default);
-  transition: all 0.2s ease;
-  background: transparent;
-}
-
-.newOnlyActive {
+.nearMeActive {
   border-color: #10B981; /* Premium Green */
   color: #047857;
   background: #ECFDF5;
 }
 
-.newOnlyActive::before {
+.nearMeActive::before {
   background: #10B981;
   border-color: #10B981;
   box-shadow: inset 0 0 0 2px #ECFDF5;
@@ -876,11 +599,13 @@
   border: 1.5px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .adListRowHaraj {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   padding: 16px 20px;
@@ -949,19 +674,43 @@
   color: var(--text-secondary);
 }
 
+.adListMetaGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.adListUserGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.userAvatarSm {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary-200);
+  color: var(--color-primary-700);
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Left section (Media) */
 .adListMediaLeft {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  width: 140px;
+  width: 180px;
 }
 
 .adListImgWrapper {
-  width: 140px;
-  height: 105px;
+  width: 180px;
+  height: 135px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   position: relative;
@@ -971,6 +720,8 @@
 }
 
 .adListImgReal {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -990,21 +741,23 @@
 }
 
 .adListPriceBox {
-  font-size: var(--text-base);
-  font-weight: var(--font-heavy);
-  color: var(--color-success);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: #ffffff;
   text-align: center;
-  background: #f0fdf4;
-  padding: 4px 12px;
+  background: #10B981;
+  padding: 8px 16px;
   border-radius: var(--radius-full);
-  color: #166534;
-  width: 100%;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .currencyLabel {
   font-size: 10px;
   font-weight: var(--font-bold);
-  opacity: 0.8;
+  opacity: 0.9;
+  margin-inline-start: 2px;
 }
 
 /* Skeleton list rows */
@@ -1445,16 +1198,22 @@
 /* ── ③ تنقل السريع — Flat Vertical List ──────────────────────────────────────── */
 .sbCardFlat {
   margin-top: 16px;
+  background: var(--surface-primary);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .sbNavTitleFlat {
   font-size: var(--text-base);
   font-weight: var(--font-bold);
   color: var(--text-primary);
-  padding: 0 16px 12px;
+  padding: 12px 16px;
   margin: 0;
   text-align: right;
   direction: rtl;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-secondary);
 }
 
 .sbNavListFlat {
@@ -1511,3 +1270,276 @@
 .sbShowMoreIconFlat { font-size: 0.8rem; }
 
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   📱 MOBILE RESPONSIVE — All breakpoints
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Body bottom padding for bottom nav ──────────────────────────────────────── */
+@media (max-width: 959px) {
+  /* page.module.css can't touch body, handled via globals.css */
+  .main { padding-bottom: var(--space-5); }
+  .feed { padding-bottom: 0; }
+}
+
+/* ── Phase 2: Hero Bar — stack vertically on mobile ─────────────────────────── */
+@media (max-width: 639px) {
+  .heroBar {
+    padding: var(--space-2) 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .heroInner {
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: stretch;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .locGroup {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .locWrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .nearMeToggle {
+    flex-shrink: 0;
+    padding: 10px var(--space-3);
+  }
+
+  .locBtn {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    justify-content: flex-start;
+    padding: 10px var(--space-3);
+  }
+
+  .locLabel {
+    flex: 1;
+  }
+
+  .searchWrap {
+    width: 100%;
+  }
+
+  .postAdBtn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+}
+
+/* ── Phase 2: Hero Bar — medium screens ─────────────────────────────────────── */
+@media (min-width: 640px) and (max-width: 959px) {
+  .heroInner {
+    gap: var(--space-2);
+  }
+
+  .locBtn {
+    min-width: 110px;
+    max-width: 130px;
+  }
+}
+
+/* ── Phase 4: Ad List Rows — mobile: image LEFT, info column RIGHT ───────────── */
+@media (max-width: 639px) {
+  .adList {
+    background: transparent;
+    border: none;
+    gap: 10px;
+  }
+
+  /* Card: horizontal row — image left, info right */
+  .adListRowHaraj {
+    flex-direction: row;
+    align-items: stretch;
+    padding: 10px;
+    gap: 12px;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    /* Force LTR so image is always on the physical left */
+    direction: ltr;
+  }
+
+  .adListRowHaraj:last-child {
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  /* Image — physical LEFT side, fixed square */
+  .adListMediaLeft {
+    flex-shrink: 0;
+    flex-grow: 0;
+    width: 110px;
+    height: 110px;
+  }
+
+  .adListImgWrapper {
+    width: 110px;
+    height: 110px;
+    min-width: 110px;
+    min-height: 110px;
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .adListImgReal {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Info column — fills remaining space, RTL text direction */
+  .adListInfoRight {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    direction: rtl;
+    text-align: right;
+    overflow: hidden;
+  }
+
+  .adListTitleHaraj {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+    -webkit-line-clamp: 2;
+  }
+
+  .adListBottomRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    direction: rtl;
+  }
+
+  .adListMetaGroup {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .adListUserGroup {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .adListMetaItem {
+    background: transparent;
+    border: none;
+    padding: 0;
+    gap: 4px;
+  }
+
+  .metaText {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+
+  .metaIcon {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+  }
+
+  /* Hide separate price box — price visible from title area */
+  .adListPriceBox {
+    display: none;
+  }
+
+  /* Skeleton adjust */
+  .adListSkeleton {
+    height: 130px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 0;
+  }
+}
+
+
+/* ── Phase 4: Ad Grid — 1 column on very small phones ───────────────────────── */
+@media (max-width: 380px) {
+  .adGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Phase 4: Toolbar — stack on mobile ─────────────────────────────────────── */
+@media (max-width: 639px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius-lg);
+  }
+
+  .toolbarCount {
+    justify-content: center;
+  }
+
+  .toolbarActions {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .nearMeToggle {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .sortSelect {
+    font-size: 11px;
+    padding: 6px 28px 6px 12px;
+  }
+}
+
+/* ── Phase 5: Mobile pills — shrink on small screens ────────────────────────── */
+@media (max-width: 639px) {
+  .mobilePills {
+    padding-bottom: 0;
+    gap: var(--space-1);
+  }
+
+  .pill {
+    padding: 5px var(--space-3);
+    font-size: 11px;
+  }
+}
+
+/* ── Phase 5: Active breadcrumb — compact ───────────────────────────────────── */
+@media (max-width: 639px) {
+  .activeBreadcrumb {
+    padding: var(--space-2) var(--space-3);
+  }
+  .breadcrumbText {
+    font-size: 12px;
+  }
+}
+
+/* ── Phase 5: Load more button — full width on mobile ───────────────────────── */
+@media (max-width: 639px) {
+  .loadMoreBtn {
+    width: 100%;
+    padding: 14px;
+  }
+}

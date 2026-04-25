@@ -33,5 +33,5 @@ export type Category = CategoryChild & {
  */
 export async function fetchCategories(): Promise<Category[]> {
   const response = await apiClient.get<Category[]>(ENDPOINTS.CATEGORIES);
-  return response.data;
+  return response.data.filter(cat => cat.slug !== 'real-estate');
 }

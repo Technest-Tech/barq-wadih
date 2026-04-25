@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: {
-      default:  isArabic ? 'برق واضح — منصة الإعلانات المبوبة' : 'Barq Wadih — Saudi Classifieds',
+      default:  isArabic ? 'برق واضح' : 'Barq Wadih',
       template: isArabic ? '%s | برق واضح' : '%s | Barq Wadih',
     },
     description: isArabic

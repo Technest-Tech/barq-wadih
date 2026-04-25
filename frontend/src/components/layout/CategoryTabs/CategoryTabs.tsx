@@ -8,7 +8,6 @@ import styles from './CategoryTabs.module.css';
 // ── Fallback static data (shown if API fails) ─────────────────────────────────
 const FALLBACK_CATEGORIES: Pick<Category, 'id' | 'icon' | 'name_ar' | 'slug'>[] = [
   { id: 0,  icon: '🚗', name_ar: 'سيارات',        slug: 'cars'           },
-  { id: 1,  icon: '🏠', name_ar: 'عقارات',         slug: 'real-estate'   },
   { id: 2,  icon: '📱', name_ar: 'إلكترونيات',     slug: 'electronics'   },
   { id: 3,  icon: '🛋️', name_ar: 'أثاث ومفروشات', slug: 'furniture'     },
   { id: 4,  icon: '💼', name_ar: 'وظائف',           slug: 'jobs'          },

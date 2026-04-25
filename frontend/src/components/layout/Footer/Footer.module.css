@@ -103,3 +103,21 @@
   border-radius: var(--radius-full);
   color: var(--color-neutral-400);
 }
+
+/* ── Mobile: Footer responsive ───────────────────────────────────────────── */
+@media (max-width: 959px) {
+  .footer {
+    padding-top: var(--space-10);
+  }
+
+  .inner {
+    padding-bottom: var(--space-8);
+  }
+
+  .bottom {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    padding-block: var(--space-4);
+  }
+}
