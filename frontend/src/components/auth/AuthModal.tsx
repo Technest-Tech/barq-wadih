@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { Phone, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft, X } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
 import { ApiClientError } from '@/lib';
@@ -21,18 +21,18 @@ type EmailForm = z.infer<typeof emailSchema>;
 
 type Tab = 'phone' | 'email';
 
-const bgVariants = {
+const bgVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 }
 };
 
-const modalVariants = {
+const modalVariants: Variants = {
   hidden: { opacity: 0, scale: 0.95, y: 20 },
   visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', damping: 25, stiffness: 300 } },
   exit: { opacity: 0, scale: 0.95, y: -20, transition: { duration: 0.2 } }
 };
 
-const tabVariants = {
+const tabVariants: Variants = {
   enter: (dir: number) => ({ opacity: 0, x: dir * 24 }),
   center: { opacity: 1, x: 0 },
   exit:  (dir: number) => ({ opacity: 0, x: dir * -24 }),
