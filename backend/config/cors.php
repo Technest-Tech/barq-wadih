@@ -13,11 +13,17 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3000',   // Next.js dev server
+        'http://localhost:3000',          // Next.js dev server
         'http://127.0.0.1:3000',
+        'https://barqwadih.com',          // Production frontend
+        'https://www.barqwadih.com',
+        'https://api.barqwadih.com',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^capacitor://.*#',              // Mobile app (iOS)
+        '#^ionic://.*#',                  // Mobile app (Android)
+    ],
 
     'allowed_headers' => ['*'],
 
