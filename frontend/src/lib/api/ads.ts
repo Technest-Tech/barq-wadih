@@ -29,6 +29,7 @@ export interface CategoryField {
 
 export interface AdListItem {
   id: number;
+  user_id: number;
   title: string;
   price: string | null;
   is_negotiable: boolean;
@@ -39,6 +40,7 @@ export interface AdListItem {
   category: { id: number; name_ar: string; slug: string; icon: string | null } | null;
   city: { id: number; name_ar: string } | null;
   region: { id: number; name_ar: string } | null;
+  user?: { id: number; name: string; avatar: string | null } | null;
   is_boosted: boolean;
   boosted_until: string | null;
   published_at: string | null;
