@@ -67,7 +67,7 @@ function AdJsonLd({ ad }: { ad: AdServerData }) {
     '@type': 'Product',
     name: ad.title,
     description: ad.description ?? undefined,
-    image: ad.images?.map((img) => img.url) ?? [],
+    image: ad.images?.map((img) => img.image_url) ?? [],
     offers: {
       '@type': 'Offer',
       price: ad.price?.toString() ?? '0',
