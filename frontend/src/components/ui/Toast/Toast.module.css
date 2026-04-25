@@ -1,0 +1,45 @@
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  min-width: 280px;
+  max-width: 420px;
+  animation: toastIn var(--transition-base) var(--ease-out) forwards;
+  border-inline-start: 4px solid currentColor;
+  background-color: var(--surface-elevated);
+}
+.success { color: var(--color-success); }
+.error   { color: var(--color-error); }
+.warning { color: var(--color-warning); }
+.info    { color: var(--color-info); }
+
+.icon {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  flex-shrink: 0;
+}
+.message {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+}
+.close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.close:hover { background-color: var(--surface-tertiary); color: var(--text-primary); }

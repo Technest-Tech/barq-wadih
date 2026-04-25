@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "816087371543",
+    "project_id": "barqwadih-40271",
+    "storage_bucket": "barqwadih-40271.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:816087371543:android:c1521d394de014d263f152",
+        "android_client_info": {
+          "package_name": "com.barqwadih.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfuGij59wDanCHNzXklWA1a80L1RQ_lOs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

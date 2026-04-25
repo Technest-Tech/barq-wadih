@@ -1,0 +1,60 @@
+{
+  "app": {
+    "name": "Barq Wadih",
+    "description": "Saudi Arabia's Premier Classifieds Marketplace"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Try Again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "submit": "Submit",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "noResults": "No results found",
+    "seeAll": "See All"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "postAd": "Post Ad",
+    "chat": "Messages",
+    "profile": "Profile",
+    "myAds": "My Ads",
+    "favorites": "Favorites",
+    "settings": "Settings",
+    "admin": "Admin Panel",
+    "logout": "Logout",
+    "login": "Login",
+    "register": "Register"
+  },
+  "health": {
+    "status": "System Status",
+    "ok": "All systems operational",
+    "degraded": "System partially operational",
+    "database": "Database",
+    "redis": "Redis",
+    "meilisearch": "Search Engine"
+  },
+  "errors": {
+    "notFound": "Page Not Found",
+    "notFoundDescription": "Sorry, the page you are looking for does not exist.",
+    "serverError": "Server Error",
+    "serverErrorDescription": "An unexpected error occurred. Please try again.",
+    "goHome": "Go Home"
+  }
+}

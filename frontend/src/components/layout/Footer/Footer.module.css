@@ -1,0 +1,105 @@
+.footer {
+  background: var(--color-neutral-900);
+  color: var(--color-neutral-300);
+  padding-top: var(--space-16);
+  direction: rtl;
+}
+
+.inner {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: var(--space-6);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-12);
+  padding-bottom: var(--space-12);
+}
+
+@media (min-width: 640px) {
+  .inner { grid-template-columns: 280px 1fr; }
+}
+
+/* Brand */
+.brand { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+}
+
+.logoIcon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-400));
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.logoText {
+  font-size: var(--text-lg);
+  color: #fff;
+  font-weight: var(--font-regular);
+}
+
+.logoText strong { font-weight: var(--font-bold); color: var(--color-accent-400); }
+
+.tagline {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  line-height: var(--leading-relaxed);
+  max-width: 240px;
+}
+
+/* Links */
+.links { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-8); }
+
+.col { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.colTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--space-1);
+}
+
+.link {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.link:hover { color: var(--color-accent-400); }
+
+/* Bottom bar */
+.bottom {
+  border-top: 1px solid var(--color-neutral-800);
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: var(--space-6);
+  padding-block: var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.copy { font-size: var(--text-sm); color: var(--color-neutral-600); }
+
+.badges { display: flex; gap: var(--space-3); }
+
+.badge {
+  font-size: var(--text-xs);
+  padding: 4px var(--space-3);
+  background: var(--color-neutral-800);
+  border-radius: var(--radius-full);
+  color: var(--color-neutral-400);
+}

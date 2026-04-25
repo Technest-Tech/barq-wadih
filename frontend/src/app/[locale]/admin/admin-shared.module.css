@@ -1,0 +1,234 @@
+/* ── Shared Admin Page Styles ────────────────────────────────────────────── */
+/* Reused across Sprint 15 admin pages to keep CSS DRY */
+
+.page { direction: rtl; }
+
+.pageHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+}
+.pageTitle { font-size: 24px; font-weight: 800; color: var(--admin-text); letter-spacing: -0.02em; }
+.totalBadge { font-size: 14px; font-weight: 600; color: var(--admin-accent); background: rgba(99,102,241,0.1); padding: 4px 14px; border-radius: 20px; margin-right: 12px; }
+
+/* ── Glass Card ──────────────────────────────────────────────────────────── */
+.card {
+  background: linear-gradient(135deg, rgba(26,31,46,0.8), rgba(26,31,46,0.5));
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--admin-border); border-radius: var(--admin-radius);
+  padding: 20px; margin-bottom: 16px;
+}
+.cardTitle {
+  font-size: 15px; font-weight: 700; color: var(--admin-text);
+  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Filter Bar ──────────────────────────────────────────────────────────── */
+.filterBar { composes: card; display: flex; flex-direction: column; gap: 12px; }
+.filterRow { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.searchInput {
+  flex: 1; min-width: 200px; padding: 10px 16px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm); color: var(--admin-text);
+  font-size: 14px; font-family: inherit; transition: all 0.2s;
+}
+.searchInput::placeholder { color: var(--admin-text-muted); }
+.searchInput:focus { outline: none; border-color: var(--admin-accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+.select {
+  padding: 10px 12px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm);
+  color: var(--admin-text); font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.select option { background: var(--admin-surface); color: var(--admin-text); }
+.select:focus { outline: none; border-color: var(--admin-accent); }
+
+/* ── Chips ────────────────────────────────────────────────────────────────── */
+.chip {
+  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--admin-border); background: transparent;
+  color: var(--admin-text-secondary); font-family: inherit; transition: all 0.2s;
+  white-space: nowrap;
+}
+.chip:hover { background: var(--admin-surface-hover); color: var(--admin-text); }
+.chip.active { background: var(--admin-accent); border-color: var(--admin-accent); color: white; }
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+.tableCard { composes: card; padding: 0; overflow: hidden; }
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
+.table th {
+  text-align: start; padding: 12px 16px; color: var(--admin-text-muted);
+  font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  background: rgba(0,0,0,0.2); white-space: nowrap;
+}
+.table td { padding: 14px 16px; border-top: 1px solid var(--admin-border); color: var(--admin-text-secondary); vertical-align: middle; }
+.table tr { transition: background 0.15s; }
+.table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge.green  { color: #4ade80; background: rgba(34,197,94,0.1); }
+.badge.blue   { color: #60a5fa; background: rgba(59,130,246,0.1); }
+.badge.yellow { color: #fbbf24; background: rgba(245,158,11,0.1); }
+.badge.red    { color: #f87171; background: rgba(239,68,68,0.1); }
+.badge.gray   { color: #94a3b8; background: rgba(148,163,184,0.1); }
+.badge.purple { color: #a78bfa; background: rgba(139,92,246,0.1); }
+
+/* ── Action Buttons ───────────────────────────────────────────────────────── */
+.btn {
+  padding: 8px 16px; border-radius: var(--admin-radius-sm); font-size: 13px;
+  font-weight: 600; cursor: pointer; border: 1px solid var(--admin-border);
+  background: transparent; color: var(--admin-text-secondary);
+  font-family: inherit; transition: all 0.2s; white-space: nowrap;
+}
+.btn:hover { background: var(--admin-surface-hover); color: var(--admin-text); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.primary { background: var(--admin-accent); border-color: var(--admin-accent); color: white; }
+.btn.primary:hover { background: var(--admin-accent-hover); }
+.btn.success { color: var(--admin-success); border-color: rgba(34,197,94,0.3); }
+.btn.success:hover { background: var(--admin-success); color: white; }
+.btn.danger { color: var(--admin-danger); border-color: rgba(239,68,68,0.3); }
+.btn.danger:hover { background: var(--admin-danger); color: white; }
+.btn.warning { color: var(--admin-warning); border-color: rgba(245,158,11,0.3); }
+.btn.warning:hover { background: var(--admin-warning); color: white; }
+.btn.sm { padding: 6px 12px; font-size: 12px; }
+
+/* ── Toggle Switch ────────────────────────────────────────────────────────── */
+.toggle {
+  position: relative; width: 40px; height: 22px; border-radius: 11px;
+  background: var(--admin-border-strong); border: none; cursor: pointer; transition: background 0.3s;
+}
+.toggle.on { background: var(--admin-success); }
+.toggle::after {
+  content: ''; position: absolute; left: 2px; top: 2px;
+  width: 18px; height: 18px; border-radius: 50%; background: white;
+  transition: transform 0.3s;
+}
+.toggle.on::after { transform: translateX(18px); }
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-top: 1px solid var(--admin-border); flex-wrap: wrap; gap: 12px;
+}
+.paginationInfo { font-size: 13px; color: var(--admin-text-muted); }
+.paginationBtns { display: flex; gap: 6px; }
+.pageBtn {
+  padding: 6px 14px; border-radius: var(--admin-radius-sm); font-size: 12px;
+  font-weight: 600; cursor: pointer; border: 1px solid var(--admin-border);
+  background: transparent; color: var(--admin-text-secondary); font-family: inherit; transition: all 0.2s;
+}
+.pageBtn:hover:not(:disabled) { background: var(--admin-surface-hover); color: var(--admin-text); }
+.pageBtn.active { background: var(--admin-accent); border-color: var(--admin-accent); color: white; }
+.pageBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  padding: 12px 24px; border-radius: var(--admin-radius-sm); font-size: 14px;
+  font-weight: 600; color: white; z-index: 9999;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+.toast.success { background: var(--admin-success); }
+.toast.error { background: var(--admin-danger); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(20px); } }
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.modalOverlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 9998; padding: 24px;
+  animation: fadeIn 0.2s ease;
+}
+.modal {
+  background: var(--admin-surface); border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg); padding: 28px; max-width: 560px;
+  width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,0.5); direction: rtl;
+  max-height: 90vh; overflow-y: auto;
+}
+.modalTitle { font-size: 18px; font-weight: 700; color: var(--admin-text); margin-bottom: 16px; }
+.modalBody { font-size: 14px; color: var(--admin-text-secondary); margin-bottom: 20px; line-height: 1.6; }
+.modalField { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.modalLabel { font-size: 13px; font-weight: 600; color: var(--admin-text-secondary); }
+.modalInput {
+  padding: 10px 14px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm);
+  color: var(--admin-text); font-size: 14px; font-family: inherit;
+}
+.modalInput:focus { outline: none; border-color: var(--admin-accent); }
+.modalTextarea { composes: modalInput; min-height: 80px; resize: vertical; }
+.modalActions { display: flex; gap: 10px; justify-content: flex-start; margin-top: 20px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Loading / Empty ──────────────────────────────────────────────────────── */
+.loading { display: flex; align-items: center; justify-content: center; min-height: 50vh; flex-direction: column; gap: 16px; color: var(--admin-text-secondary); }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--admin-border); border-top-color: var(--admin-accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 60px 24px; color: var(--admin-text-muted); }
+.empty h3 { font-size: 18px; margin-bottom: 8px; color: var(--admin-text-secondary); }
+
+/* ── User Cell ────────────────────────────────────────────────────────────── */
+.userCell { display: flex; align-items: center; gap: 10px; }
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--admin-accent), #a855f7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.avatarImg { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+
+/* ── Image Thumbnail ──────────────────────────────────────────────────────── */
+.thumbnail { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--admin-border); }
+
+/* ── Tree view ────────────────────────────────────────────────────────────── */
+.treeItem {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--admin-border); transition: background 0.15s;
+}
+.treeItem:hover { background: rgba(255,255,255,0.02); }
+.treeIcon { font-size: 20px; flex-shrink: 0; }
+.treeInfo { flex: 1; min-width: 0; }
+.treeName { font-size: 14px; font-weight: 600; color: var(--admin-text); }
+.treeSub { font-size: 12px; color: var(--admin-text-muted); }
+.treeActions { display: flex; gap: 6px; align-items: center; }
+.treeChildren { padding-right: 32px; }
+
+/* ── Accordion ────────────────────────────────────────────────────────────── */
+.accordion { border-bottom: 1px solid var(--admin-border); }
+.accordionHeader {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  cursor: pointer; transition: background 0.15s; user-select: none;
+}
+.accordionHeader:hover { background: rgba(255,255,255,0.02); }
+.accordionArrow { font-size: 12px; transition: transform 0.3s; color: var(--admin-text-muted); }
+.accordionArrow.open { transform: rotate(90deg); }
+.accordionBody { padding: 0 16px 16px 16px; }
+
+/* ── Rich Text Editor ─────────────────────────────────────────────────────── */
+.editorToolbar {
+  display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--admin-border);
+  flex-wrap: wrap;
+}
+.editorBtn {
+  padding: 6px 10px; border-radius: 4px; background: transparent;
+  border: 1px solid var(--admin-border); color: var(--admin-text-secondary);
+  cursor: pointer; font-size: 14px; transition: all 0.2s; font-family: inherit;
+}
+.editorBtn:hover { background: var(--admin-surface-hover); color: var(--admin-text); }
+.editorBtn.active { background: var(--admin-accent); color: white; border-color: var(--admin-accent); }
+.editorContent {
+  min-height: 200px; padding: 16px; color: var(--admin-text);
+  font-size: 15px; line-height: 1.8; direction: rtl; outline: none;
+}
+.editorContent:focus { background: rgba(255,255,255,0.02); }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .filterRow { flex-direction: column; }
+  .pageTitle { font-size: 20px; }
+  .table { min-width: 600px; }
+}

@@ -1,0 +1,202 @@
+/* ══════════════════════════════════════════════════════════
+   Banner Carousel — auto-sliding, responsive, click-tracked
+   ══════════════════════════════════════════════════════════ */
+
+.carousel {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
+  border: 1.5px solid var(--border-default);
+  box-shadow: 0 4px 16px rgba(27, 58, 107, 0.08);
+}
+
+/* ── Slides container ──────────────────────────────────────────────────────── */
+.track {
+  display: flex;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.slide {
+  flex: 0 0 100%;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.slide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.25) 100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.slide:hover::after {
+  opacity: 1;
+}
+
+/* ── Images ────────────────────────────────────────────────────────────────── */
+.imageDesktop,
+.imageMobile {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.imageDesktop {
+  height: 180px;
+}
+
+.imageMobile {
+  height: 160px;
+}
+
+/* Responsive: show desktop image on large screens, mobile on small */
+.imageMobile {
+  display: block;
+}
+
+.imageDesktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .imageMobile {
+    display: none;
+  }
+
+  .imageDesktop {
+    display: block;
+  }
+}
+
+/* ── Banner title overlay ──────────────────────────────────────────────────── */
+.titleOverlay {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.55) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.titleText {
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  direction: rtl;
+}
+
+/* ── Link type badge ───────────────────────────────────────────────────────── */
+.linkBadge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-semibold);
+  color: var(--color-primary-700);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+/* ── Navigation arrows ─────────────────────────────────────────────────────── */
+.navBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.2s, background 0.2s;
+  z-index: 2;
+}
+
+.carousel:hover .navBtn {
+  opacity: 1;
+}
+
+.navBtn:hover {
+  background: #fff;
+  transform: translateY(-50%) scale(1.08);
+}
+
+.navPrev {
+  right: var(--space-3);
+}
+
+.navNext {
+  left: var(--space-3);
+}
+
+/* Hide arrows on mobile */
+@media (max-width: 767px) {
+  .navBtn { display: none; }
+}
+
+/* ── Dot indicators ────────────────────────────────────────────────────────── */
+.dots {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+.dotActive {
+  width: 22px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Skeleton loading ──────────────────────────────────────────────────────── */
+.skeleton {
+  border-radius: var(--radius-lg);
+  height: 160px;
+  background: linear-gradient(90deg, var(--surface-primary) 25%, var(--surface-secondary) 50%, var(--surface-primary) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+@media (min-width: 768px) {
+  .skeleton { height: 180px; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}

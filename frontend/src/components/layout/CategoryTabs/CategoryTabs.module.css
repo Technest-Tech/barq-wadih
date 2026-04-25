@@ -1,0 +1,112 @@
+.bar {
+  background: var(--surface-primary);
+  border-bottom: 1px solid var(--border-default);
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  min-height: var(--cat-bar-height);
+}
+
+.track {
+  display: flex;
+  flex-wrap: nowrap;
+  /* Always show scrollbar so user knows it's scrollable */
+  overflow-x: scroll;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 0 var(--space-4) 6px var(--space-4);
+  gap: 0;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}
+
+/* Force visible scrollbar on WebKit/macOS */
+.track::-webkit-scrollbar {
+  height: 5px;
+  display: block !important;
+}
+.track::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+  border-radius: 99px;
+}
+.track::-webkit-scrollbar-thumb {
+  background-color: #94A3B8;
+  border-radius: 99px;
+}
+.track::-webkit-scrollbar-thumb:hover {
+  background-color: #64748B;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  text-decoration: none;
+  color: var(--text-secondary);
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+  position: relative;
+}
+
+.tab:hover {
+  color: var(--color-primary-600);
+  background: var(--surface-secondary);
+}
+
+.tabActive {
+  color: var(--color-primary-700);
+  border-bottom-color: var(--color-primary-500);
+  font-weight: var(--font-semibold);
+}
+
+.tabIcon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.tabName {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+.tabActive .tabName {
+  font-weight: var(--font-bold);
+}
+
+/* ── Skeleton / loading shimmer ────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.skeleton {
+  pointer-events: none;
+  cursor: default;
+}
+
+.skeletonIcon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-tertiary) 50%, var(--surface-secondary) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+.skeletonLabel {
+  display: block;
+  width: 42px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-tertiary) 50%, var(--surface-secondary) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+}

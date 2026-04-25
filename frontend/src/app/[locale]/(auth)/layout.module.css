@@ -1,0 +1,187 @@
+/* ═══════════════════════════════════════════════════════════
+   Auth Layout — Premium full-screen experience
+   Haraj-inspired: clean, bold, Arabic-first
+   ═══════════════════════════════════════════════════════════ */
+
+.wrapper {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: 1fr;
+  background: var(--surface-primary);
+  direction: rtl;
+}
+
+@media (min-width: 960px) {
+  .wrapper {
+    grid-template-columns: 1fr 480px;
+  }
+}
+
+/* ── Brand mural (right panel on RTL, left visually) ─────────────────────── */
+.mural {
+  display: none;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 960px) {
+  .mural {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    /* Rich dark-green gradient layered with subtle noise */
+    background:
+      radial-gradient(ellipse at 20% 80%, rgba(67, 160, 71, 0.25) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(249, 168, 37, 0.15) 0%, transparent 50%),
+      linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0e2a1e 100%);
+  }
+}
+
+/* Decorative floating rings */
+.mural::before {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  border: 1px solid rgba(67, 160, 71, 0.15);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: rings 8s ease-in-out infinite;
+}
+
+.mural::after {
+  content: '';
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  border: 1px solid rgba(249, 168, 37, 0.08);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: rings 8s ease-in-out infinite reverse;
+}
+
+@keyframes rings {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%       { transform: translate(-50%, -50%) scale(1.05); }
+}
+
+.muralContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-12);
+  text-align: center;
+}
+
+.logoMark {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-2xl);
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-400));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  box-shadow: 0 0 0 12px rgba(67, 160, 71, 0.1), 0 20px 40px rgba(0,0,0,0.4);
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+.brandName {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: #fff;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.brandNameAccent {
+  color: var(--color-accent-400);
+}
+
+.brandTagline {
+  font-size: var(--text-lg);
+  color: rgba(255,255,255,0.55);
+  max-width: 280px;
+  line-height: var(--leading-relaxed);
+}
+
+/* Stats strip */
+.stats {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.statNum {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-accent-400);
+}
+
+.statLabel {
+  font-size: var(--text-sm);
+  color: rgba(255,255,255,0.4);
+}
+
+/* ── Form panel (left on RTL) ─────────────────────────────────────────────── */
+.formPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface-primary);
+}
+
+/* Mobile-only logo */
+.mobileLogo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+
+@media (min-width: 960px) {
+  .mobileLogo { display: none; }
+}
+
+.mobileLogoMark {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-400));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  box-shadow: 0 8px 20px rgba(67, 160, 71, 0.25);
+}
+
+.mobileLogoName {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}

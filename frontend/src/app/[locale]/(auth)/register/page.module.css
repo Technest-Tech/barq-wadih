@@ -1,0 +1,372 @@
+/* ══════════════════════════════════════════════════════════
+   Register page — inherits login tokens, adds extras
+   ══════════════════════════════════════════════════════════ */
+
+.container {
+  width: 100%;
+  max-width: 400px;
+  direction: rtl;
+}
+
+.heading {
+  margin-bottom: var(--space-8);
+}
+
+.title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin-bottom: var(--space-2);
+}
+
+.subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+/* ── Error / Success ─────────────────────────────────────────────────────── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: var(--color-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  margin-bottom: var(--space-5);
+}
+
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: var(--color-success);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  margin-bottom: var(--space-5);
+}
+
+/* ── Step progress indicator ─────────────────────────────────────────────── */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: var(--space-8);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  position: relative;
+}
+
+.stepCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border-default);
+  background: var(--surface-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--text-tertiary);
+  transition: all var(--transition-base);
+  position: relative;
+  z-index: 1;
+}
+
+.stepActive .stepCircle {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-500);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.15);
+}
+
+.stepDone .stepCircle {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-500);
+  color: #fff;
+}
+
+.stepLabel {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+  transition: color var(--transition-base);
+}
+
+.stepActive .stepLabel,
+.stepDone .stepLabel {
+  color: var(--color-primary-600);
+}
+
+/* Connector line */
+.stepConnector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-default);
+  margin-bottom: 18px;
+  transition: background var(--transition-base);
+}
+
+.stepConnectorDone {
+  background: var(--color-primary-400);
+}
+
+/* ── Field groups ─────────────────────────────────────────────────────────── */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badgeRequired {
+  font-size: 10px;
+  font-weight: var(--font-bold);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+.badgeOptional {
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  background: var(--surface-tertiary);
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* Phone */
+.phoneWrap {
+  display: flex;
+  align-items: stretch;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  background: var(--surface-primary);
+}
+
+.phoneWrap:focus-within {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(67, 160, 71, 0.12);
+}
+
+.phonePrefix {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  background: var(--surface-secondary);
+  border-left: 1.5px solid var(--border-default);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.phoneFlag { font-size: 1.2rem; }
+
+.phoneInput {
+  flex: 1;
+  padding: 14px var(--space-4);
+  font-size: var(--text-base);
+  font-family: 'Inter', sans-serif;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  direction: ltr;
+}
+
+.phoneInput::placeholder { color: var(--text-tertiary); }
+
+/* Standard input */
+.inputWrap { position: relative; display: flex; align-items: center; }
+
+.inputIcon {
+  position: absolute;
+  right: var(--space-4);
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.inputWrap:focus-within .inputIcon { color: var(--color-primary-500); }
+
+.input {
+  width: 100%;
+  padding: 14px 44px 14px var(--space-4);
+  background: var(--surface-primary);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.inputLtr {
+  direction: ltr;
+  text-align: left;
+  padding-right: var(--space-4);
+  padding-left: 44px;
+}
+
+.inputIconLtr {
+  position: absolute;
+  left: var(--space-4);
+  right: auto;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.input:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(67, 160, 71, 0.12);
+}
+
+.inputError { border-color: var(--color-error); }
+
+.eyeBtn {
+  position: absolute;
+  right: var(--space-3);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: var(--space-1);
+}
+
+.eyeBtn:hover { color: var(--text-secondary); }
+
+.fieldError {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  font-weight: var(--font-medium);
+}
+
+/* Password strength */
+.strengthBar {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tertiary);
+  overflow: hidden;
+  margin-top: var(--space-1);
+}
+
+.strengthFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btnPrimary {
+  width: 100%;
+  padding: 15px;
+  background: var(--color-primary-600);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.btnPrimary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--color-primary-700);
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.4);
+  transform: translateY(-1px);
+}
+
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spinner { animation: spin 0.75s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.footer {
+  text-align: center;
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.footerLink {
+  color: var(--color-primary-600);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+}
+
+/* ── Terms ────────────────────────────────────────────────────────────────── */
+.terms {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: var(--leading-relaxed);
+  margin-top: var(--space-3);
+}
+
+.termsLink {
+  color: var(--color-primary-600);
+  text-decoration: none;
+  font-weight: var(--font-medium);
+}

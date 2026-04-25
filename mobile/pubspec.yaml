@@ -1,0 +1,98 @@
+name: barq_wadih
+description: "Barq Wadih — Saudi Classifieds Mobile App"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Networking
+  dio: ^5.9.2
+
+  # State management — plain Riverpod (code-gen upgrade when Dart ≥3.9)
+  flutter_riverpod: ^3.3.1
+
+  # Navigation
+  go_router: ^17.0.0
+
+  # Storage
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^10.0.0
+
+  # Firebase (phone OTP auth + Firestore chat + Storage)
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+  cloud_firestore: ^5.6.5
+  firebase_storage: ^12.4.4
+
+  # UI / Images
+  cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+  url_launcher: ^6.3.1
+
+  # i18n
+  intl: ^0.20.2
+
+  # Localizations
+  flutter_localizations:
+    sdk: flutter
+  shimmer: ^3.0.0
+
+  # Typography
+  google_fonts: ^6.2.1
+
+  # Local KV cache
+  hive_flutter: ^1.1.0
+  hive: ^2.2.3
+
+  # Native splash — replaces Flutter's default white+icon splash
+  flutter_native_splash: ^2.4.4
+  image: ^4.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.4
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo_square.png"
+  adaptive_icon_background: "assets/images/logo_square.png"
+  adaptive_icon_foreground: "assets/images/logo_square.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: "assets/images/logo_padded.png"
+  color_dark: "#FFFFFF"
+  image_dark: "assets/images/logo_padded.png"
+  android_12:
+    color: "#FFFFFF"
+    image: "assets/images/logo_padded.png"
+    color_dark: "#FFFFFF"
+    image_dark: "assets/images/logo_padded.png"
+  fullscreen: false
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+  # Fonts
+  # fonts:
+  #   - family: IBMPlexSansArabic
+  #     fonts:
+  #       - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+  #       - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
+  #         weight: 700

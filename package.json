@@ -1,0 +1,31 @@
+{
+  "name": "barq-wadih-tech",
+  "version": "1.0.0",
+  "description": "> **\"مجتمع تجاري موثوق\"** — Trusted Commercial Community",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technest-Tech/barq-wadih.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Technest-Tech/barq-wadih/issues"
+  },
+  "homepage": "https://github.com/Technest-Tech/barq-wadih#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}

@@ -1,0 +1,51 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/api_client.dart';
+import '../data/chat_repository.dart';
+import '../domain/chat_models.dart';
+
+// ── Repository provider ───────────────────────────────────────────────────────
+
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return ChatRepository(dio: ref.watch(dioProvider));
+});
+
+// ── Firebase sign-in provider ─────────────────────────────────────────────────
+// Ensures Firebase custom-token sign-in is complete before Firestore is used.
+
+final firebaseChatAuthProvider = FutureProvider<void>((ref) async {
+  await ref.read(chatRepositoryProvider).ensureFirebaseSignedIn();
+});
+
+// ── Conversations stream ──────────────────────────────────────────────────────
+
+/// Real-time stream of all conversations for the current user, sorted by
+/// latest message. Keyed by MySQL user ID string.
+final conversationsStreamProvider =
+    StreamProvider.family<List<ConversationModel>, String>((ref, myId) {
+  return ref.read(chatRepositoryProvider).conversationsStream(myId);
+});
+
+// ── Total unread count ────────────────────────────────────────────────────────
+
+/// Derived provider — sums all unread counts across conversations.
+/// Used by the bottom nav badge and chat header icon.
+final totalUnreadProvider = Provider.family<int, String>((ref, myId) {
+  final convAsync = ref.watch(conversationsStreamProvider(myId));
+  return convAsync.when(
+    data: (conversations) => conversations.fold(
+      0,
+      (sum, c) => sum + c.myUnreadCount(myId),
+    ),
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
+});
+
+// ── Messages stream ───────────────────────────────────────────────────────────
+
+/// Real-time stream of messages in a single conversation.
+final messagesStreamProvider =
+    StreamProvider.family<List<MessageModel>, String>((ref, conversationId) {
+  return ref.read(chatRepositoryProvider).messagesStream(conversationId);
+});

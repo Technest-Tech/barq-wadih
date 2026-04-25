@@ -1,0 +1,18 @@
+.avatar {
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+  user-select: none;
+}
+.sm { width: 32px;  height: 32px;  font-size: var(--text-xs); }
+.md { width: 40px;  height: 40px;  font-size: var(--text-sm); }
+.lg { width: 56px;  height: 56px;  font-size: var(--text-lg); }
+.xl { width: 80px;  height: 80px;  font-size: var(--text-2xl); }

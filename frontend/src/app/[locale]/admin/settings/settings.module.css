@@ -1,0 +1,137 @@
+/* ── Admin Settings ───────────────────────────────────────────────────────── */
+.page { padding: 0; }
+
+.groupSection { margin-bottom: 1.5rem; }
+
+.groupHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .85rem 1.25rem;
+  background: var(--admin-card-bg, #1a1f2e);
+  border: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  border-radius: 14px 14px 0 0;
+  cursor: pointer; user-select: none; transition: background .2s;
+}
+.groupHeader:hover { background: rgba(255,255,255,0.03); }
+.groupTitle { font-size: .95rem; font-weight: 700; color: var(--admin-text, #f1f5f9); }
+.groupToggle { font-size: .82rem; color: var(--admin-text-muted, #94a3b8); transition: transform .2s; }
+.groupToggleOpen { transform: rotate(90deg); }
+
+.groupBody {
+  background: var(--admin-card-bg, #1a1f2e);
+  border: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  padding: .5rem 0;
+}
+
+.settingRow {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .75rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background .15s;
+}
+.settingRow:last-child { border-bottom: none; }
+.settingRow:hover { background: rgba(255,255,255,0.02); }
+
+.settingKey {
+  flex: 0 0 200px;
+  font-size: .88rem; font-weight: 600;
+  color: var(--admin-text, #f1f5f9);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  direction: ltr; text-align: left;
+}
+
+.settingValue {
+  flex: 1; display: flex; align-items: center; gap: .5rem;
+}
+
+.settingInput {
+  flex: 1;
+  padding: .45rem .75rem;
+  background: #111827;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: .85rem;
+  font-family: inherit;
+}
+.settingInput:focus { outline: none; border-color: #6366f1; }
+
+.settingToggle {
+  width: 44px; height: 24px;
+  border-radius: 99px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.settingToggleOn { background: #22c55e; }
+.settingToggleOff { background: #374151; }
+.settingToggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left .2s;
+}
+.settingToggleOn::after { left: 22px; }
+.settingToggleOff::after { left: 3px; }
+
+.typeBadge {
+  font-size: .68rem; font-weight: 600;
+  padding: 2px 6px; border-radius: 4px;
+  background: #6366f115; color: #a5b4fc;
+  flex-shrink: 0;
+}
+
+.saveBtn {
+  padding: .35rem .65rem;
+  background: transparent;
+  border: 1px solid #22c55e55;
+  color: #22c55e;
+  border-radius: 6px;
+  font-size: .75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.saveBtn:hover { background: #22c55e15; }
+.saveBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+.savedIndicator {
+  font-size: .75rem;
+  color: #22c55e;
+  animation: fadeInOut 2s forwards;
+}
+@keyframes fadeInOut { 0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+.settingDesc {
+  font-size: .72rem;
+  color: var(--admin-text-muted, #64748b);
+  margin-top: .15rem;
+}
+
+.bulkActions {
+  display: flex; justify-content: flex-end; gap: .75rem;
+  margin-top: 1rem;
+}
+.bulkBtn {
+  padding: .6rem 1.5rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff; border: none; border-radius: 10px;
+  font-weight: 600; font-family: inherit;
+  cursor: pointer; font-size: .88rem;
+  transition: opacity .2s;
+}
+.bulkBtn:hover { opacity: .88; }
+.bulkBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+.loading { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 4rem; color: #94a3b8; }
+.loadingSpinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 768px) { .settingRow { flex-direction: column; align-items: flex-start; } .settingKey { flex: none; } }

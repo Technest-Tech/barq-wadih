@@ -1,0 +1,441 @@
+// lib/features/ads/data/ad_api.dart
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/api_client.dart';
+import '../domain/ad_model.dart';
+
+// ── Commission preview model ──────────────────────────────────────────────────
+
+class CommissionPreviewModel {
+  final double commissionAmount;
+  final String commissionRate;
+  final double minimumCommission;
+  final String note;
+
+  const CommissionPreviewModel({
+    required this.commissionAmount,
+    required this.commissionRate,
+    required this.minimumCommission,
+    required this.note,
+  });
+
+  factory CommissionPreviewModel.fromJson(Map<String, dynamic> json) {
+    return CommissionPreviewModel(
+      commissionAmount:  (json['commission_amount'] as num).toDouble(),
+      commissionRate:     json['commission_rate'] as String? ?? '',
+      minimumCommission: (json['minimum_commission'] as num).toDouble(),
+      note:              json['note'] as String? ?? '',
+    );
+  }
+}
+
+
+class AdsFilter {
+  final int? categoryId;
+  final int? cityId;
+  final List<int>? cityIds;
+  final int? regionId;
+  final double? priceMin;
+  final double? priceMax;
+  final String? q;
+  final String sort;
+  final int page;
+
+  const AdsFilter({
+    this.categoryId,
+    this.cityId,
+    this.cityIds,
+    this.regionId,
+    this.priceMin,
+    this.priceMax,
+    this.q,
+    this.sort = 'newest',
+    this.page = 1,
+  });
+
+  AdsFilter copyWith({
+    int? categoryId,
+    int? cityId,
+    List<int>? cityIds,
+    int? regionId,
+    double? priceMin,
+    double? priceMax,
+    String? q,
+    String? sort,
+    int? page,
+    bool clearCategory = false,
+    bool clearCity = false,
+    bool clearCityIds = false,
+    bool clearRegion = false,
+  }) {
+    return AdsFilter(
+      categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
+      cityId:     clearCity     ? null : (cityId     ?? this.cityId),
+      cityIds:    clearCityIds  ? null : (cityIds    ?? this.cityIds),
+      regionId:   clearRegion   ? null : (regionId   ?? this.regionId),
+      priceMin:   priceMin  ?? this.priceMin,
+      priceMax:   priceMax  ?? this.priceMax,
+      q:          q         ?? this.q,
+      sort:       sort      ?? this.sort,
+      page:       page      ?? this.page,
+    );
+  }
+
+  Map<String, dynamic> toQueryParams() {
+    return {
+      if (categoryId != null) 'category_id': categoryId,
+      if (cityId != null)     'city_id':     cityId,
+      if (cityIds != null && cityIds!.isNotEmpty) 'city_ids': cityIds!.join(','),
+      if (regionId != null)   'region_id':   regionId,
+      if (priceMin != null)   'price_min':   priceMin,
+      if (priceMax != null)   'price_max':   priceMax,
+      if (q != null && q!.isNotEmpty) 'q': q,
+      'sort': sort,
+      'page': page,
+    };
+  }
+}
+
+// ── Repository ────────────────────────────────────────────────────────────────
+
+class AdRepository {
+  final Dio _dio;
+
+  const AdRepository(this._dio);
+
+  /// GET /ads — paginated ad feed
+  Future<({List<AdListModel> ads, bool hasMore, int total})> getAds(AdsFilter filter) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/ads',
+        queryParameters: filter.toQueryParams(),
+      );
+      final body = response.data!;
+      final dataList = body['data'] as List<dynamic>;
+      final meta = body['meta'] as Map<String, dynamic>?;
+      final ads = dataList
+          .map((e) => AdListModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final hasMore = meta != null
+          ? (meta['current_page'] as int? ?? 1) < (meta['last_page'] as int? ?? 1)
+          : false;
+      final total = meta?['total'] as int? ?? ads.length;
+      return (ads: ads, hasMore: hasMore, total: total);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل الإعلانات',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// GET /ads/{id} — single ad detail
+  Future<AdDetailModel> getAd(int id) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/ads/$id');
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return AdDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل الإعلان',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// GET /ads/mine — current user's ads
+  Future<List<AdListModel>> getMyAds() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/ads/mine');
+      final body = response.data!;
+      final dataList = body['data'] as List<dynamic>;
+      return dataList.map((e) => AdListModel.fromJson(e as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل إعلاناتك',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// POST /ads — create new ad (multipart)
+  Future<AdDetailModel> createAd(FormData formData) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/ads',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return AdDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في نشر الإعلان',
+        statusCode: e.response?.statusCode,
+        errors: e.response?.data?['errors'] as Map<String, dynamic>?,
+      );
+    }
+  }
+
+  /// DELETE /ads/{id}
+  Future<void> deleteAd(int id) async {
+    try {
+      await _dio.delete<void>('/ads/$id');
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في حذف الإعلان',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// GET /search — Meilisearch-powered full-text search with fallback
+  Future<({List<AdListModel> ads, bool hasMore, int total})> searchAds(AdsFilter filter) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/search',
+        queryParameters: filter.toQueryParams(),
+      );
+      final body = response.data!;
+      final dataList = body['data'] as List<dynamic>;
+      final meta = body['meta'] as Map<String, dynamic>?;
+      final ads = dataList
+          .map((e) => AdListModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final hasMore = meta != null
+          ? (meta['current_page'] as int? ?? 1) < (meta['last_page'] as int? ?? 1)
+          : false;
+      final total = meta?['total'] as int? ?? ads.length;
+      return (ads: ads, hasMore: hasMore, total: total);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في البحث',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// PATCH /ads/{id} — update existing ad (multipart)
+  Future<AdDetailModel> updateAd(int id, FormData formData) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/ads/$id',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return AdDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحديث الإعلان',
+        statusCode: e.response?.statusCode,
+        errors: e.response?.data?['errors'] as Map<String, dynamic>?,
+      );
+    }
+  }
+
+  /// GET /ads/commission-preview — calculate commission before posting
+  Future<CommissionPreviewModel> commissionPreview(double price) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/ads/commission-preview',
+        queryParameters: {'price': price, 'is_free': '0'},
+      );
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return CommissionPreviewModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في حساب العمولة',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// POST /ads/{id}/sold
+  Future<AdListModel> markSold(int id) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>('/ads/$id/sold');
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return AdListModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحديد الإعلان كمُباع',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// POST /ads/{id}/boost — Premium boost
+  Future<AdDetailModel> boostAd(int id) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>('/ads/$id/boost');
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return AdDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في ترقية الإعلان',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// POST /ads/{id}/refresh — Refresh ad
+  Future<AdDetailModel> refreshAd(int id) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>('/ads/$id/refresh');
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return AdDetailModel.fromJson(data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحديث الإعلان',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// GET /boost-config — Boost pricing & rules
+  Future<Map<String, dynamic>> getBoostConfig() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/boost-config');
+      return response.data!['data'] as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل إعدادات الترقية',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// GET /categories/{id}/fields
+  Future<List<CategoryFieldModel>> getCategoryFields(int categoryId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/categories/$categoryId/fields');
+      final data = response.data!['data'] as List<dynamic>;
+      return data.map((e) => CategoryFieldModel.fromJson(e as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل حقول التصنيف',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+}
+
+// ── Providers ─────────────────────────────────────────────────────────────────
+
+final adRepositoryProvider = Provider<AdRepository>((ref) {
+  return AdRepository(ref.watch(dioProvider));
+});
+
+/// Feed provider — supports filters + pagination
+final adsFeedProvider =
+    AsyncNotifierProvider<AdsFeedNotifier, ({List<AdListModel> ads, bool hasMore, int total})>(
+  AdsFeedNotifier.new,
+);
+
+class AdsFeedNotifier
+    extends AsyncNotifier<({List<AdListModel> ads, bool hasMore, int total})> {
+  AdsFilter _filter = const AdsFilter();
+
+  @override
+  Future<({List<AdListModel> ads, bool hasMore, int total})> build() {
+    return ref.read(adRepositoryProvider).getAds(_filter);
+  }
+
+  void applyFilter(AdsFilter filter) {
+    _filter = filter.copyWith(page: 1);
+    state = const AsyncLoading();
+    ref.read(adRepositoryProvider).getAds(_filter).then((result) {
+      state = AsyncData(result);
+    }).catchError((Object e) {
+      state = AsyncError(e, StackTrace.current);
+    });
+  }
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || !current.hasMore) return;
+    _filter = _filter.copyWith(page: _filter.page + 1);
+    final more = await ref.read(adRepositoryProvider).getAds(_filter);
+    state = AsyncData((
+      ads: [...current.ads, ...more.ads],
+      hasMore: more.hasMore,
+      total: more.total,
+    ));
+  }
+
+  Future<void> refresh() async {
+    _filter = _filter.copyWith(page: 1);
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => ref.read(adRepositoryProvider).getAds(_filter));
+  }
+}
+
+/// Ad detail — FutureProvider.family
+final adDetailProvider = FutureProvider.family<AdDetailModel, int>((ref, id) {
+  return ref.read(adRepositoryProvider).getAd(id);
+});
+
+/// My ads
+final myAdsProvider =
+    AsyncNotifierProvider<MyAdsNotifier, List<AdListModel>>(MyAdsNotifier.new);
+
+class MyAdsNotifier extends AsyncNotifier<List<AdListModel>> {
+  @override
+  Future<List<AdListModel>> build() {
+    return ref.read(adRepositoryProvider).getMyAds();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => ref.read(adRepositoryProvider).getMyAds());
+  }
+
+  void removeLocally(int id) {
+    final current = state.value ?? [];
+    state = AsyncData(current.where((a) => a.id != id).toList());
+  }
+
+  void updateStatus(int id, String newStatus, String newLabel) {
+    final current = state.value ?? [];
+    state = AsyncData(current.map((a) {
+      if (a.id != id) return a;
+      return AdListModel.fromJson({
+        'id': a.id, 'title': a.title, 'price': a.price?.toString(),
+        'is_negotiable': a.isNegotiable, 'is_free': a.isFree,
+        'status': newStatus, 'status_label': newLabel,
+        'primary_image': a.primaryImage != null ? {
+          'id': a.primaryImage!.id, 'image_url': a.primaryImage!.imageUrl,
+          'thumbnail_url': a.primaryImage!.thumbnailUrl, 'sort_order': a.primaryImage!.sortOrder,
+        } : null,
+        'category': a.category != null ? {'id': a.category!.id, 'name_ar': a.category!.nameAr, 'icon': a.category!.icon} : null,
+        'city': a.city != null ? {'id': a.city!.id, 'name_ar': a.city!.nameAr} : null,
+        'region': a.region != null ? {'id': a.region!.id, 'name_ar': a.region!.nameAr} : null,
+        'is_boosted': a.isBoosted,
+        'boosted_until': a.boostedUntil?.toIso8601String(),
+        'published_at': a.publishedAt?.toIso8601String(),
+        'created_at': a.createdAt.toIso8601String(),
+      });
+    }).toList());
+  }
+}
+
+/// Category fields — FutureProvider.family
+final categoryFieldsProvider =
+    FutureProvider.family<List<CategoryFieldModel>, int>((ref, categoryId) {
+  return ref.read(adRepositoryProvider).getCategoryFields(categoryId);
+});
+
+/// Commission preview — FutureProvider.family keyed by price
+final commissionPreviewProvider =
+    FutureProvider.family<CommissionPreviewModel, double>((ref, price) {
+  return ref.read(adRepositoryProvider).commissionPreview(price);
+});
+
+/// Dedicated search — FutureProvider.family keyed by filter
+final searchProvider =
+    FutureProvider.family<({List<AdListModel> ads, bool hasMore, int total}), AdsFilter>((ref, filter) {
+  return ref.read(adRepositoryProvider).searchAds(filter);
+});

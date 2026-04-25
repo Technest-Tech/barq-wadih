@@ -1,0 +1,87 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: inherit;
+  font-weight: var(--font-semibold);
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.button:active:not(:disabled) { transform: scale(0.97); }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Variants ─────────────────────────────────────────────────────────────── */
+.primary {
+  background-color: var(--color-primary-700);
+  color: var(--color-neutral-0);
+  border-color: var(--color-primary-700);
+  box-shadow: var(--shadow-sm);
+}
+.primary:hover:not(:disabled) {
+  background-color: var(--color-primary-800);
+  border-color: var(--color-primary-800);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.secondary {
+  background-color: transparent;
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+}
+.secondary:hover:not(:disabled) {
+  background-color: var(--color-primary-50);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+.ghost:hover:not(:disabled) {
+  background-color: var(--surface-tertiary);
+  color: var(--text-primary);
+}
+
+.danger {
+  background-color: var(--color-error);
+  color: var(--color-neutral-0);
+  border-color: var(--color-error);
+}
+.danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+/* ── Sizes ────────────────────────────────────────────────────────────────── */
+.sm { padding: var(--space-2) var(--space-4); font-size: var(--text-sm); }
+.md { padding: var(--space-3) var(--space-6); font-size: var(--text-base); }
+.lg { padding: var(--space-4) var(--space-8); font-size: var(--text-lg); }
+
+/* ── States ───────────────────────────────────────────────────────────────── */
+.fullWidth { width: 100%; }
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  position: absolute;
+}
+
+.hiddenText { opacity: 0; }
