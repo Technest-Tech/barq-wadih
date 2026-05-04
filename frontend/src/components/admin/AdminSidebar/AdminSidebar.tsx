@@ -98,7 +98,7 @@ const NAV_SECTIONS = [
       },
     ],
   },
-] satisfies { label: string; items: NavItem[] }[];
+] as { label: string; items: NavItem[] }[];
 
 export default function AdminSidebar({
   collapsed,
