@@ -31,12 +31,22 @@ class AdResource extends JsonResource
         $region = $ad->region;
         /** @var User|null $user */
         $user = $ad->user;
+        /** @var \App\Models\District|null $district */
+        $district = $ad->district;
+
+        // ── Privacy gates ────────────────────────────────────────────────────
+        // The wizard lets sellers hide their phone or their price from the
+        // public detail page. Owners (and admins, via the AdminAdResource) always
+        // see the underlying values; everyone else gets nulls.
+        $showPhone = $isOwner || (bool) $ad->show_phone_publicly;
+        $showPrice = $isOwner || ! (bool) $ad->price_hidden;
 
         return [
             'id'               => $ad->id,
             'title'            => $ad->title,
             'description'      => $ad->description,
-            'price'            => $ad->price,
+            'price'            => $showPrice ? $ad->price : null,
+            'price_hidden'     => (bool) $ad->price_hidden,
             'is_negotiable'    => $ad->is_negotiable,
             'is_free'          => $ad->is_free,
             'status'           => $ad->status->value,
@@ -62,12 +72,27 @@ class AdResource extends JsonResource
                 'name_ar' => $region->name_ar,
                 'slug'    => $region->slug,
             ] : null,
+            'district'         => $district ? [
+                'id'      => $district->id,
+                'name_ar' => $district->name_ar,
+                'name_en' => $district->name_en,
+                'slug'    => $district->slug,
+            ] : null,
+            'district_name_free' => $ad->district_name_free,
+            'latitude'         => $ad->latitude,
+            'longitude'        => $ad->longitude,
+            'show_phone_publicly' => (bool) $ad->show_phone_publicly,
             'user'             => $user ? [
-                'id'           => $user->id,
-                'name'         => $user->name,
-                'avatar'       => $user->avatar_url,
-                'avg_rating'   => $user->avg_rating,
-                'rating_count' => $user->rating_count,
+                'id'              => $user->id,
+                'name'            => $user->name,
+                'avatar'          => $user->avatar_url,
+                'bio'             => $user->bio,
+                'is_verified'     => (bool) $user->is_verified,
+                'is_dealer'       => (bool) $user->is_dealer,
+                'avg_rating'      => $user->avg_rating,
+                'rating_count'    => $user->rating_count,
+                'total_ads_count' => $user->total_ads_count,
+                'member_since'    => $user->created_at?->toIso8601String(),
             ] : null,
 
             'images'           => AdImageResource::collection($ad->images),
@@ -89,8 +114,8 @@ class AdResource extends JsonResource
                 return $result;
             })(),
 
-            'contact_phone'    => $ad->contact_phone,
-            'contact_whatsapp' => $ad->contact_whatsapp,
+            'contact_phone'    => $showPhone ? $ad->contact_phone : null,
+            'contact_whatsapp' => $showPhone ? $ad->contact_whatsapp : null,
 
             'views_count'      => $ad->views_count,
             'favorites_count'  => $ad->favorites_count,
@@ -103,6 +128,10 @@ class AdResource extends JsonResource
             'next_refresh_at'  => $isOwner && $request->user() ? (app(BoostService::class)->canRefresh($ad, $request->user())[2] ?? null) : null,
 
             'commission_amount'=> $isOwner ? $ad->commission_amount : null,
+            'payment_status'   => $ad->payment_status,
+            'payment_amount'   => $isOwner ? $ad->payment_amount : null,
+            'payment_provider' => $isOwner ? $ad->payment_provider : null,
+            'paid_at'          => $isOwner ? $ad->paid_at : null,
 
             'published_at'     => $ad->published_at,
             'expires_at'       => $ad->expires_at,

@@ -109,6 +109,16 @@ class CategoryFieldModel {
 
 // ── Lightweight ad for lists/feed ─────────────────────────────────────────────
 
+typedef AdSellerSummary = ({
+  int id,
+  String name,
+  String? avatar,
+  bool isVerified,
+  bool isDealer,
+  double? avgRating,
+  int? ratingCount,
+});
+
 class AdListModel {
   final int id;
   final String title;
@@ -122,6 +132,7 @@ class AdListModel {
   final ({int id, String nameAr, String? icon})? category;
   final ({int id, String nameAr})? city;
   final ({int id, String nameAr})? region;
+  final AdSellerSummary? seller;
   final bool isBoosted;
   final DateTime? boostedUntil;
   final DateTime? publishedAt;
@@ -141,6 +152,7 @@ class AdListModel {
     this.category,
     this.city,
     this.region,
+    this.seller,
     required this.isBoosted,
     this.boostedUntil,
     this.publishedAt,
@@ -153,6 +165,7 @@ class AdListModel {
     final cityJson = json['city'] as Map<String, dynamic>?;
     final regJson  = json['region'] as Map<String, dynamic>?;
     final imgJson  = json['primary_image'] as Map<String, dynamic>?;
+    final userJson = json['user'] as Map<String, dynamic>?;
 
     return AdListModel(
       id:            json['id'] as int,
@@ -169,6 +182,19 @@ class AdListModel {
           : null,
       city:   cityJson != null ? (id: cityJson['id'] as int, nameAr: cityJson['name_ar'] as String? ?? '') : null,
       region: regJson  != null ? (id: regJson['id'] as int,  nameAr: regJson['name_ar']  as String? ?? '') : null,
+      seller: userJson != null
+          ? (
+              id:          userJson['id'] as int,
+              name:        userJson['name'] as String? ?? '',
+              avatar:      userJson['avatar'] as String?,
+              isVerified:  userJson['is_verified'] as bool? ?? false,
+              isDealer:    userJson['is_dealer'] as bool? ?? false,
+              avgRating:   userJson['avg_rating'] != null
+                  ? double.tryParse(userJson['avg_rating'].toString())
+                  : null,
+              ratingCount: userJson['rating_count'] as int?,
+            )
+          : null,
       isBoosted:   json['is_boosted'] as bool? ?? false,
       boostedUntil: json['boosted_until'] != null ? DateTime.tryParse(json['boosted_until'] as String) : null,
       publishedAt: json['published_at'] != null ? DateTime.tryParse(json['published_at'] as String) : null,
@@ -190,7 +216,18 @@ class AdDetailModel extends AdListModel {
   final String description;
   final List<AdImageModel> images;
   final List<AdFieldValueModel> fieldValues;
-  final ({int id, String name, String? avatar, double? avgRating, int? ratingCount})? user;
+  final ({
+    int id,
+    String name,
+    String? avatar,
+    String? bio,
+    bool isVerified,
+    bool isDealer,
+    double? avgRating,
+    int? ratingCount,
+    int? totalAdsCount,
+    DateTime? memberSince,
+  })? user;
   final String contactPhone;
   final String? contactWhatsapp;
   final int viewsCount;
@@ -211,6 +248,7 @@ class AdDetailModel extends AdListModel {
     super.category,
     super.city,
     super.region,
+    super.seller,
     required super.isBoosted,
     super.boostedUntil,
     super.publishedAt,
@@ -244,6 +282,7 @@ class AdDetailModel extends AdListModel {
       category:       base.category,
       city:           base.city,
       region:         base.region,
+      seller:         base.seller,
       isBoosted:      base.isBoosted,
       boostedUntil:   base.boostedUntil,
       publishedAt:    base.publishedAt,
@@ -261,10 +300,17 @@ class AdDetailModel extends AdListModel {
               id:          userJson['id'] as int,
               name:        userJson['name'] as String? ?? '',
               avatar:      userJson['avatar'] as String?,
+              bio:         userJson['bio'] as String?,
+              isVerified:  userJson['is_verified'] as bool? ?? false,
+              isDealer:    userJson['is_dealer'] as bool? ?? false,
               avgRating:   userJson['avg_rating'] != null
                   ? double.tryParse(userJson['avg_rating'].toString())
                   : null,
               ratingCount: userJson['rating_count'] as int?,
+              totalAdsCount: userJson['total_ads_count'] as int?,
+              memberSince: userJson['member_since'] != null
+                  ? DateTime.tryParse(userJson['member_since'] as String)
+                  : null,
             )
           : null,
       contactPhone:     json['contact_phone'] as String? ?? '',

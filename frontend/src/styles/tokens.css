@@ -9,8 +9,11 @@
 
 :root {
   /* ── Layout heights ─────────────────────────────────────────────── */
-  --header-height:    64px;
-  --cat-bar-height:   76px; /* icon tab height including track scrollbar */
+  /* Mobile header (.inner height on ≤639px) */
+  --header-height:    56px;
+  --cat-bar-height:   76px;
+  --hero-bar-height:  62px;
+  --pinned-height: calc(var(--header-height) + var(--cat-bar-height));
 
   /* ── Primary: Navy Blue (Trust, authority, Haraj-inspired) ────────── */
   --color-primary-50:  #EEF2F9;
@@ -151,6 +154,15 @@
   --z-modal:    500;
   --z-toast:    600;
   --z-tooltip:  700;
+}
+
+/* ── Desktop height overrides (header is taller on wide screens) ─────────── */
+@media (min-width: 640px) {
+  :root {
+    --header-height: 72px;
+    /* On desktop the hero-bar is also pinned */
+    --pinned-height: calc(var(--header-height) + var(--cat-bar-height) + var(--hero-bar-height));
+  }
 }
 
 /* ── Dark Mode: DISABLED — site is always light ──────────────────────────── */

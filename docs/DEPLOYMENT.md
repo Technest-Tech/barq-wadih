@@ -116,7 +116,17 @@ DB_DATABASE=barq_wadih / DB_USERNAME=barq_user / DB_PASSWORD=***REMOVED***
 
 ```
 NEXT_PUBLIC_API_URL=https://api.barqwadih.com
+
+# Firebase (Phone OTP — web)
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyC4o2_8_-nvq_mhB1fUDV25M8cFUY8IrVA
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=barqwadih-40271.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=barqwadih-40271
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=barqwadih-40271.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=816087371543
+NEXT_PUBLIC_FIREBASE_APP_ID=1:816087371543:web:ae264e2a5c776e1363f152
 ```
+
+⚠️ These vars must be present in `/var/www/barq-wadih/frontend/.env.local` on the server or web phone OTP will not work.
 
 ---
 
@@ -266,6 +276,54 @@ curl https://api.barqwadih.com/api/v1/health
 | UFW firewall | ✅ active |
 | API health endpoint | ✅ `{"database":"ok","redis":"ok","meilisearch":"ok"}` |
 | Frontend HTTP 200 | ✅ barqwadih.com returns 200 |
+
+---
+
+## 🔑 Firebase Android SHA Fingerprints
+
+### What are these?
+Firebase Phone Auth (OTP) on Android requires your app's signing certificate fingerprint to be registered in the Firebase console. Firebase uses it to verify the SMS request is coming from your real app — without it, `verifyPhoneNumber` silently fails and no OTP is sent.
+
+There are **two separate keystores** — debug and release — and each needs its own fingerprint registered.
+
+### Currently registered (debug keystore — for development only)
+```
+SHA-1:   A8:4E:5C:98:7F:BC:F9:DF:CB:0A:BA:E7:0D:5F:2B:FD:5B:47:EC:1F
+SHA-256: F2:06:0E:76:9C:39:C3:40:4F:6E:F2:06:B5:E7:EB:F6:12:32:1E:C8:A3:24:0D:5A:AB:CE:F4:3D:DF:6D:FB:32
+Keystore: ~/.android/debug.keystore (local machine — development only)
+```
+
+### ⚠️ REQUIRED: Authorize production domain for web OTP
+Firebase blocks phone auth from unauthorized domains. Go to:
+**Firebase Console → Authentication → Settings → Authorized domains**
+and add:
+```
+barqwadih.com
+www.barqwadih.com
+```
+`localhost` is pre-authorized for development. Without this, web OTP will throw `auth/unauthorized-domain`.
+
+---
+
+### ⚠️ REQUIRED BEFORE PRODUCTION RELEASE (Android)
+The debug keystore fingerprints above **will not work** for a production/Play Store build. Production APKs are signed with a **release keystore** (or Google Play App Signing).
+
+**Steps when releasing to production:**
+
+1. Get the release SHA fingerprints:
+   - If using **Google Play App Signing** (recommended): go to Play Console → Release → Setup → App Signing → copy the SHA-1 shown there
+   - If using your own release keystore:
+     ```bash
+     keytool -list -v -keystore your-release.keystore -alias your-alias
+     ```
+
+2. Add them in **Firebase Console → Project Settings → barqwadih app → Add fingerprint**
+
+3. Re-download `google-services.json` and replace `mobile/android/app/google-services.json`
+
+4. Rebuild and release the app
+
+**OTP will NOT work in production until this is done.**
 
 ---
 

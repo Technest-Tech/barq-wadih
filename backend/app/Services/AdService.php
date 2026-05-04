@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Enums\AdStatus;
 use App\Enums\CommissionStatus;
 use App\Enums\ModerationStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Ad;
 use App\Models\AdFieldValue;
 use App\Models\AdImage;
+use App\Models\Category;
 use App\Models\CategoryField;
 use App\Models\Region;
 use App\Models\User;
@@ -35,26 +37,39 @@ class AdService
 
             $commission = $this->calculateCommission((float) ($data['price'] ?? 0), (bool) ($data['is_free'] ?? false));
 
+            // Resolve publish fee from category × dealer/individual tier.
+            $publishFee = $this->resolvePublishFee((int) $data['category_id'], $user);
+            $hasFee     = $publishFee > 0;
+
             /** @var Ad $ad */
             $ad = $user->ads()->create([
-                'category_id'       => $data['category_id'],
-                'city_id'           => $cityId,
-                'region_id'         => $regionId,
-                'title'             => $data['title'],
-                'description'       => $data['description'],
-                'price'             => $data['is_free'] ?? false ? null : ($data['price'] ?? null),
-                'is_negotiable'     => $data['is_negotiable'] ?? false,
-                'is_free'           => $data['is_free'] ?? false,
-                'contact_phone'     => $data['contact_phone'],
-                'contact_whatsapp'  => $data['contact_whatsapp'] ?? null,
-                'pledge_accepted'   => true,
-                'commission_amount' => $commission,
-                'commission_status' => CommissionStatus::Pending,
-                // Auto-approve during development (change to pending_review for moderation)
-                'status'            => AdStatus::Active,
-                'moderation_status' => ModerationStatus::Approved,
-                'published_at'      => now(),
-                'expires_at'        => now()->addDays(30),
+                'category_id'         => $data['category_id'],
+                'city_id'             => $cityId,
+                'region_id'           => $regionId,
+                'district_id'         => $data['district_id'] ?? null,
+                'district_name_free'  => $data['district_name_free'] ?? null,
+                'latitude'            => $data['latitude'] ?? null,
+                'longitude'           => $data['longitude'] ?? null,
+                'title'               => $data['title'],
+                'description'         => $data['description'],
+                'price'               => ($data['is_free'] ?? false) ? null : ($data['price'] ?? null),
+                'price_hidden'        => $data['price_hidden'] ?? false,
+                'is_negotiable'       => $data['is_negotiable'] ?? false,
+                'is_free'             => $data['is_free'] ?? false,
+                'contact_phone'       => $data['contact_phone'] ?? null,
+                'contact_whatsapp'    => $data['contact_whatsapp'] ?? null,
+                'show_phone_publicly' => $data['show_phone_publicly'] ?? true,
+                'pledge_accepted'     => true,
+                'commission_amount'   => $commission,
+                'commission_status'   => CommissionStatus::Pending,
+                // Branch on fee: paid categories sit in pending_payment until the
+                // wizard's Pay step confirms; free categories publish immediately.
+                'status'              => $hasFee ? AdStatus::PendingPayment : AdStatus::Active,
+                'moderation_status'   => ModerationStatus::Approved,
+                'payment_status'      => $hasFee ? PaymentStatus::Pending->value : PaymentStatus::NotRequired->value,
+                'payment_amount'      => $hasFee ? $publishFee : null,
+                'published_at'        => $hasFee ? null : now(),
+                'expires_at'          => now()->addDays(30),
             ]);
 
             // Save dynamic field values
@@ -63,8 +78,51 @@ class AdService
             // Save images
             $this->processImages($ad, $images);
 
-            return $ad->fresh(['images', 'fieldValues.field', 'category', 'city', 'region']);
+            return $ad->fresh(['images', 'fieldValues.field', 'category', 'city', 'region', 'district']);
         });
+    }
+
+    // ── Mark Paid ─────────────────────────────────────────────────────────────
+
+    /**
+     * Flip an ad from `pending_payment` → `active` after the PaymentService
+     * confirms. Idempotent — calling on an already-paid ad is a no-op.
+     *
+     * @param  array{reference?: string, provider_reference?: string}  $payload
+     */
+    public function markPaid(Ad $ad, array $payload = []): Ad
+    {
+        if ($ad->payment_status === PaymentStatus::Paid->value) {
+            return $ad;
+        }
+
+        $ad->update([
+            'payment_status'    => PaymentStatus::Paid->value,
+            'payment_reference' => $payload['provider_reference'] ?? $payload['reference'] ?? $ad->payment_reference,
+            'paid_at'           => now(),
+            'status'            => AdStatus::Active,
+            'published_at'      => $ad->published_at ?? now(),
+        ]);
+
+        return $ad->fresh(['images', 'fieldValues.field', 'category', 'city', 'region', 'district']);
+    }
+
+    /**
+     * Pick the publish fee for this category × seller tier. Falls back to 0
+     * when columns are null so older seeded categories stay free.
+     */
+    public function resolvePublishFee(int $categoryId, User $user): float
+    {
+        $cat = Category::find($categoryId);
+        if (! $cat) {
+            return 0.0;
+        }
+
+        $fee = $user->is_dealer
+            ? (float) ($cat->publish_fee_dealer ?? 0)
+            : (float) ($cat->publish_fee_individual ?? 0);
+
+        return max(0.0, $fee);
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -80,8 +138,11 @@ class AdService
     {
         return DB::transaction(function () use ($ad, $data, $newImages, $removeImageIds) {
             $fillable = array_intersect_key($data, array_flip([
-                'title', 'description', 'price', 'is_negotiable', 'is_free',
-                'city_id', 'contact_phone', 'contact_whatsapp',
+                'title', 'description', 'price', 'price_hidden',
+                'is_negotiable', 'is_free',
+                'city_id', 'district_id', 'district_name_free',
+                'latitude', 'longitude',
+                'contact_phone', 'contact_whatsapp', 'show_phone_publicly',
             ]));
 
             if (isset($fillable['city_id'])) {

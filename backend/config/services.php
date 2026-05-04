@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // Publish-fee payment driver. `mock` (default) auto-confirms in dev/staging;
+    // set PAYMENT_DRIVER=moyasar in .env once the integration is live.
+    'payment' => [
+        'driver' => env('PAYMENT_DRIVER', 'mock'),
+        'moyasar' => [
+            'secret_key'      => env('MOYASAR_SECRET_KEY'),
+            'webhook_secret'  => env('MOYASAR_WEBHOOK_SECRET'),
+        ],
+    ],
+
 ];

@@ -7,6 +7,7 @@ use App\Models\AdImage;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Region;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,9 +29,12 @@ class AdListResource extends JsonResource
         $city = $ad->city;
         /** @var Region|null $region */
         $region = $ad->region;
+        /** @var User|null $user */
+        $user = $ad->user;
 
         return [
             'id'           => $ad->id,
+            'user_id'      => $ad->user_id,
             'title'        => $ad->title,
             'price'        => $ad->price,
             'is_negotiable'=> $ad->is_negotiable,
@@ -51,6 +55,15 @@ class AdListResource extends JsonResource
             'region'       => $region ? [
                 'id'      => $region->id,
                 'name_ar' => $region->name_ar,
+            ] : null,
+            'user'         => $user ? [
+                'id'           => $user->id,
+                'name'         => $user->name,
+                'avatar'       => $user->avatar_url,
+                'is_verified'  => (bool) $user->is_verified,
+                'is_dealer'    => (bool) $user->is_dealer,
+                'avg_rating'   => $user->avg_rating,
+                'rating_count' => $user->rating_count,
             ] : null,
             'is_boosted'   => $ad->is_boosted,
             'boosted_until'=> $ad->boosted_until,

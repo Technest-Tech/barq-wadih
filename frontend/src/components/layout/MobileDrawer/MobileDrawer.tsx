@@ -14,8 +14,8 @@ interface MobileDrawerProps {
   onSelectCategory: (cat: Category | null) => void;
   sort: AdsFilters['sort'];
   onSortChange: (sort: AdsFilters['sort']) => void;
-  nearMe: boolean;
-  onNearMeChange: (v: boolean) => void;
+  nearMe?: boolean;
+  onNearMeChange?: (v: boolean) => void;
 }
 
 const SORT_OPTS: { val: AdsFilters['sort']; label: string }[] = [
@@ -105,24 +105,26 @@ export default function MobileDrawer({
             </div>
           </div>
 
-          {/* Near Me */}
-          <div className={styles.filterGroup}>
-            <div className={styles.filterLabel}>المسافة</div>
-            <div className={styles.pillRow}>
-              <button
-                className={`${styles.filterPill} ${!nearMe ? styles.filterPillActive : ''}`}
-                onClick={() => onNearMeChange(false)}
-              >
-                الكل
-              </button>
-              <button
-                className={`${styles.filterPill} ${nearMe ? styles.filterPillActive : ''}`}
-                onClick={() => onNearMeChange(true)}
-              >
-                📍 القريب مني
-              </button>
+          {/* Near Me — only rendered when geolocation feature is enabled by parent */}
+          {onNearMeChange && (
+            <div className={styles.filterGroup}>
+              <div className={styles.filterLabel}>المسافة</div>
+              <div className={styles.pillRow}>
+                <button
+                  className={`${styles.filterPill} ${!nearMe ? styles.filterPillActive : ''}`}
+                  onClick={() => onNearMeChange(false)}
+                >
+                  الكل
+                </button>
+                <button
+                  className={`${styles.filterPill} ${nearMe ? styles.filterPillActive : ''}`}
+                  onClick={() => onNearMeChange(true)}
+                >
+                  📍 القريب مني
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Apply button */}

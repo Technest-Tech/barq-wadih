@@ -93,34 +93,43 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
       backgroundColor: AppTheme.neutralGray50,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         foregroundColor: AppTheme.neutralGray900,
-        title: const Text('تعديل الملف الشخصي',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        // RTL: leading appears on the right
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_forward_ios),
           onPressed: () => context.pop(),
+        ),
+        title: const Text(
+          'تعديل الملف الشخصي',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(left: 12),
+            padding: const EdgeInsets.only(right: 12),
             child: _saving
-                ? const SizedBox(width: 20, height: 20,
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(
                       color: AppTheme.primaryBlue, strokeWidth: 2.5))
                 : TextButton(
                     onPressed: _save,
-                    child: const Text('حفظ',
+                    child: const Text(
+                      'حفظ',
                       style: TextStyle(
                         color: AppTheme.primaryBlue,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
-                      )),
+                      ),
+                    ),
                   ),
           ),
         ],
@@ -129,9 +138,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Column(
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Personal info ─────────────────────────────────────────────

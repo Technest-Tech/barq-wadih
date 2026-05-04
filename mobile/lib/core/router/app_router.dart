@@ -16,6 +16,7 @@ import '../../features/categories/presentation/categories_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/messages/presentation/screens/messages_screen.dart';
 import '../../features/messages/presentation/screens/conversation_screen.dart';
+import '../../features/seller_profile/presentation/seller_profile_screen.dart';
 import '../shell/main_shell.dart';
 
 // ── Route paths ───────────────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ abstract class AppRoutes {
   static const profile    = '/profile';
   static const editProfile = '/profile/edit';
   static const adDetail      = '/ads/:id';
+  static const sellerProfile = '/users/:id';
   static const postAd        = '/post-ad';
   static const myAds         = '/my-ads';
   static const notifications = '/notifications';
@@ -37,6 +39,9 @@ abstract class AppRoutes {
 
   /// Helper to build ad detail path with actual id
   static String adDetailPath(int id) => '/ads/$id';
+
+  /// Helper to build seller profile path with actual user id
+  static String sellerProfilePath(int id) => '/users/$id';
 
   /// Helper to build conversation path with actual conversation id
   static String conversationPath(String id) => '/messages/$id';
@@ -118,6 +123,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return _slidePage(
             key: state.pageKey,
             child: AdDetailScreen(adId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/users/:id',
+        pageBuilder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+          return _slidePage(
+            key: state.pageKey,
+            child: SellerProfileScreen(userId: id),
           );
         },
       ),

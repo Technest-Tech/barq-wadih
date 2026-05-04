@@ -6,9 +6,11 @@ interface AuthState {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  _hasHydrated: boolean;
   setAuth: (user: AuthUser, token: string) => void;
   updateUser: (user: AuthUser) => void;
   clearAuth: () => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -17,9 +19,9 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      _hasHydrated: false,
 
       setAuth: (user, token) => {
-        // Also store token in localStorage for the apiClient to pick up
         if (typeof window !== 'undefined') {
           localStorage.setItem('auth_token', token);
         }
@@ -34,11 +36,15 @@ export const useAuthStore = create<AuthState>()(
         }
         set({ user: null, token: null, isAuthenticated: false });
       },
+
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
     }),
     {
       name: 'barq-auth',
-      // Only persist user + token (not functions)
       partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

@@ -8,9 +8,9 @@
   background: #fff;
   border-bottom: 1.5px solid var(--border-default);
   padding: var(--space-3) 0;
-  /* Not sticky — scrolls with the page content */
-  position: relative;
-  z-index: 1;
+  position: sticky;
+  top: calc(var(--header-height) + var(--cat-bar-height));
+  z-index: 197;
   box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
 
@@ -277,7 +277,12 @@
   flex-direction: column;
   gap: var(--space-3);
   position: sticky;
-  top: calc(64px + 48px + 56px + var(--space-5));
+  top: calc(var(--pinned-height) + var(--space-5));
+  /* Height capped so sidebar scrolls internally if it overflows the viewport */
+  max-height: calc(100vh - var(--pinned-height) - var(--space-5) * 2);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-200) transparent;
 }
 
 @media (min-width: 960px) {
@@ -511,6 +516,17 @@
   background: #10B981;
   border-color: #10B981;
   box-shadow: inset 0 0 0 2px #ECFDF5;
+}
+.nearMeToggle:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.sbFilterError {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #9b2c2c;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
 }
 
 /* Sort Dropdown */
@@ -1227,12 +1243,22 @@
   gap: 12px;
   padding: 12px 16px;
   text-decoration: none;
+  border: 0;
   border-bottom: 1px solid var(--color-neutral-100);
   color: var(--text-primary);
   background: transparent;
   direction: rtl;
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  text-align: right;
 }
 .sbNavItemFlat:hover { background: var(--surface-secondary); }
+.sbNavItemFlatActive {
+  background: var(--surface-tertiary, #eef5ff);
+  color: var(--brand-primary, #005691);
+  font-weight: 700;
+}
 
 .sbNavEmojiFlat {
   font-size: 1.4rem;
@@ -1281,9 +1307,12 @@
   .feed { padding-bottom: 0; }
 }
 
-/* ── Phase 2: Hero Bar — stack vertically on mobile ─────────────────────────── */
+/* ── Phase 2: Hero Bar — not sticky on mobile (saves screen real estate) ────── */
 @media (max-width: 639px) {
   .heroBar {
+    position: relative;
+    top: unset;
+    z-index: 1;
     padding: var(--space-2) 0;
     width: 100%;
     box-sizing: border-box;
@@ -1541,5 +1570,95 @@
   .loadMoreBtn {
     width: 100%;
     padding: 14px;
+  }
+}
+
+/* ── Feed header: count + view toggle ───────────────────────────────────────── */
+.feedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
+}
+.feedCount {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.viewToggleGroup {
+  display: inline-flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+.viewToggleBtn {
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.viewToggleBtn:hover { color: var(--text-primary); }
+.viewToggleBtn + .viewToggleBtn {
+  border-right: 1px solid var(--border-default);
+}
+.viewToggleBtnActive {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+}
+
+/* ── Feed-level error banner ───────────────────────────────────────────────── */
+.feedError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 12px 16px;
+  margin: var(--space-2) 0;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: var(--radius-md);
+  color: #9b2c2c;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.feedErrorRetry {
+  background: #c53030;
+  color: #fff;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+.feedErrorRetry:hover { background: #9b2c2c; }
+
+/* ── Mobile scroll-performance: strip heavy effects that cause jank ──────── */
+@media (max-width: 639px) {
+  /* Disable hover transitions on ad rows — touch devices don't need them */
+  .adListRowHaraj {
+    transition: none;
+  }
+  .adListRowHaraj:hover { background: var(--surface-primary); }
+
+  /* content-visibility defers paint of offscreen rows, reducing scroll jank */
+  .adListRowHaraj,
+  .adCard {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 120px;
+  }
+
+  /* Kill box-shadow on the ad list container — repaints on every scroll frame */
+  .adList {
+    box-shadow: none;
   }
 }

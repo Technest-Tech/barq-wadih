@@ -82,7 +82,7 @@ export default function AdminAnalyticsPage() {
       borderColor: '#22c55e',
       borderWidth: 2,
       pointBackgroundColor: '#22c55e',
-      pointBorderColor: '#1a1f2e',
+      pointBorderColor: '#ffffff',
       pointBorderWidth: 2,
       pointRadius: 3,
       tension: 0.4,
@@ -105,10 +105,10 @@ export default function AdminAnalyticsPage() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#1a1f2e',
-        titleColor: '#f1f5f9',
-        bodyColor: '#94a3b8',
-        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#ffffff',
+        titleColor: '#0f172a',
+        bodyColor: '#475569',
+        borderColor: 'rgba(0,0,0,0.1)',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -128,7 +128,7 @@ export default function AdminAnalyticsPage() {
     cutout: '70%',
     plugins: {
       legend: { position: 'bottom' as const, rtl: true, labels: { padding: 16, usePointStyle: true, font: { size: 12 }, color: '#94a3b8' } },
-      tooltip: { backgroundColor: '#1a1f2e', titleColor: '#f1f5f9', bodyColor: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8, rtl: true, textDirection: 'rtl' as const },
+      tooltip: { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#475569', borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8, rtl: true, textDirection: 'rtl' as const },
     },
   };
 

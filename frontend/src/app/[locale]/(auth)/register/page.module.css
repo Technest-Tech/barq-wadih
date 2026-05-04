@@ -4,12 +4,29 @@
 
 .container {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  margin: 0 auto;
   direction: rtl;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl, 16px);
+  padding: var(--space-8) var(--space-7, 28px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 640px) {
+  .container {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
 }
 
 .heading {
   margin-bottom: var(--space-8);
+  text-align: center;
 }
 
 .title {
@@ -128,6 +145,135 @@
 }
 
 /* ── Field groups ─────────────────────────────────────────────────────────── */
+/* ── Step indicator ──────────────────────────────────────────────────────── */
+.stepRow {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--space-7);
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.stepConnector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-default);
+  margin-top: 14px;
+  transition: background 0.3s;
+}
+
+.stepConnectorDone {
+  background: var(--color-primary-500);
+}
+
+.stepCircle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--border-default);
+  background: var(--surface-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--text-tertiary);
+  transition: all 0.25s;
+}
+
+.stepActive {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-500);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(67,160,71,0.15);
+}
+
+.stepDone {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-500);
+  color: #fff;
+}
+
+.stepLabel {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.stepLabelActive { color: var(--color-primary-600); }
+
+/* ── Verified badge ──────────────────────────────────────────────────────── */
+.verifiedBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #15803d;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+/* ── Field hint ──────────────────────────────────────────────────────────── */
+.fieldHint {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+/* ── OTP input ───────────────────────────────────────────────────────────── */
+.otpHint {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.otpInput {
+  width: 100%;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.6rem;
+  padding: var(--space-4);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  color: var(--color-primary-600);
+  outline: none;
+  font-family: 'Inter', monospace;
+  transition: border-color 0.15s;
+  margin-bottom: var(--space-4);
+}
+
+.otpInput:focus { border-color: var(--color-primary-500); }
+
+/* ── Ghost button ────────────────────────────────────────────────────────── */
+.btnGhost {
+  width: 100%;
+  padding: var(--space-3);
+  background: none;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+  margin-top: var(--space-2);
+}
+
+.btnGhost:hover { background: var(--surface-secondary); border-color: var(--text-tertiary); }
+
 .fieldGroup {
   display: flex;
   flex-direction: column;
@@ -197,6 +343,26 @@
   white-space: nowrap;
   min-width: 80px;
 }
+
+.phonePrefixBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  background: var(--surface-secondary);
+  border: none;
+  border-left: 1.5px solid var(--border-default);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 80px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+}
+
+.phonePrefixBtn:hover { background: var(--surface-tertiary); }
 
 .phoneFlag { font-size: 1.2rem; }
 

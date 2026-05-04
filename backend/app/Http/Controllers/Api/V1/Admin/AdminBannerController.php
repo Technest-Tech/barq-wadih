@@ -6,13 +6,14 @@ use App\Enums\BannerPosition;
 use App\Http\Controllers\Api\V1\BaseController;
 use App\Models\Banner;
 use App\Models\BannerClick;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class AdminBannerController extends BaseController
 {
+    public function __construct(private readonly ImageService $imageService) {}
     /**
      * GET /admin/banners
      */
@@ -273,13 +274,8 @@ class AdminBannerController extends BaseController
 
     private function uploadBannerImage($file, string $variant): string
     {
-        $disk = config('filesystems.default') === 'do_spaces' ? 'do_spaces' : 'public';
-        $path = $file->store("banners/{$variant}", $disk);
+        $path = $this->imageService->store($file, "banners/{$variant}");
 
-        if ($disk === 'public') {
-            return asset("storage/{$path}");
-        }
-
-        return Storage::disk($disk)->url($path);
+        return $this->imageService->url($path);
     }
 }

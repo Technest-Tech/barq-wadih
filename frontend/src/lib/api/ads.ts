@@ -13,13 +13,18 @@ export interface AdImage {
   height: number;
 }
 
+/** Either a plain string ("red") or a {value,label} object as produced by the seeders. */
+export type CategoryFieldOption =
+  | string
+  | { value: string; label_ar?: string; label_en?: string; label?: string };
+
 export interface CategoryField {
   id: number;
   field_key: string;
   label_ar: string;
   label_en: string;
   field_type: 'text' | 'number' | 'select' | 'multi_select' | 'year' | 'boolean';
-  options: string[] | null;
+  options: CategoryFieldOption[] | null;
   is_required: boolean;
   is_filterable: boolean;
   sort_order: number;
@@ -55,23 +60,58 @@ export interface AdFieldValue {
   value: unknown;
 }
 
+export interface AdSeller {
+  id: number;
+  name: string;
+  avatar: string | null;
+  bio?: string | null;
+  is_verified?: boolean;
+  is_dealer?: boolean;
+  avg_rating?: number | string | null;
+  rating_count?: number;
+  total_ads_count?: number;
+  member_since?: string | null;
+}
+
 export interface Ad extends AdListItem {
   description: string;
   moderation_status: string;
   images: AdImage[];
   field_values: AdFieldValue[];
-  user: { id: number; name: string; avatar: string | null } | null;
-  contact_phone: string;
+  user: AdSeller | null;
+  contact_phone: string | null;
   contact_whatsapp: string | null;
+  show_phone_publicly: boolean;
+  price_hidden: boolean;
+  district: { id: number; name_ar: string; name_en: string | null; slug: string } | null;
+  district_name_free: string | null;
+  latitude: number | null;
+  longitude: number | null;
   views_count: number;
   favorites_count: number;
   commission_amount: string | null;
+  payment_status: 'not_required' | 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_amount: string | null;
+  payment_provider: string | null;
+  paid_at: string | null;
   expires_at: string | null;
   updated_at: string;
   // Sprint 13: Boost eligibility (owner-only, null for non-owners)
   can_boost?: boolean | null;
   can_refresh?: boolean | null;
   next_refresh_at?: string | null;
+}
+
+/**
+ * Response payload returned by POST /v1/ads. The wizard reads
+ * `requires_payment` to decide whether to redirect to the Pay step or
+ * straight to the ad detail page.
+ */
+export interface CreateAdResponse {
+  ad: Ad;
+  requires_payment: boolean;
+  payment_amount: number;
+  payment_init_url: string | null;
 }
 
 export interface AdsFilters {
@@ -116,10 +156,11 @@ export async function fetchMyAds(): Promise<PaginatedResponse<AdListItem>> {
 }
 
 /**
- * Create a new ad using multipart/form-data.
+ * Create a new ad using multipart/form-data. Returns the richer payload that
+ * tells the wizard whether a payment step is needed.
  */
-export async function createAd(formData: FormData): Promise<Ad> {
-  const res = await apiClient.postFormData<Ad>(ENDPOINTS.ADS, formData);
+export async function createAd(formData: FormData): Promise<CreateAdResponse> {
+  const res = await apiClient.postFormData<CreateAdResponse>(ENDPOINTS.ADS, formData);
   return res.data!;
 }
 

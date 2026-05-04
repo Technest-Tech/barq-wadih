@@ -9,6 +9,8 @@ import {
   fetchUnreadCount,
   type INotification,
 } from '@/lib/api/notifications';
+import { useConversations } from '@/lib/hooks/useConversations';
+import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth';
 import styles from './NotificationDropdown.module.css';
 
 function relativeTime(dateStr: string): string {
@@ -51,10 +53,20 @@ export default function NotificationDropdown({ locale }: NotificationDropdownPro
   const [loaded, setLoaded]   = useState(false);
   const ref                   = useRef<HTMLDivElement>(null);
 
+  // Real-time chat unread count from Firestore. Chat messages bypass the REST
+  // notifications system (they're written client-side directly to Firestore),
+  // so the bell would otherwise only update on the 30s poll — and never for
+  // chat at all. Adding this gives instant badge updates when a peer sends a
+  // message.
+  const { isReady } = useFirebaseAuth();
+  const { totalUnread: chatUnread } = useConversations(isReady);
+
   // Poll unread count every 30s
   const loadUnread = useCallback(async () => {
     try { setUnread(await fetchUnreadCount()); } catch { /* ignore */ }
   }, []);
+
+  const totalBadge = unread + chatUnread;
 
   useEffect(() => {
     loadUnread();
@@ -103,8 +115,8 @@ export default function NotificationDropdown({ locale }: NotificationDropdownPro
         aria-label="الإشعارات"
       >
         🔔
-        {unread > 0 && (
-          <span className={styles.badge}>{unread > 99 ? '99+' : unread}</span>
+        {totalBadge > 0 && (
+          <span className={styles.badge}>{totalBadge > 99 ? '99+' : totalBadge}</span>
         )}
       </button>
 

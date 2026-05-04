@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header/Header';
 import Footer from '@/components/layout/Footer/Footer';
 import { fetchMyAds, deleteAd, markAdSold, type AdListItem } from '@/lib/api/ads';
 import { boostAd, refreshAd } from '@/lib/api/boosts';
-import { useAuthStore } from '@/store/auth.store';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import styles from './page.module.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -52,8 +51,7 @@ function formatCountdown(dateStr: string | null): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MyAdsPage() {
-  const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { ready } = useRequireAuth();
   const [ads, setAds] = useState<AdListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
@@ -62,18 +60,10 @@ export default function MyAdsPage() {
   const [lastPage, setLastPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // ── Auth guard ────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/ar/login');
-    }
-  }, [isAuthenticated, router]);
-
   // ── Load ads ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!ready) return;
     setLoading(true);
     setPage(1);
     fetchMyAds()
@@ -83,7 +73,7 @@ export default function MyAdsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [isAuthenticated]);
+  }, [ready]);
 
   const loadMore = async () => {
     if (page >= lastPage) return;
@@ -164,7 +154,7 @@ export default function MyAdsPage() {
     counts[t.key] = ads.filter(a => a.status === t.key).length;
   });
 
-  if (!isAuthenticated) return null;
+  if (!ready) return null;
 
   return (
     <>

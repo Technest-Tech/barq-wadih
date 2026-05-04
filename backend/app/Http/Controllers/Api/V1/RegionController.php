@@ -59,6 +59,7 @@ class RegionController extends BaseController
             $cities = Cache::remember("regions:{$slug}:cities", 3600, fn () =>
                 $region->cities()
                     ->where('is_active', true)
+                    ->withCount(['districts' => fn ($q) => $q->where('is_active', true)])
                     ->orderBy('sort_order')
                     ->orderBy('name_ar')
                     ->get()
@@ -66,6 +67,7 @@ class RegionController extends BaseController
         } catch (\Throwable) {
             $cities = $region->cities()
                 ->where('is_active', true)
+                ->withCount(['districts' => fn ($q) => $q->where('is_active', true)])
                 ->orderBy('sort_order')
                 ->orderBy('name_ar')
                 ->get();
@@ -87,6 +89,7 @@ class RegionController extends BaseController
             $cities = Cache::remember('cities:all', 3600, fn () =>
                 City::query()
                     ->where('is_active', true)
+                    ->withCount(['districts' => fn ($q) => $q->where('is_active', true)])
                     ->orderBy('sort_order')
                     ->orderBy('name_ar')
                     ->with('region')
@@ -95,6 +98,7 @@ class RegionController extends BaseController
         } catch (\Throwable) {
             $cities = City::query()
                 ->where('is_active', true)
+                ->withCount(['districts' => fn ($q) => $q->where('is_active', true)])
                 ->orderBy('sort_order')
                 ->orderBy('name_ar')
                 ->with('region')

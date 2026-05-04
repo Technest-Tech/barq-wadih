@@ -12,10 +12,10 @@
 
 /* ── Glass Card ──────────────────────────────────────────────────────────── */
 .card {
-  background: linear-gradient(135deg, rgba(26,31,46,0.8), rgba(26,31,46,0.5));
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--admin-surface);
   border: 1px solid var(--admin-border); border-radius: var(--admin-radius);
   padding: 20px; margin-bottom: 16px;
+  box-shadow: var(--admin-shadow);
 }
 .cardTitle {
   font-size: 15px; font-weight: 700; color: var(--admin-text);
@@ -59,11 +59,11 @@
 .table th {
   text-align: start; padding: 12px 16px; color: var(--admin-text-muted);
   font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-  background: rgba(0,0,0,0.2); white-space: nowrap;
+  background: var(--admin-bg-secondary); white-space: nowrap;
 }
 .table td { padding: 14px 16px; border-top: 1px solid var(--admin-border); color: var(--admin-text-secondary); vertical-align: middle; }
 .table tr { transition: background 0.15s; }
-.table tr:hover td { background: rgba(255,255,255,0.02); }
+.table tr:hover td { background: rgba(0,0,0,0.02); }
 
 /* ── Badges ───────────────────────────────────────────────────────────────── */
 .badge {
@@ -189,7 +189,7 @@
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   border-bottom: 1px solid var(--admin-border); transition: background 0.15s;
 }
-.treeItem:hover { background: rgba(255,255,255,0.02); }
+.treeItem:hover { background: rgba(0,0,0,0.02); }
 .treeIcon { font-size: 20px; flex-shrink: 0; }
 .treeInfo { flex: 1; min-width: 0; }
 .treeName { font-size: 14px; font-weight: 600; color: var(--admin-text); }
@@ -203,7 +203,7 @@
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
   cursor: pointer; transition: background 0.15s; user-select: none;
 }
-.accordionHeader:hover { background: rgba(255,255,255,0.02); }
+.accordionHeader:hover { background: rgba(0,0,0,0.02); }
 .accordionArrow { font-size: 12px; transition: transform 0.3s; color: var(--admin-text-muted); }
 .accordionArrow.open { transform: rotate(90deg); }
 .accordionBody { padding: 0 16px 16px 16px; }
@@ -224,7 +224,7 @@
   min-height: 200px; padding: 16px; color: var(--admin-text);
   font-size: 15px; line-height: 1.8; direction: rtl; outline: none;
 }
-.editorContent:focus { background: rgba(255,255,255,0.02); }
+.editorContent:focus { background: rgba(0,0,0,0.02); }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

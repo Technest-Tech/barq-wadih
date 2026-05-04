@@ -41,7 +41,7 @@ class AdminReportController extends BaseController
         $sort = $request->input('sort', 'priority');
         if ($sort === 'priority') {
             // Pending first, then by newest
-            $query->orderByRaw("FIELD(status, 'pending', 'reviewed', 'resolved', 'dismissed')")
+            $query->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'reviewed' THEN 2 WHEN 'resolved' THEN 3 WHEN 'dismissed' THEN 4 ELSE 5 END")
                   ->latest();
         } else {
             $query->orderBy(

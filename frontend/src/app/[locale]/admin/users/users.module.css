@@ -33,7 +33,7 @@
 
 /* ── Search & Filters ────────────────────────────────────────────────────── */
 .filterBar {
-  background: linear-gradient(135deg, rgba(26, 31, 46, 0.8), rgba(26, 31, 46, 0.5));
+  background: #ffffff;
   backdrop-filter: blur(20px);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius);
@@ -50,17 +50,37 @@
   align-items: center;
 }
 
-.searchInput {
+.searchWrap {
   flex: 1;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.04);
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  right: 14px;
+  color: var(--admin-text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.searchWrap:focus-within .searchIcon {
+  color: var(--admin-accent);
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 42px 10px 16px;
+  background: #fff;
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-sm);
   color: var(--admin-text);
   font-size: 14px;
   font-family: inherit;
   transition: all 0.2s;
-  min-width: 0;
 }
 
 .searchInput::placeholder {
@@ -154,7 +174,7 @@
 
 /* ── Table Card ──────────────────────────────────────────────────────────── */
 .tableCard {
-  background: linear-gradient(135deg, rgba(26, 31, 46, 0.8), rgba(26, 31, 46, 0.5));
+  background: #ffffff;
   backdrop-filter: blur(20px);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius);
@@ -168,23 +188,24 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   min-width: 900px;
 }
 
 .table th {
   text-align: start;
   padding: 12px 16px;
-  color: var(--admin-text-muted);
-  font-weight: 600;
-  font-size: 11px;
+  color: var(--admin-text-secondary);
+  font-weight: 700;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.05em;
+  background: #f8fafc;
   white-space: nowrap;
   cursor: pointer;
   transition: color 0.2s;
   user-select: none;
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .table th:hover {
@@ -203,8 +224,9 @@
 .table td {
   padding: 14px 16px;
   border-top: 1px solid var(--admin-border);
-  color: var(--admin-text-secondary);
+  color: var(--admin-text);
   vertical-align: middle;
+  font-size: 14px;
 }
 
 .table tr {
@@ -243,23 +265,19 @@
   object-fit: cover;
 }
 
-.userInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .userName {
   color: var(--admin-text);
   font-weight: 600;
   font-size: 13px;
 }
 
-.userPhone {
-  color: var(--admin-text-muted);
-  font-size: 11px;
+.phoneValue {
   direction: ltr;
-  text-align: start;
+  unicode-bidi: embed;
+  display: inline-block;
+  color: var(--admin-text-muted);
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 /* ── Badges ──────────────────────────────────────────────────────────────── */
@@ -609,4 +627,54 @@
   .pageTitle {
     font-size: 20px;
   }
+}
+
+/* ── Navigation loading overlay ──────────────────────────────────────────── */
+.navOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(248, 250, 252, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: navFadeIn 0.15s ease;
+}
+
+@keyframes navFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.navSpinnerWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 48px;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e9ecf0;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12), 0 4px 16px rgba(99, 102, 241, 0.08);
+}
+
+.navSpinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #e9ecf0;
+  border-top-color: #4f46e5;
+  animation: navSpin 0.7s linear infinite;
+}
+
+@keyframes navSpin {
+  to { transform: rotate(360deg); }
+}
+
+.navSpinnerLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
 }

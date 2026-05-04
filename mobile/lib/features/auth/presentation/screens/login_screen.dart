@@ -56,18 +56,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   // ── Phone helpers ──────────────────────────────────────────────────────────
 
-  /// Normalise: 05XXXXXXXX → +96605XXXXXXXX, or pass through +966...
   String _normalizePhone(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.startsWith('+966')) return trimmed;
-    if (trimmed.startsWith('966'))  return '+$trimmed';
-    if (trimmed.startsWith('05'))   return '+966$trimmed';
-    if (trimmed.startsWith('5'))    return '+9665$trimmed';
-    return trimmed;
+    final t = raw.trim();
+    // Saudi
+    if (t.startsWith('+966')) return t;
+    if (t.startsWith('966'))  return '+$t';
+    if (t.startsWith('05'))   return '+966${t.substring(1)}';
+    if (t.startsWith('5') && t.length == 9) return '+966$t';
+    // Egypt
+    if (t.startsWith('+20'))  return t;
+    if (t.startsWith('010') || t.startsWith('011') ||
+        t.startsWith('012') || t.startsWith('015')) return '+2$t';
+    return t;
   }
 
-  bool _isValidPhone(String phone) =>
-      RegExp(r'^\+9665[0-9]{8}$').hasMatch(_normalizePhone(phone));
+  bool _isValidPhone(String phone) {
+    final n = _normalizePhone(phone);
+    return RegExp(r'^\+9665[0-9]{8}$').hasMatch(n) ||
+           RegExp(r'^\+20(10|11|12|15)[0-9]{8}$').hasMatch(n);
+  }
 
   void _startResendCountdown() {
     _resendCountdown = 60;
@@ -83,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _sendOtp({bool resend = false}) async {
     final phone = _normalizePhone(_phoneCtrl.text);
     if (!_isValidPhone(_phoneCtrl.text)) {
-      _showError('أدخل رقم جوال سعودي صحيح (مثال: 0501234567)');
+      _showError('أدخل رقم جوال صحيح (مثال: 0501234567 أو 01012345678)');
       return;
     }
 
@@ -399,10 +406,10 @@ class _PhoneOtpTab extends StatelessWidget {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+]'))],
             style: const TextStyle(fontSize: 16, letterSpacing: 1),
             decoration: _inputDec(
-              hint: '05xxxxxxxx',
+              hint: '05xxxxxxxx أو 010xxxxxxxx',
               prefix: Container(
                 margin: const EdgeInsets.only(left: 12),
-                child: const Text('🇸🇦', style: TextStyle(fontSize: 20)),
+                child: const Text('🇸🇦🇪🇬', style: TextStyle(fontSize: 18)),
               ),
             ),
           ),

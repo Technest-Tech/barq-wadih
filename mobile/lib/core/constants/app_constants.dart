@@ -11,7 +11,7 @@ abstract class AppConstants {
   // Emulator:        use 10.0.2.2 instead
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.44:8000/api', // Mac LAN IP for physical device
+    defaultValue: 'http://192.168.1.45:8080/api', // Mac LAN IP for physical device
   );
   static const String apiVersion = 'v1';
 
@@ -34,11 +34,11 @@ abstract class AppConstants {
 
   // Helper to map backend localhost image URLs to the mobile API host
   static String normalizeImageUrl(String url) {
-    if (url.startsWith('http://localhost:8000') || url.startsWith('http://127.0.0.1:8000')) {
+    if (url.startsWith('http://localhost:8080') || url.startsWith('http://127.0.0.1:8080')) {
       final baseHost = apiBaseUrl.replaceAll('/api', '');
       return url
-          .replaceFirst('http://localhost:8000', baseHost)
-          .replaceFirst('http://127.0.0.1:8000', baseHost);
+          .replaceFirst('http://localhost:8080', baseHost)
+          .replaceFirst('http://127.0.0.1:8080', baseHost);
     }
     return url;
   }

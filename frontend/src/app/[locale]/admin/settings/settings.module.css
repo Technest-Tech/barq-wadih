@@ -6,19 +6,19 @@
 .groupHeader {
   display: flex; align-items: center; justify-content: space-between;
   padding: .85rem 1.25rem;
-  background: var(--admin-card-bg, #1a1f2e);
-  border: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  background: var(--admin-card-bg);
+  border: 1px solid var(--admin-border, rgba(0,0,0,0.08));
   border-radius: 14px 14px 0 0;
   cursor: pointer; user-select: none; transition: background .2s;
 }
-.groupHeader:hover { background: rgba(255,255,255,0.03); }
-.groupTitle { font-size: .95rem; font-weight: 700; color: var(--admin-text, #f1f5f9); }
-.groupToggle { font-size: .82rem; color: var(--admin-text-muted, #94a3b8); transition: transform .2s; }
+.groupHeader:hover { background: rgba(0,0,0,0.03); }
+.groupTitle { font-size: .95rem; font-weight: 700; color: var(--admin-text); }
+.groupToggle { font-size: .82rem; color: var(--admin-text-muted); transition: transform .2s; }
 .groupToggleOpen { transform: rotate(90deg); }
 
 .groupBody {
-  background: var(--admin-card-bg, #1a1f2e);
-  border: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  background: var(--admin-card-bg);
+  border: 1px solid var(--admin-border, rgba(0,0,0,0.08));
   border-top: none;
   border-radius: 0 0 14px 14px;
   padding: .5rem 0;
@@ -27,16 +27,16 @@
 .settingRow {
   display: flex; align-items: center; gap: 1rem;
   padding: .75rem 1.25rem;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(0,0,0,0.03);
   transition: background .15s;
 }
 .settingRow:last-child { border-bottom: none; }
-.settingRow:hover { background: rgba(255,255,255,0.02); }
+.settingRow:hover { background: rgba(0,0,0,0.02); }
 
 .settingKey {
   flex: 0 0 200px;
   font-size: .88rem; font-weight: 600;
-  color: var(--admin-text, #f1f5f9);
+  color: var(--admin-text);
   font-family: 'SF Mono', 'Fira Code', monospace;
   direction: ltr; text-align: left;
 }
@@ -48,10 +48,10 @@
 .settingInput {
   flex: 1;
   padding: .45rem .75rem;
-  background: #111827;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: #f8fafc;
+  border: 1px solid rgba(0,0,0,0.08);
   border-radius: 8px;
-  color: #f1f5f9;
+  color: var(--admin-text);
   font-size: .85rem;
   font-family: inherit;
 }
@@ -111,7 +111,7 @@
 
 .settingDesc {
   font-size: .72rem;
-  color: var(--admin-text-muted, #64748b);
+  color: var(--admin-text-muted);
   margin-top: .15rem;
 }
 
@@ -131,7 +131,7 @@
 .bulkBtn:disabled { opacity: .5; cursor: not-allowed; }
 
 .loading { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 4rem; color: #94a3b8; }
-.loadingSpinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
+.loadingSpinner { width: 24px; height: 24px; border: 3px solid rgba(0,0,0,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 768px) { .settingRow { flex-direction: column; align-items: flex-start; } .settingKey { flex: none; } }

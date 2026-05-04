@@ -19,6 +19,10 @@ export type CategoryChild = {
   is_free: boolean;
   ads_count: number;
   fields_count: number;
+  /** Per-category publish fee (added in the post-ad wizard sprint). */
+  publish_fee_individual: string | number | null;
+  publish_fee_dealer: string | number | null;
+  fee_deductible_from_commission: boolean;
 };
 
 export type Category = CategoryChild & {

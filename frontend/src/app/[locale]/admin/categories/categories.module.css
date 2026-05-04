@@ -1,0 +1,456 @@
+/* ── Admin Categories Page — Local Styles ──────────────────────────────────── */
+
+/* ── Stats Row ───────────────────────────────────────────────────────────── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.statCard {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 16px 20px;
+  text-align: center;
+  box-shadow: var(--admin-shadow);
+  transition: transform 0.15s;
+}
+.statCard:hover { transform: translateY(-2px); }
+
+.statValue {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--admin-text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.statLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Filter Card ──────────────────────────────────────────────────────────── */
+.filterCard {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  box-shadow: var(--admin-shadow);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Category Grid ────────────────────────────────────────────────────────── */
+.catGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+/* ── Category Card ────────────────────────────────────────────────────────── */
+.catCard {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+  box-shadow: var(--admin-shadow);
+  transition: box-shadow 0.2s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+.catCard:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.15); transform: translateY(-2px); }
+.catCard.inactive { opacity: 0.65; }
+
+/* ── Card Header ─────────────────────────────────────────────────────────── */
+.catHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.catHeaderStrip {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.catIconWrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  overflow: hidden;
+}
+
+.catInfo {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.catName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--admin-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.catNameEn {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+}
+
+.catBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.15);
+  color: var(--admin-text-secondary);
+  border: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
+}
+
+.catActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ── Card Stats ──────────────────────────────────────────────────────────── */
+.catStatsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 6px;
+  padding: 12px 16px;
+}
+.catStat {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  padding: 8px 6px;
+  text-align: center;
+}
+.catStatValue {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--admin-text);
+  line-height: 1.1;
+}
+.catStatLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* ── Card Fee Row ─────────────────────────────────────────────────────────── */
+.catFeeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 12px 16px;
+}
+
+.catFeeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(16,185,129,0.10), rgba(16,185,129,0.04));
+  border: 1px solid rgba(16,185,129,0.25);
+  font-size: 12px;
+}
+.catFeeIcon { font-size: 12px; }
+.catFeeLabel {
+  color: var(--admin-text-muted);
+  font-weight: 600;
+  font-size: 11px;
+}
+.catFeeValue {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.catFeeNote {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  font-weight: 500;
+  padding: 0 6px;
+}
+
+/* ── Card Preview Chips ───────────────────────────────────────────────────── */
+.catPreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 12px 16px;
+  min-height: 26px;
+}
+
+.previewChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--admin-border);
+  font-size: 11.5px;
+  color: var(--admin-text-secondary);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.previewIcon { display: inline-flex; align-items: center; }
+
+.previewMore {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: rgba(99,102,241,0.12);
+  color: #818cf8;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* ── Card Footer ──────────────────────────────────────────────────────────── */
+.catFooter {
+  margin-top: auto;
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--admin-border);
+  background: rgba(0,0,0,0.02);
+}
+
+.footerBtn {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-border);
+  background: transparent;
+  color: var(--admin-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.footerBtn:hover {
+  background: var(--admin-surface-hover);
+  color: var(--admin-text);
+  border-color: var(--admin-border-strong);
+}
+.footerBtnPrimary {
+  flex: 1;
+  background: var(--admin-accent);
+  color: white;
+  border-color: var(--admin-accent);
+}
+.footerBtnPrimary:hover {
+  background: var(--admin-accent-hover);
+  color: white;
+  border-color: var(--admin-accent-hover);
+}
+
+/* ── Subcategories Management Modal ──────────────────────────────────────── */
+.subsModalHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--admin-border);
+  background: linear-gradient(135deg, rgba(99,102,241,0.08), transparent);
+}
+.subsModalIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--admin-border);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.subsModalTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+.subsModalSub {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+}
+.subsModalClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: transparent;
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.subsModalClose:hover { background: var(--admin-surface-hover); color: var(--admin-text); }
+
+.subsModalToolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.subsList {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+/* ── Sub Row ──────────────────────────────────────────────────────────────── */
+.subRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--admin-border);
+  transition: background 0.15s;
+}
+.subRow:last-child { border-bottom: none; }
+.subRow:hover { background: rgba(255,255,255,0.02); }
+.subRowInactive { opacity: 0.55; }
+
+.subRowIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--admin-border);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.subRowInfo { flex: 1; min-width: 0; }
+.subRowName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-text);
+  margin-bottom: 2px;
+}
+.subRowMeta {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+
+.subRowActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   PREMIUM MODAL SYSTEM
+   Composed from src/styles/premium.module.css so the post-ad wizard and
+   any other surface can share the same visual language.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.pmModal           { composes: pmModal           from '../../../../styles/premium.module.css'; }
+.pmHeader          { composes: pmHeader          from '../../../../styles/premium.module.css'; }
+.pmHeaderIcon      { composes: pmHeaderIcon      from '../../../../styles/premium.module.css'; }
+.pmHeaderText      { composes: pmHeaderText      from '../../../../styles/premium.module.css'; }
+.pmHeaderTitle     { composes: pmHeaderTitle     from '../../../../styles/premium.module.css'; }
+.pmHeaderSub       { composes: pmHeaderSub       from '../../../../styles/premium.module.css'; }
+.pmHeaderClose     { composes: pmHeaderClose     from '../../../../styles/premium.module.css'; }
+.pmBody            { composes: pmBody            from '../../../../styles/premium.module.css'; }
+.pmSection         { composes: pmSection         from '../../../../styles/premium.module.css'; }
+.pmSectionAccent   { composes: pmSectionAccent   from '../../../../styles/premium.module.css'; }
+.pmSectionAccentGreen { composes: pmSectionAccentGreen from '../../../../styles/premium.module.css'; }
+.pmSectionTitle    { composes: pmSectionTitle    from '../../../../styles/premium.module.css'; }
+.pmSectionTitleIcon{ composes: pmSectionTitleIcon from '../../../../styles/premium.module.css'; }
+.pmSectionDesc     { composes: pmSectionDesc     from '../../../../styles/premium.module.css'; }
+.pmGrid            { composes: pmGrid            from '../../../../styles/premium.module.css'; }
+.pmGridFull        { composes: pmGridFull        from '../../../../styles/premium.module.css'; }
+.pmField           { composes: pmField           from '../../../../styles/premium.module.css'; }
+.pmLabel           { composes: pmLabel           from '../../../../styles/premium.module.css'; }
+.pmLabelReq        { composes: pmLabelReq        from '../../../../styles/premium.module.css'; }
+.pmInput           { composes: pmInput           from '../../../../styles/premium.module.css'; }
+.pmHelp            { composes: pmHelp            from '../../../../styles/premium.module.css'; }
+.pmIconPicker      { composes: pmIconPicker      from '../../../../styles/premium.module.css'; }
+.pmIconPreview     { composes: pmIconPreview     from '../../../../styles/premium.module.css'; }
+.pmInputAffix      { composes: pmInputAffix      from '../../../../styles/premium.module.css'; }
+.pmAffix           { composes: pmAffix           from '../../../../styles/premium.module.css'; }
+.pmToggleRow       { composes: pmToggleRow       from '../../../../styles/premium.module.css'; }
+.pmToggleCard      { composes: pmToggleCard      from '../../../../styles/premium.module.css'; }
+.pmToggleOn        { composes: pmToggleOn        from '../../../../styles/premium.module.css'; }
+.pmToggleSwitch    { composes: pmToggleSwitch    from '../../../../styles/premium.module.css'; }
+.pmToggleLabel     { composes: pmToggleLabel     from '../../../../styles/premium.module.css'; }
+.pmToggleTitle     { composes: pmToggleTitle     from '../../../../styles/premium.module.css'; }
+.pmToggleDesc      { composes: pmToggleDesc      from '../../../../styles/premium.module.css'; }
+.pmFooter          { composes: pmFooter          from '../../../../styles/premium.module.css'; }
+.pmBtn             { composes: pmBtn             from '../../../../styles/premium.module.css'; }
+.pmBtnPrimary      { composes: pmBtnPrimary      from '../../../../styles/premium.module.css'; }
+.pmBtnGhost        { composes: pmBtnGhost        from '../../../../styles/premium.module.css'; }
+.pmFieldRow        { composes: pmFieldRow        from '../../../../styles/premium.module.css'; }
+.pmFieldType       { composes: pmFieldType       from '../../../../styles/premium.module.css'; }
+.pmFieldKey        { composes: pmFieldKey        from '../../../../styles/premium.module.css'; }
+.pmEmpty           { composes: pmEmpty           from '../../../../styles/premium.module.css'; }
+.pmEmptyIcon       { composes: pmEmptyIcon       from '../../../../styles/premium.module.css'; }
+.pmEmptyText       { composes: pmEmptyText       from '../../../../styles/premium.module.css'; }
+
+/* ── Page-local responsive (kept here because the rules above target stats/cat grid) ─ */
+@media (max-width: 900px) {
+  .statsRow { grid-template-columns: repeat(2, 1fr); }
+  .catGrid  { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .statsRow { grid-template-columns: repeat(2, 1fr); }
+  .subRow { padding: 10px 14px; flex-wrap: wrap; }
+  .subsModalHeader, .subsModalToolbar { padding: 12px 14px; }
+}

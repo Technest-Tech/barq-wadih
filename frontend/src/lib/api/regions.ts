@@ -22,6 +22,8 @@ export type City = {
   latitude: number | null;
   longitude: number | null;
   ads_count: number;
+  /** Number of seeded districts. 0 → wizard falls back to free-text input. */
+  districts_count: number | null;
   region?: Pick<Region, 'id' | 'name_ar' | 'name_en' | 'slug'>;
 };
 

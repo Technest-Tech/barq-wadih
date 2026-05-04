@@ -21,7 +21,7 @@ class AdController extends BaseController
 
     public function index(Request $request): JsonResponse
     {
-        $query = Ad::with(['images', 'category', 'city', 'region'])
+        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
             ->feed(); // scopeFeed: active + approved, boosted first
 
         // Filters
@@ -93,7 +93,21 @@ class AdController extends BaseController
             $request->file('images', [])
         );
 
-        return $this->successResponse(new AdResource($ad), 'تم نشر الإعلان بنجاح.', 201);
+        // Tell the wizard whether to skip straight to the ad detail page or
+        // hand off to the Pay step. Frontend reads `requires_payment` first.
+        $requiresPayment = $ad->payment_status === \App\Enums\PaymentStatus::Pending->value
+            && (float) ($ad->payment_amount ?? 0) > 0;
+
+        $message = $requiresPayment
+            ? 'تم حفظ الإعلان — يرجى إكمال الدفع لنشره.'
+            : 'تم نشر الإعلان بنجاح.';
+
+        return $this->successResponse([
+            'ad'              => new AdResource($ad),
+            'requires_payment'=> $requiresPayment,
+            'payment_amount'  => $requiresPayment ? (float) $ad->payment_amount : 0.0,
+            'payment_init_url'=> $requiresPayment ? route('ads.payment.init', ['ad' => $ad->id]) : null,
+        ], $message, 201);
     }
 
     // ── Auth: Update Ad ───────────────────────────────────────────────────────
@@ -131,7 +145,7 @@ class AdController extends BaseController
 
         $ads = Ad::withTrashed()
             ->where('user_id', $user->id)
-            ->with(['images', 'category', 'city'])
+            ->with(['images', 'category', 'city', 'user'])
             ->latest()
             ->paginate(20);
 

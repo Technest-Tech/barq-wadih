@@ -154,8 +154,27 @@ class AuthController extends BaseController
         );
 
         return $this->successResponse(
-            data: ['avatar_url' => asset('storage/' . $user->avatar)],
+            data: ['avatar_url' => $user->avatar_url],
             message: 'تم تحديث الصورة الشخصية.'
+        );
+    }
+
+    // ── POST /api/v1/auth/me/cover ────────────────────────────────────────────
+
+    public function uploadCover(Request $request): JsonResponse
+    {
+        $request->validate([
+            'cover' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+        ]);
+
+        $user = $this->authService->uploadCoverImage(
+            user: $request->user(),
+            file: $request->file('cover')
+        );
+
+        return $this->successResponse(
+            data: ['cover_image_url' => $user->cover_image_url],
+            message: 'تم تحديث صورة الغلاف.'
         );
     }
 }

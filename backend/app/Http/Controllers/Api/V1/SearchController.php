@@ -115,7 +115,7 @@ class SearchController extends BaseController
             });
 
             // Eager-load Eloquent relations on the matching IDs
-            $builder->query(fn ($q) => $q->with(['images', 'category', 'city', 'region']));
+            $builder->query(fn ($q) => $q->with(['images', 'category', 'city', 'region', 'user']));
 
             return $builder->paginate(20);
         } catch (\Throwable $e) {
@@ -144,7 +144,7 @@ class SearchController extends BaseController
         bool $isFree,
         string $sort
     ) {
-        $query = Ad::with(['images', 'category', 'city', 'region'])->feed();
+        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])->feed();
 
         if ($q !== '') {
             $query->where(function ($sub) use ($q) {

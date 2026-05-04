@@ -162,52 +162,58 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
         controller: _scrollController,
         headerSliverBuilder: (context, _) => [
           SliverToBoxAdapter(
+            child: Container(
+              color: Colors.white,
+              child: const StoriesRow(),
+            ),
+          ),
+
+          // ── Main Categories (pinned) ────────────────────────────────────
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _PinnedCategoriesHeader(
+              child: Container(
+                color: Colors.white,
+                child: categories.when(
+                  data: (cats) => Container(
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      border: Border(bottom: BorderSide(
+                        color: AppTheme.neutralGray200,
+                        width: 1,
+                      )),
+                    ),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: cats.length + 1,
+                      itemBuilder: (context, i) {
+                        if (i == 0) {
+                          return _MainCategoryTab(
+                            label: 'الكل',
+                            selected: _selectedCategoryId == null,
+                            onTap: () => _applyCategory(null, []),
+                          );
+                        }
+                        final cat = cats[i - 1];
+                        return _MainCategoryTab(
+                          label: cat.nameAr,
+                          selected: _selectedCategoryId == cat.id,
+                          onTap: () => _applyCategory(cat.id, cat.children),
+                        );
+                      },
+                    ),
+                  ),
+                  loading: () => const SizedBox(height: 46),
+                  error: (_, __) => const SizedBox(height: 46),
+                ),
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
             child: Column(
               children: [
-                // ── Stories Row ────────────────────────────────────────────
-                Container(
-                  color: Colors.white,
-                  child: const StoriesRow(),
-                ),
-
-                // ── Main Categories ──────────────────────────────────────────
-                Container(
-                  color: Colors.white,
-                  child: categories.when(
-                    data: (cats) => Container(
-                      height: 46,
-                      decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(
-                          color: AppTheme.neutralGray200,
-                          width: 1,
-                        )),
-                      ),
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: cats.length + 1,
-                        itemBuilder: (context, i) {
-                          if (i == 0) {
-                            return _MainCategoryTab(
-                              label: 'الكل',
-                              selected: _selectedCategoryId == null,
-                              onTap: () => _applyCategory(null, []),
-                            );
-                          }
-                          final cat = cats[i - 1];
-                          return _MainCategoryTab(
-                            label: '${cat.icon ?? ''} ${cat.nameAr}'.trim(),
-                            selected: _selectedCategoryId == cat.id,
-                            onTap: () => _applyCategory(cat.id, cat.children),
-                          );
-                        },
-                      ),
-                    ),
-                    loading: () => const SizedBox(height: 46),
-                    error: (_, __) => const SizedBox(height: 46),
-                  ),
-                ),
-
                 // ── Subcategories (real data from category children) ──────────
                 if (_selectedCategoryId != null && _subcategories.isNotEmpty)
                   Container(
@@ -727,6 +733,27 @@ class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(height: 1, thickness: 1, color: Color(0xFFF2F2F2));
+  }
+}
+
+class _PinnedCategoriesHeader extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  const _PinnedCategoriesHeader({required this.child});
+
+  @override
+  double get minExtent => 46;
+
+  @override
+  double get maxExtent => 46;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  bool shouldRebuild(covariant _PinnedCategoriesHeader oldDelegate) {
+    return oldDelegate.child != child;
   }
 }
 

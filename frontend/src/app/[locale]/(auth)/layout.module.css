@@ -13,8 +13,16 @@
 
 @media (min-width: 960px) {
   .wrapper {
-    grid-template-columns: 1fr 480px;
+    grid-template-columns: 1fr 540px;
   }
+}
+
+/* Focused single-column variant (e.g. register page) — no mural */
+.wrapperFocused {
+  grid-template-columns: 1fr !important;
+  background:
+    radial-gradient(ellipse at top, rgba(67, 160, 71, 0.05) 0%, transparent 60%),
+    var(--surface-primary);
 }
 
 /* ── Brand mural (right panel on RTL, left visually) ─────────────────────── */

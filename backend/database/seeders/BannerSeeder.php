@@ -11,13 +11,17 @@ class BannerSeeder extends Seeder
 {
     public function run(): void
     {
+        // Wipe & re-seed so images are always fresh on re-run
+        Banner::truncate();
+
         $banners = [
+            // ── Home Top carousel (two rotating slides) ──────────────────
             [
-                'title'            => 'عروض السيارات — خصم حتى 30%',
-                'image_url'        => 'https://placehold.co/1200x300/1B3A6B/ffffff?text=%D8%B9%D8%B1%D9%88%D8%B6+%D8%A7%D9%84%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA',
-                'image_url_mobile' => 'https://placehold.co/800x400/1B3A6B/ffffff?text=%D8%B9%D8%B1%D9%88%D8%B6+%D8%A7%D9%84%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA',
+                'title'            => 'عروض السيارات — أفضل الأسعار',
+                'image_url'        => 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1400&h=400&fit=crop&q=80',
+                'image_url_mobile' => 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=400&fit=crop&q=80',
                 'link_type'        => BannerLinkType::Url->value,
-                'link_url'         => 'https://barqwadih.com',
+                'link_url'         => '/ar/categories/cars',
                 'position'         => BannerPosition::HomeTop->value,
                 'sort_order'       => 0,
                 'starts_at'        => now(),
@@ -27,11 +31,11 @@ class BannerSeeder extends Seeder
                 'advertiser_phone' => '966500000001',
             ],
             [
-                'title'            => 'عقارات الرياض — شقق وفلل للبيع',
-                'image_url'        => 'https://placehold.co/1200x300/0B8457/ffffff?text=%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA+%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6',
-                'image_url_mobile' => 'https://placehold.co/800x400/0B8457/ffffff?text=%D8%B9%D9%82%D8%A7%D8%B1%D8%A7%D8%AA+%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6',
-                'link_type'        => BannerLinkType::Whatsapp->value,
-                'link_whatsapp'    => '966500000002',
+                'title'            => 'عقارات الرياض — شقق وفلل',
+                'image_url'        => 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1400&h=400&fit=crop&q=80',
+                'image_url_mobile' => 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&h=400&fit=crop&q=80',
+                'link_type'        => BannerLinkType::Url->value,
+                'link_url'         => '/ar/categories/real-estate',
                 'position'         => BannerPosition::HomeTop->value,
                 'sort_order'       => 1,
                 'starts_at'        => now(),
@@ -41,31 +45,64 @@ class BannerSeeder extends Seeder
                 'advertiser_phone' => '966500000002',
             ],
             [
-                'title'            => 'أجهزة إلكترونية بأفضل الأسعار',
-                'image_url'        => 'https://placehold.co/1200x200/7C3AED/ffffff?text=%D8%A3%D8%AC%D9%87%D8%B2%D8%A9+%D8%A5%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A%D8%A9',
-                'image_url_mobile' => 'https://placehold.co/800x300/7C3AED/ffffff?text=%D8%A3%D8%AC%D9%87%D8%B2%D8%A9+%D8%A5%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A%D8%A9',
-                'link_type'        => BannerLinkType::None->value,
-                'position'         => BannerPosition::HomeMiddle->value,
-                'sort_order'       => 0,
+                'title'            => 'أحدث الهواتف والأجهزة الإلكترونية',
+                'image_url'        => 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=1400&h=400&fit=crop&q=80',
+                'image_url_mobile' => 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=800&h=400&fit=crop&q=80',
+                'link_type'        => BannerLinkType::Url->value,
+                'link_url'         => '/ar/categories/electronics',
+                'position'         => BannerPosition::HomeTop->value,
+                'sort_order'       => 2,
                 'starts_at'        => now(),
                 'ends_at'          => now()->addMonths(3),
                 'is_active'        => true,
                 'advertiser_name'  => 'متجر التقنية',
                 'advertiser_phone' => '966500000003',
             ],
+
+            // ── Home Middle (single banner between feed sections) ─────────
             [
-                'title'            => 'تأمين سيارات — أفضل العروض',
-                'image_url'        => 'https://placehold.co/1200x200/DC2626/ffffff?text=%D8%AA%D8%A3%D9%85%D9%8A%D9%86+%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA',
-                'image_url_mobile' => 'https://placehold.co/800x300/DC2626/ffffff?text=%D8%AA%D8%A3%D9%85%D9%8A%D9%86+%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA',
+                'title'            => 'أثاث فاخر — تصاميم عصرية',
+                'image_url'        => 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1400&h=300&fit=crop&q=80',
+                'image_url_mobile' => 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&h=300&fit=crop&q=80',
                 'link_type'        => BannerLinkType::Url->value,
-                'link_url'         => 'https://barqwadih.com',
+                'link_url'         => '/ar/categories/furniture',
+                'position'         => BannerPosition::HomeMiddle->value,
+                'sort_order'       => 0,
+                'starts_at'        => now(),
+                'ends_at'          => now()->addMonths(3),
+                'is_active'        => true,
+                'advertiser_name'  => 'معرض المنزل الحديث',
+                'advertiser_phone' => '966500000004',
+            ],
+            [
+                'title'            => 'أزياء الموسم — تخفيضات تصل 50%',
+                'image_url'        => 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=1400&h=300&fit=crop&q=80',
+                'image_url_mobile' => 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&h=300&fit=crop&q=80',
+                'link_type'        => BannerLinkType::Url->value,
+                'link_url'         => '/ar/categories/fashion',
+                'position'         => BannerPosition::HomeMiddle->value,
+                'sort_order'       => 1,
+                'starts_at'        => now(),
+                'ends_at'          => now()->addMonths(3),
+                'is_active'        => true,
+                'advertiser_name'  => 'بوتيك الأناقة',
+                'advertiser_phone' => '966500000005',
+            ],
+
+            // ── Category Top (shown inside category pages) ────────────────
+            [
+                'title'            => 'وظائف جديدة — قدّم الآن',
+                'image_url'        => 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1400&h=250&fit=crop&q=80',
+                'image_url_mobile' => 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&h=250&fit=crop&q=80',
+                'link_type'        => BannerLinkType::Url->value,
+                'link_url'         => '/ar/categories/jobs',
                 'position'         => BannerPosition::CategoryTop->value,
                 'sort_order'       => 0,
                 'starts_at'        => now(),
                 'ends_at'          => now()->addMonths(3),
                 'is_active'        => true,
-                'advertiser_name'  => 'شركة تأمين نجم',
-                'advertiser_phone' => '966500000004',
+                'advertiser_name'  => 'منصة التوظيف',
+                'advertiser_phone' => '966500000006',
             ],
         ];
 

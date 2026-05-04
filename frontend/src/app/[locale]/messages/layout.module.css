@@ -1,0 +1,91 @@
+.shell {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+  background: #f0f2f5;
+}
+
+.sidebar {
+  border-inline-end: 1px solid #e7eaef;
+  background: #fff;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.main {
+  height: 100%;
+  overflow: hidden;
+  background: #f0f2f5;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (max-width: 880px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebarHiddenMobile {
+    display: none;
+  }
+  .mainHiddenMobile {
+    display: none;
+  }
+}
+
+/* ── Unauthenticated state ─────────────────────────────────────────────── */
+
+.unauthShell {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f6fa;
+  padding: 24px;
+}
+
+.unauthCard {
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e7eaef;
+  border-radius: 18px;
+  padding: 40px 32px;
+  max-width: 420px;
+  box-shadow: 0 8px 28px rgba(10, 22, 40, 0.04);
+}
+
+.unauthIcon {
+  color: #c8d2e0;
+  margin-bottom: 12px;
+}
+
+.unauthCard h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0a1628;
+  margin: 0 0 8px;
+}
+
+.unauthCard p {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.7;
+  margin: 0 0 20px;
+}
+
+.unauthBtn {
+  display: inline-block;
+  background: #1b4fe4;
+  color: #fff;
+  padding: 11px 32px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.unauthBtn:hover { background: #1340c5; }

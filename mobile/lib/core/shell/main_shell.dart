@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/presentation/widgets/auth_bottom_sheet.dart';
 import '../../features/messages/data/chat_providers.dart';
 import '../../features/notifications/data/notification_providers.dart';
 import '../theme/app_theme.dart';
@@ -37,13 +38,19 @@ class _MainShellState extends ConsumerState<MainShell> {
       if (auth is AuthAuthenticated) {
         context.push('/post-ad');
       } else {
-        context.push('/login');
+        showAuthBottomSheet(context, onSuccess: () => context.push('/post-ad'));
       }
       return;
     }
     if (index == 1 || index == 3 || index == 4) {
       if (ref.read(authProvider) is! AuthAuthenticated) {
-        context.push('/login');
+        showAuthBottomSheet(
+          context,
+          onSuccess: () {
+            HapticFeedback.lightImpact();
+            context.go(_routes[index]);
+          },
+        );
         return;
       }
     }

@@ -26,8 +26,7 @@ class BarqWadihApp extends ConsumerWidget {
 
       // Theme
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
 
       // Routing
       routerConfig: router,

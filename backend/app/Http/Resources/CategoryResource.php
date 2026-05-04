@@ -22,11 +22,15 @@ class CategoryResource extends JsonResource
             'image'           => $this->image,
             'description_ar'  => $this->description_ar,
             'description_en'  => $this->description_en,
-            'sort_order'      => $this->sort_order,
-            'is_active'       => $this->is_active,
-            'is_free'         => $this->is_free,
-            'ads_count'       => $this->ads_count,
-            'fields_count'    => $this->whenCounted('fields'),
+            'sort_order'                      => $this->sort_order,
+            'is_active'                       => $this->is_active,
+            'is_free'                         => $this->is_free,
+            'commission_rate'                 => $this->commission_rate,
+            'publish_fee_individual'          => $this->publish_fee_individual,
+            'publish_fee_dealer'              => $this->publish_fee_dealer,
+            'fee_deductible_from_commission'  => $this->fee_deductible_from_commission,
+            'ads_count'                       => $this->ads_count,
+            'fields_count'                    => $this->whenCounted('fields'),
 
             // Nested children — only included when loaded
             'children' => CategoryResource::collection(

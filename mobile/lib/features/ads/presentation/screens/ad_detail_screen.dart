@@ -4,18 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../messages/data/chat_providers.dart';
 import '../../../reports/presentation/report_sheet.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
-import '../../../ratings/presentation/screens/ratings_list_screen.dart';
+import '../widgets/contact_sheet.dart';
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
@@ -66,17 +62,13 @@ class _HarajDetailScaffold extends ConsumerStatefulWidget {
 }
 
 class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
-  bool _chatLoading = false;
-
-  Future<void> _launch(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذّر فتح الرابط')),
-        );
-      }
-    }
+  void _openContactSheet() {
+    ContactSheet.show(
+      context,
+      adId: widget.ad.id,
+      sellerName: widget.ad.user?.name ?? 'العارض',
+      phone: widget.ad.contactPhone,
+    );
   }
 
   void _share() {
@@ -85,6 +77,15 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم نسخ رابط الإعلان'), duration: Duration(seconds: 2)),
     );
+  }
+
+  String _formatMemberSince(DateTime? dt) {
+    if (dt == null) return '—';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays < 30) return '${diff.inDays} يوم';
+    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()} شهر';
+    final years = (diff.inDays / 365).floor();
+    return years == 1 ? 'سنة' : '$years سنوات';
   }
 
   String _timeAgo(DateTime dt) {
@@ -98,7 +99,6 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
   @override
   Widget build(BuildContext context) {
     final ad = widget.ad;
-    final currentUser = ref.watch(currentUserProvider);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -194,45 +194,102 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Seller Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Seller details
-                      Row(
+                  // Seller Row — clickable, opens seller profile
+                  InkWell(
+                    onTap: ad.user == null
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            context.push('/users/${ad.user!.id}');
+                          },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            ad.user?.name ?? 'غير معروف',
-                            style: const TextStyle(fontSize: 14, color: Color(0xFF0075C4), fontWeight: FontWeight.w600),
+                          // Seller details
+                          Expanded(
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: Colors.grey[200],
+                                  backgroundImage: ad.user?.avatar != null && ad.user!.avatar!.isNotEmpty
+                                      ? NetworkImage(AppConstants.normalizeImageUrl(ad.user!.avatar!))
+                                      : null,
+                                  child: ad.user?.avatar == null || (ad.user?.avatar?.isEmpty ?? true)
+                                      ? const Icon(Icons.person, size: 20, color: Colors.grey)
+                                      : null,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              ad.user?.name ?? 'غير معروف',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                color: Color(0xFF0075C4),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                          if (ad.user?.isVerified ?? false) ...[
+                                            const SizedBox(width: 4),
+                                            const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF0075C4)),
+                                          ],
+                                          if (ad.user?.isDealer ?? false) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF159787).withValues(alpha: .12),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                'معرض',
+                                                style: TextStyle(fontSize: 10, color: Color(0xFF159787), fontWeight: FontWeight.w700),
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.chevron_left, size: 18, color: AppTheme.neutralGray500),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${ad.user?.totalAdsCount ?? 0} إعلان · عضو منذ ${_formatMemberSince(ad.user?.memberSince)}',
+                                        style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: Colors.grey[200],
-                            backgroundImage: ad.user?.avatar != null ? NetworkImage(ad.user!.avatar!) : null,
-                            child: ad.user?.avatar == null
-                                ? const Icon(Icons.person, size: 18, color: Colors.grey)
-                                : null,
+                          // Visit profile button
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0075C4),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'الملف',
+                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ],
                       ),
-                      // Follow Button
-                      InkWell(
-                        onTap: () {},
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0075C4),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'متابعة',
-                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -317,7 +374,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
               color: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: InkWell(
-                onTap: () => _launch('tel:${ad.contactPhone}'),
+                onTap: _openContactSheet,
                 borderRadius: BorderRadius.circular(30),
                 child: Container(
                   width: double.infinity,
@@ -477,7 +534,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 label: 'تواصل', 
                 size: 30, // Larger size
                 fontSize: 13, // Larger font
-                onPress: () => _launch('tel:${ad.contactPhone}'),
+                onPress: _openContactSheet,
               ),
               _BottomAction(
                 icon: Icons.favorite_border, 

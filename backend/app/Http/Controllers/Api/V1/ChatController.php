@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AdStatus;
 use App\Models\Ad;
 use App\Models\User;
 use App\Services\ChatService;
@@ -13,7 +14,7 @@ class ChatController extends BaseController
     public function __construct(private readonly ChatService $chatService) {}
 
     // ── GET /api/v1/chat/token ────────────────────────────────────────────────
-    // Mint a Firebase custom token so web users can sign into Firestore.
+    // Mint a Firebase custom token so web/mobile can sign into Firestore.
 
     public function token(Request $request): JsonResponse
     {
@@ -27,19 +28,19 @@ class ChatController extends BaseController
     }
 
     // ── GET /api/v1/chat/conversations ────────────────────────────────────────
-    // List the authenticated user's conversations, sorted by latest message.
+    // Deprecated: clients now read directly from Firestore via real-time listeners.
+    // Kept as a no-op endpoint so older clients don't 404.
 
     public function index(Request $request): JsonResponse
     {
-        /** @var User $user */
-        $user          = $request->user();
-        $conversations = $this->chatService->listConversations($user);
-
-        return $this->successResponse(data: $conversations);
+        return $this->successResponse(data: []);
     }
 
     // ── POST /api/v1/chat/conversations ───────────────────────────────────────
-    // Create or find an existing conversation for a given ad.
+    // Validate the ad and return the metadata the client needs to seed the
+    // Firestore conversation doc (deterministic id + canonical participant
+    // ordering). The actual Firestore write happens client-side under the
+    // user's Firebase Auth session.
 
     public function store(Request $request): JsonResponse
     {
@@ -53,7 +54,6 @@ class ChatController extends BaseController
         /** @var Ad $ad */
         $ad = Ad::with('user', 'images')->findOrFail($request->integer('ad_id'));
 
-        // Prevent chatting with yourself
         if ($ad->user_id === $buyer->id) {
             return $this->errorResponse(
                 message: 'لا يمكنك محادثة إعلانك الخاص.',
@@ -61,39 +61,37 @@ class ChatController extends BaseController
             );
         }
 
-        // Prevent messaging on inactive ads
-        if ($ad->status !== 'active') {
+        if ($ad->status !== AdStatus::Active) {
             return $this->errorResponse(
                 message: 'هذا الإعلان غير متاح للمراسلة حالياً.',
                 code: 422
             );
         }
 
-        $result = $this->chatService->findOrCreateConversation($buyer, $ad);
+        $meta = $this->chatService->buildConversationMetadata($buyer, $ad);
 
         return $this->successResponse(
             data: [
-                'conversation_id' => $result['conversation_id'],
-                'is_new'          => $result['is_new'],
-                'ad'              => [
-                    'id'     => $ad->id,
-                    'title'  => $ad->title,
-                    'price'  => $ad->price,
-                    'is_free'=> $ad->is_free,
+                'conversation_id'  => $meta['conversation_id'],
+                'is_new'           => true, // client treats every call as idempotent setDoc(merge:true)
+                'participant_ids'  => $meta['participant_ids'],
+                'participant_uids' => $meta['participant_uids'],
+                'ad' => [
+                    'id'      => $ad->id,
+                    'title'   => $ad->title,
+                    'price'   => $ad->price,
+                    'is_free' => $ad->is_free,
+                    'image'   => $meta['ad_image'],
                 ],
-                'seller' => [
-                    'id'     => $ad->user->id,
-                    'name'   => $ad->user->name,
-                    'avatar' => $ad->user->avatar,
-                ],
+                'seller' => $meta['seller'],
+                'buyer'  => $meta['buyer'],
             ],
-            message: $result['is_new'] ? 'تم إنشاء المحادثة.' : 'تم فتح المحادثة.',
-            code: $result['is_new'] ? 201 : 200
+            message: 'تم فتح المحادثة.',
+            code: 200
         );
     }
 
     // ── POST /api/v1/chat/conversations/{id}/notify ───────────────────────────
-    // Client calls this after sending a message to trigger FCM push.
 
     public function notify(Request $request, string $id): JsonResponse
     {

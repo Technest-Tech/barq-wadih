@@ -10,12 +10,11 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  addDoc,
-  getDoc,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/auth.store';
+import { writeChatMessage } from '@/lib/firebase/chatWrites';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -99,80 +98,23 @@ export function useMessages(conversationId: string | null): UseMessagesResult {
     return () => { unsubRef.current?.(); };
   }, [conversationId, user?.id]);
 
-  const getMyUid = async (): Promise<string> => {
-    const { firebaseAuth } = await import('@/lib/firebase/auth');
-    return firebaseAuth.currentUser?.uid ?? String(user?.id ?? '');
-  };
-
   const sendMessage = async (text: string): Promise<void> => {
     if (!conversationId || !user?.id || !text.trim()) return;
-    const myId  = String(user.id);
-    const myUid = await getMyUid();
-
-    const convRef = doc(db, 'conversations', conversationId);
-    const convSnap = await getDoc(convRef);
-    if (!convSnap.exists()) return;
-
-    const otherParticipantId = (convSnap.data().participantIds as string[])
-      .find(id => id !== myId) ?? '';
-
-    const now = serverTimestamp();
-
-    // Write message
-    await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
-      senderUid:  myUid,
-      senderId:   myId,
-      text:       text.trim(),
-      type:       'text',
-      imageUrl:   null,
-      isRead:     false,
-      readAt:     null,
-      createdAt:  now,
-    });
-
-    // Update conversation metadata
-    await updateDoc(convRef, {
-      lastMessage:         text.trim(),
-      lastMessageAt:       now,
-      lastMessageSenderId: myId,
-      [`unreadCount.${otherParticipantId}`]:
-        ((convSnap.data().unreadCount?.[otherParticipantId] ?? 0) as number) + 1,
-      updatedAt: now,
+    await writeChatMessage({
+      conversationId,
+      myId: String(user.id),
+      type: 'text',
+      text,
     });
   };
 
   const sendImage = async (imageUrl: string): Promise<void> => {
     if (!conversationId || !user?.id) return;
-    const myId  = String(user.id);
-    const myUid = await getMyUid();
-
-    const convRef  = doc(db, 'conversations', conversationId);
-    const convSnap = await getDoc(convRef);
-    if (!convSnap.exists()) return;
-
-    const otherParticipantId = (convSnap.data().participantIds as string[])
-      .find(id => id !== myId) ?? '';
-
-    const now = serverTimestamp();
-
-    await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
-      senderUid: myUid,
-      senderId:  myId,
-      text:      '📷 صورة',
-      type:      'image',
+    await writeChatMessage({
+      conversationId,
+      myId: String(user.id),
+      type: 'image',
       imageUrl,
-      isRead:    false,
-      readAt:    null,
-      createdAt: now,
-    });
-
-    await updateDoc(convRef, {
-      lastMessage:         '📷 صورة',
-      lastMessageAt:       now,
-      lastMessageSenderId: myId,
-      [`unreadCount.${otherParticipantId}`]:
-        ((convSnap.data().unreadCount?.[otherParticipantId] ?? 0) as number) + 1,
-      updatedAt: now,
     });
   };
 

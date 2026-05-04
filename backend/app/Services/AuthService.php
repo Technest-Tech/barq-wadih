@@ -13,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
+    public function __construct(private readonly ImageService $imageService) {}
     // ── Registration ─────────────────────────────────────────────────────────
 
     public function register(RegisterData $data): array
@@ -125,16 +126,26 @@ class AuthService
 
     public function uploadAvatar(User $user, UploadedFile $file): User
     {
-        // Delete old avatar if exists
         if ($user->avatar) {
-            $oldPath = storage_path('app/public/' . $user->avatar);
-            if (file_exists($oldPath)) {
-                unlink($oldPath);
-            }
+            $this->imageService->delete($user->avatar);
         }
 
-        $path = $file->store("avatars/{$user->id}", 'public');
-        $user->update(['avatar' => $path]);
+        $path = $this->imageService->store($file, "avatars/{$user->id}");
+        $user->update(['avatar' => $this->imageService->url($path)]);
+
+        return $user;
+    }
+
+    // ── Cover Image Upload ────────────────────────────────────────────────────
+
+    public function uploadCoverImage(User $user, UploadedFile $file): User
+    {
+        if ($user->cover_image) {
+            $this->imageService->delete($user->cover_image);
+        }
+
+        $path = $this->imageService->store($file, "covers/{$user->id}");
+        $user->update(['cover_image' => $this->imageService->url($path)]);
 
         return $user;
     }

@@ -43,6 +43,9 @@ async function request<T>(
   const json = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      handleUnauthorized();
+    }
     const err = json as ApiError | null;
     throw new ApiClientError(
       err?.message ?? `HTTP ${response.status}`,
@@ -52,6 +55,20 @@ async function request<T>(
   }
 
   return json as T;
+}
+
+// Token expired / revoked: clear local auth state. The next render of any
+// guarded page or layout reads this and redirects to login.
+function handleUnauthorized(): void {
+  try {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('admin_user');
+    // Wipe persisted zustand auth so isAuthenticated flips to false on reload.
+    localStorage.removeItem('barq-auth');
+  } catch {
+    // ignore storage errors (private mode, etc.)
+  }
+  window.dispatchEvent(new CustomEvent('auth:unauthorized'));
 }
 
 const apiClient = {
@@ -97,6 +114,9 @@ const apiClient = {
     const response = await fetch(url, { method: 'POST', headers, body: formData });
     const json = await response.json().catch(() => null);
     if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
+        handleUnauthorized();
+      }
       const err = json as ApiError | null;
       throw new ApiClientError(err?.message ?? `HTTP ${response.status}`, response.status, err?.errors);
     }

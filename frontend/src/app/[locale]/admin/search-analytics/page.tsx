@@ -91,8 +91,8 @@ export default function SearchAnalyticsPage() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#1a1f2e', titleColor: '#f1f5f9', bodyColor: '#94a3b8',
-        borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8,
+        backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#475569',
+        borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8,
         rtl: true, textDirection: 'rtl' as const,
       },
     },
@@ -108,7 +108,7 @@ export default function SearchAnalyticsPage() {
     cutout: '65%',
     plugins: {
       legend: { position: 'bottom' as const, rtl: true, labels: { padding: 14, usePointStyle: true, font: { size: 12 }, color: '#94a3b8' } },
-      tooltip: { backgroundColor: '#1a1f2e', titleColor: '#f1f5f9', bodyColor: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8, rtl: true, textDirection: 'rtl' as const },
+      tooltip: { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#475569', borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8, rtl: true, textDirection: 'rtl' as const },
     },
   };
 

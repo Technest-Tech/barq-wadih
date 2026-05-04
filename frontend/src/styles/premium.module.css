@@ -1,0 +1,428 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   PREMIUM MODAL SYSTEM (pm*)
+   Shared visual language for modal dialogs and structured forms.
+   Originally lived in admin/categories/categories.module.css; extracted so
+   the post-ad wizard can `composes:` from the same source.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.pmModal {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 92vh;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
+  direction: rtl;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: pmIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes pmIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.pmHeader {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--admin-border);
+  background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(168,85,247,0.04) 60%, transparent);
+  flex-shrink: 0;
+}
+
+.pmHeaderIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--admin-accent), #a855f7);
+  box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+  color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-size: 24px;
+}
+
+.pmHeaderText { flex: 1; min-width: 0; }
+.pmHeaderTitle {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--admin-text);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.pmHeaderSub {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pmHeaderClose {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.pmHeaderClose:hover {
+  background: var(--admin-danger);
+  color: white;
+  border-color: var(--admin-danger);
+  transform: rotate(90deg);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+.pmBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scrollbar-width: thin;
+}
+.pmBody::-webkit-scrollbar { width: 8px; }
+.pmBody::-webkit-scrollbar-thumb {
+  background: var(--admin-border-strong);
+  border-radius: 4px;
+}
+
+/* ── Section ──────────────────────────────────────────────────────────── */
+.pmSection {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 18px;
+}
+.pmSectionAccent {
+  border-color: rgba(99,102,241,0.25);
+  background: linear-gradient(135deg, rgba(99,102,241,0.05), rgba(99,102,241,0.01));
+}
+.pmSectionAccentGreen {
+  border-color: rgba(16,185,129,0.25);
+  background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.01));
+}
+
+.pmSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--admin-text);
+  margin-bottom: 4px;
+}
+.pmSectionTitleIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--admin-border);
+  font-size: 14px;
+}
+
+.pmSectionDesc {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+  margin-bottom: 14px;
+  line-height: 1.5;
+  padding-inline-start: 38px;
+}
+
+/* ── Field Grid ───────────────────────────────────────────────────────── */
+.pmGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pmGridFull { grid-template-columns: 1fr; }
+
+.pmField { display: flex; flex-direction: column; gap: 6px; }
+
+.pmLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pmLabelReq::after {
+  content: '*';
+  color: var(--admin-danger);
+  font-weight: 700;
+}
+
+.pmInput {
+  padding: 11px 14px;
+  background: var(--admin-bg-secondary, rgba(0,0,0,0.15));
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.18s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pmInput::placeholder { color: var(--admin-text-muted); opacity: 0.6; }
+.pmInput:hover {
+  border-color: var(--admin-border-strong);
+  background: rgba(120, 120, 130, 0.18);
+}
+.pmInput:focus {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+  background: rgba(0,0,0,0.2);
+}
+
+.pmTextarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 130px;
+  max-height: 400px;
+  line-height: 1.8;
+  transition: height 0.1s ease;
+}
+
+.pmHelp {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* ── Icon Picker (with live preview) ──────────────────────────────────── */
+.pmIconPicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pmIconPreview {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--admin-accent), #a855f7);
+  color: white;
+  font-size: 22px;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+
+/* ── Inline Pill (currency suffix) ────────────────────────────────────── */
+.pmInputAffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pmInputAffix .pmInput { padding-inline-end: 50px; }
+.pmAffix {
+  position: absolute;
+  inset-inline-end: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  pointer-events: none;
+}
+
+/* ── Toggle row ───────────────────────────────────────────────────────── */
+.pmToggleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.pmToggleCard {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.pmToggleCard:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: var(--admin-border-strong);
+}
+.pmToggleCard.pmToggleOn {
+  background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(99,102,241,0.03));
+  border-color: rgba(99,102,241,0.4);
+}
+
+.pmToggleSwitch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--admin-border-strong);
+  flex-shrink: 0;
+  transition: background 0.25s;
+}
+.pmToggleSwitch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.25s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.pmToggleOn .pmToggleSwitch { background: var(--admin-success); }
+.pmToggleOn .pmToggleSwitch::after { transform: translateX(-16px); }
+
+.pmToggleLabel { flex: 1; direction: rtl; text-align: right; }
+.pmToggleTitle { font-size: 13px; font-weight: 600; color: var(--admin-text); }
+.pmToggleDesc  { font-size: 11px; color: var(--admin-text-muted); margin-top: 2px; }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.pmFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--admin-border);
+  background: rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+
+.pmBtn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text-secondary);
+  font-family: inherit;
+  transition: all 0.18s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pmBtn:hover { background: var(--admin-surface-hover); color: var(--admin-text); }
+.pmBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.pmBtnPrimary {
+  background: linear-gradient(135deg, var(--admin-accent), #a855f7);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 6px 18px rgba(99,102,241,0.32);
+}
+.pmBtnPrimary:hover {
+  /* Re-state background here so .pmBtn:hover (which uses the `background:`
+     shorthand) doesn't blow away our gradient. Without this, hovering a
+     primary button replaces the gradient with --admin-surface-hover, leaving
+     white text on a near-white background = invisible. */
+  background: linear-gradient(135deg, var(--admin-accent), #a855f7);
+  filter: brightness(1.08);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(99,102,241,0.45);
+}
+
+.pmBtnGhost {
+  background: transparent;
+}
+
+/* ── Field Type Badge ─────────────────────────────────────────────────── */
+.pmFieldRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  background: rgba(255,255,255,0.02);
+  margin-bottom: 8px;
+  transition: all 0.15s;
+}
+.pmFieldRow:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: var(--admin-border-strong);
+}
+
+.pmFieldType {
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: rgba(99,102,241,0.15);
+  color: #a5b4fc;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pmFieldKey {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  background: rgba(0,0,0,0.2);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+/* ── Empty State ──────────────────────────────────────────────────────── */
+.pmEmpty {
+  text-align: center;
+  padding: 32px 16px;
+  border: 1px dashed var(--admin-border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+}
+.pmEmptyIcon {
+  font-size: 36px;
+  opacity: 0.5;
+  margin-bottom: 8px;
+}
+.pmEmptyText {
+  font-size: 13px;
+  color: var(--admin-text-muted);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .pmGrid { grid-template-columns: 1fr; }
+  .pmHeader, .pmFooter { padding: 14px 16px; }
+  .pmBody { padding: 16px; }
+  .pmSection { padding: 14px; }
+  .pmSectionDesc { padding-inline-start: 0; }
+}

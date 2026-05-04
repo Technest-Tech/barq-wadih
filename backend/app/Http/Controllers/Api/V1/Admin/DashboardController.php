@@ -65,16 +65,16 @@ class DashboardController extends BaseController
         }
 
         // ── Revenue KPIs ────────────────────────────────────────────────
-        $totalRevenue = CommissionPayment::where('status', CommissionStatus::Paid->value)
-            ->sum('amount');
-        $revenueThisMonth = CommissionPayment::where('status', CommissionStatus::Paid->value)
+        $totalRevenue = CommissionPayment::where('payment_status', CommissionStatus::Paid->value)
+            ->sum('commission_amount');
+        $revenueThisMonth = CommissionPayment::where('payment_status', CommissionStatus::Paid->value)
             ->where('paid_at', '>=', now()->startOfMonth())
-            ->sum('amount');
-        $revenuePrevMonth = CommissionPayment::where('status', CommissionStatus::Paid->value)
+            ->sum('commission_amount');
+        $revenuePrevMonth = CommissionPayment::where('payment_status', CommissionStatus::Paid->value)
             ->whereBetween('paid_at', [$prevMonthStart, $prevMonthEnd])
-            ->sum('amount');
-        $pendingCommissions = CommissionPayment::where('status', CommissionStatus::Due->value)
-            ->sum('amount');
+            ->sum('commission_amount');
+        $pendingCommissions = CommissionPayment::where('payment_status', CommissionStatus::Pending->value)
+            ->sum('commission_amount');
 
         // ── Other KPIs ──────────────────────────────────────────────────
         $activeBanners  = Banner::where('is_active', true)->count();
@@ -104,9 +104,9 @@ class DashboardController extends BaseController
             $monthEnd   = now()->subMonths($i)->endOfMonth();
             $monthlyRevenue[] = [
                 'month'   => $monthStart->translatedFormat('M Y'),
-                'revenue' => (float) CommissionPayment::where('status', CommissionStatus::Paid->value)
+                'revenue' => (float) CommissionPayment::where('payment_status', CommissionStatus::Paid->value)
                     ->whereBetween('paid_at', [$monthStart, $monthEnd])
-                    ->sum('amount'),
+                    ->sum('commission_amount'),
             ];
         }
 

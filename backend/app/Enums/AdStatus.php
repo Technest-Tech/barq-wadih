@@ -8,6 +8,7 @@ enum AdStatus: string
     case Sold = 'sold';
     case Expired = 'expired';
     case PendingReview = 'pending_review';
+    case PendingPayment = 'pending_payment';
     case Rejected = 'rejected';
     case Deleted = 'deleted';
 
@@ -18,6 +19,7 @@ enum AdStatus: string
             self::Sold => 'مُباع',
             self::Expired => 'منتهي',
             self::PendingReview => 'قيد المراجعة',
+            self::PendingPayment => 'بانتظار الدفع',
             self::Rejected => 'مرفوض',
             self::Deleted => 'محذوف',
         };
@@ -30,6 +32,7 @@ enum AdStatus: string
             self::Sold => 'info',
             self::Expired => 'warning',
             self::PendingReview => 'warning',
+            self::PendingPayment => 'warning',
             self::Rejected => 'danger',
             self::Deleted => 'danger',
         };

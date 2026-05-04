@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -45,8 +45,16 @@ export default function LoginPage() {
   const [otpCode, setOtpCode]     = useState('');
   const [otpSuccess, setOtpSuccess] = useState(false);
 
-  const { setAuth } = useAuthStore();
-  const router      = useRouter();
+  const { setAuth, isAuthenticated, _hasHydrated } = useAuthStore();
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'ar';
+
+  // Redirect already-authenticated users away from the login page (wait for hydration)
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    if (isAuthenticated) router.replace(`/${locale}`);
+  }, [_hasHydrated, isAuthenticated, locale, router]);
 
   const switchTab = (next: Tab) => {
     setTabDir(next === 'phone' ? -1 : 1);
@@ -64,7 +72,7 @@ export default function LoginPage() {
       const res = await authApi.login(data);
       if (res.data) {
         setAuth(res.data.user, res.data.token);
-        router.push('/');
+        router.replace(`/${locale}`);
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'حدث خطأ. حاول مرة أخرى.');

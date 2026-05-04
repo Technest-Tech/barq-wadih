@@ -255,6 +255,25 @@
   color: var(--text-secondary);
 }
 
+.phonePrefixBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  background: var(--surface-tertiary);
+  border: none;
+  border-right: 1px solid var(--border-default);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.phonePrefixBtn:hover { background: var(--border-default); }
+
 .phoneFlag {
   font-size: 1.1rem;
 }

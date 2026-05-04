@@ -24,8 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'      => \App\Http\Middleware\EnsureAdmin::class,
         ]);
 
-        // Sanctum stateful middleware for SPA
-        $middleware->statefulApi();
+        // NOTE: statefulApi() intentionally NOT enabled — the SPA authenticates
+        // with Sanctum personal-access tokens via the Authorization header, not
+        // cookie sessions. Enabling it brings in CSRF verification for matching
+        // origins and breaks /api/v1/auth/* with "CSRF token mismatch".
 
         // CORS: allow frontend origin
         $middleware->trustProxies(at: '*');

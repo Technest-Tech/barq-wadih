@@ -1,0 +1,839 @@
+/* ── Post-Ad Wizard chrome ────────────────────────────────────────────────
+   The wizard reuses the admin pmModal visual language (see premium.module.css)
+   but the public site is light-themed. We re-map the --admin-* tokens at the
+   wizard root to light-mode equivalents so the imported pm* classes render
+   correctly without a separate stylesheet for each theme. */
+
+.main {
+  /* Aliases that paint the imported pmModal styles in the public light theme. */
+  --admin-bg:              var(--surface-secondary);
+  --admin-bg-secondary:    var(--surface-tertiary);
+  --admin-surface:         var(--surface-primary);
+  --admin-surface-hover:   var(--surface-tertiary);
+  --admin-text:            var(--text-primary);
+  --admin-text-secondary:  var(--text-secondary);
+  --admin-text-muted:      var(--text-tertiary);
+  --admin-border:          var(--border-default);
+  --admin-border-strong:   var(--border-hover);
+  --admin-accent:          var(--color-primary-500);
+  --admin-accent-hover:    var(--color-primary-600);
+  --admin-success:         var(--color-success);
+  --admin-danger:          var(--color-error);
+  --admin-warning:         var(--color-warning);
+  --admin-radius:          var(--radius-lg);
+  --admin-radius-sm:       var(--radius-sm);
+  --admin-shadow:          var(--shadow-card);
+
+  min-height: calc(100vh - var(--header-height));
+  background: var(--surface-secondary);
+  padding: 12px 16px 60px;
+  direction: rtl;
+  color: var(--text-primary);
+}
+
+.shell {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+/* ── Stepper ─────────────────────────────────────────────────────────── */
+.stepper {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 4px 10px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+.stepper::-webkit-scrollbar { height: 4px; }
+
+.stepBtn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  scroll-snap-align: start;
+  white-space: nowrap;
+  font-family: inherit;
+  box-shadow: var(--shadow-xs);
+}
+.stepBtn:hover { color: var(--text-primary); border-color: var(--border-hover); }
+.stepBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.stepBtn.active {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+  color: white;
+  border-color: transparent;
+  box-shadow: var(--shadow-md);
+}
+
+.stepBtn.done {
+  background: rgba(22, 163, 74, 0.08);
+  color: var(--color-success);
+  border-color: rgba(22, 163, 74, 0.25);
+}
+
+.stepIdx {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 11px;
+  font-weight: 700;
+}
+.stepBtn.active .stepIdx { background: rgba(255, 255, 255, 0.22); }
+.stepBtn.done .stepIdx { background: rgba(22, 163, 74, 0.15); }
+
+/* ── Wizard card ─────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+.stepHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.stepIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+  color: white;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+}
+
+.stepTitle {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.stepSub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Footer (sticky next/back) ───────────────────────────────────────── */
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.footerProgress {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+/* ── Searchable list ─────────────────────────────────────────────────── */
+.searchInput {
+  margin-bottom: 12px;
+}
+
+.optionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  width: 100%;
+  text-align: start;
+  transition: all 0.15s;
+}
+.option:hover {
+  background: var(--surface-tertiary);
+  border-color: var(--border-hover);
+}
+.option.optionSelected {
+  background: rgba(42, 82, 152, 0.06);
+  border-color: var(--color-primary-500);
+  color: var(--text-primary);
+}
+
+.optionIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-tertiary);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.optionMeta {
+  margin-inline-start: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* ── Category list (Haraj-style rows) ────────────────────────────────── */
+.catList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.catRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.catRow:hover {
+  background: var(--surface-tertiary);
+  border-color: var(--border-hover);
+}
+.catRow:active { transform: scale(0.995); }
+
+.catRowActive {
+  background: rgba(42, 82, 152, 0.06);
+  border-color: var(--color-primary-500);
+}
+
+.catRowName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catRowMeta {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.catChevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  /* RTL: chevron points "forward" (i.e., visually toward the start). */
+  transform: scaleX(-1);
+  transition: transform 0.15s, color 0.15s;
+}
+.catRow:hover .catChevron { color: var(--color-primary-500); }
+.catChevronBack {
+  /* Back arrow points the opposite direction. */
+  transform: scaleX(1);
+}
+
+.catBackBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+/* ── Category grid (kept for compatibility; unused after the list switch) ── */
+.catGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+/* ── Category live search ─────────────────────────────────────────────── */
+.catSearchWrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.catSearchIcon {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 13px;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.catSearchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 40px 11px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-default);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+.catSearchInput::placeholder { color: var(--text-tertiary); }
+.catSearchInput:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-secondary);
+}
+.catSearchInput:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 4px rgba(42, 82, 152, 0.1);
+  background: var(--surface-primary);
+}
+
+.catSearchClear {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 10px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--text-tertiary);
+  color: var(--surface-primary);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.catSearchClear:hover { opacity: 1; }
+
+.catSearchEmpty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-tertiary);
+  font-size: 13.5px;
+}
+.catSearchEmptyIcon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.catRowBreadcrumb {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  background: var(--surface-tertiary);
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.catBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  transition: all 0.18s;
+  min-height: 110px;
+  box-shadow: var(--shadow-xs);
+}
+.catBtn:hover {
+  background: var(--surface-tertiary);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.catBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.catBtn.catBtnActive {
+  background: rgba(42, 82, 152, 0.06);
+  border-color: var(--color-primary-500);
+  box-shadow: var(--shadow-md);
+}
+
+.catBtnIcon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.feeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.10);
+  color: var(--color-success);
+  font-size: 11px;
+  font-weight: 700;
+}
+.feeBadgeFree {
+  background: rgba(42, 82, 152, 0.08);
+  color: var(--color-primary-700);
+}
+
+/* ── Pledge ──────────────────────────────────────────────────────────── */
+.pledgeBox {
+  background: linear-gradient(135deg, rgba(42, 82, 152, 0.04), rgba(245, 166, 35, 0.02));
+  border: 1px solid rgba(42, 82, 152, 0.18);
+  border-radius: 14px;
+  padding: 18px;
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.pledgeQuran {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--color-primary-700);
+  text-align: center;
+  margin-bottom: 14px;
+  line-height: 1.9;
+}
+
+.pledgeCheckbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--surface-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  user-select: none;
+}
+.pledgeCheckbox input { margin-top: 3px; flex-shrink: 0; }
+
+/* ── Image grid ──────────────────────────────────────────────────────── */
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.imageThumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  background: var(--surface-tertiary);
+  cursor: grab;
+}
+.imageThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.imageThumb.dragging { opacity: 0.4; cursor: grabbing; }
+
+.primaryBadge {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+  color: white;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.removeImg {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+.removeImg:hover { background: var(--color-error); }
+
+.addImage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px dashed var(--border-hover);
+  background: var(--surface-primary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+.addImage:hover {
+  border-color: var(--color-primary-500);
+  color: var(--text-primary);
+  background: rgba(42, 82, 152, 0.04);
+}
+.addImage span:first-child { font-size: 28px; line-height: 1; }
+
+.imageHint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────── */
+.mapWrap {
+  position: relative;
+  height: 360px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  background: var(--surface-tertiary);
+}
+.mapWrap :global(.leaflet-container) {
+  width: 100%;
+  height: 100%;
+  /* Default font would be inherited; map keeps system font for consistency. */
+  font-family: var(--font-arabic);
+}
+
+.mapHint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.mapBtnRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.mapCoords {
+  font-family: var(--font-mono, ui-monospace);
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+}
+
+/* ── Price field ─────────────────────────────────────────────────────── */
+.priceToggleRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* ── Review preview — mirrors the published ad page (.detailsCard) ────── */
+.reviewPreview {
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 6px;
+}
+
+.reviewDetailsCard {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.reviewTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #10b981;
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.reviewMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.reviewMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.reviewSpecs {
+  margin-bottom: 1.25rem;
+  font-size: 0.93rem;
+  color: var(--text-primary);
+  line-height: 1.9;
+}
+.reviewSpecs strong { font-weight: 700; }
+
+.reviewDesc {
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reviewContact {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-default);
+}
+.reviewContact span {
+  color: var(--color-primary-700);
+  font-weight: 700;
+  margin-inline-start: 6px;
+}
+
+.reviewPriceTag {
+  align-self: flex-start;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+.reviewPriceTag .negTag {
+  margin-inline-start: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(22, 163, 74, 0.18);
+  color: var(--color-success);
+  padding: 2px 6px;
+  border-radius: 6px;
+  vertical-align: middle;
+}
+
+/* Image carousel — mirrors .carousel from the ad page */
+.reviewCarousel {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.reviewMainImg {
+  width: 100%;
+  height: 360px;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-tertiary);
+}
+.reviewThumbRow {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow-x: auto;
+  background: var(--surface-secondary);
+  border-top: 1px solid var(--border-default);
+}
+.reviewThumb {
+  width: 72px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid var(--border-default);
+  opacity: 0.65;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.reviewThumb:hover { opacity: 0.9; }
+.reviewThumbActive { border-color: var(--color-primary-600); opacity: 1; }
+.reviewNoImg {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: var(--surface-secondary);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 600px) {
+  .reviewMainImg { height: 240px; }
+  .reviewTitle { font-size: 1.15rem; }
+  .reviewDetailsCard { padding: 1rem; }
+}
+
+.feeBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(42, 82, 152, 0.18);
+  border-radius: 12px;
+  background: rgba(42, 82, 152, 0.04);
+}
+.feeRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.feeTotal {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-default);
+  margin-top: 4px;
+}
+.feeWarn {
+  font-size: 11.5px;
+  color: var(--color-warning);
+  margin-top: 6px;
+}
+
+.payRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.payBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+}
+.payBtn:hover { background: var(--surface-tertiary); }
+.payBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.payBtnApple { background: #000; color: white; border-color: #000; }
+.payBtnMada { background: linear-gradient(135deg, #00b6e3, #007aab); color: white; border-color: transparent; }
+
+@media (max-width: 600px) {
+  .reviewCard { grid-template-columns: 1fr; }
+  .payRow { grid-template-columns: 1fr; }
+  .priceToggleRow { grid-template-columns: 1fr; }
+}
+
+/* ── Loading spinner reused from old page ─────────────────────────── */
+.loadingWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 80px 20px;
+  color: var(--text-tertiary);
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--color-primary-500);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

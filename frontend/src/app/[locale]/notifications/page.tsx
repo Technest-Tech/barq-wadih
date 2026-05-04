@@ -9,6 +9,8 @@ import {
   markAllNotificationsRead,
   type INotification,
 } from '@/lib/api/notifications';
+import Header from '@/components/layout/Header/Header';
+import Footer from '@/components/layout/Footer/Footer';
 import styles from './page.module.css';
 
 function relativeTime(dateStr: string): string {
@@ -74,57 +76,63 @@ export default function NotificationsPage() {
   const unreadCount = items.filter((n) => !n.is_read).length;
 
   return (
-    <main className={styles.page}>
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>🔔 الإشعارات</h1>
-          {unreadCount > 0 && (
-            <button className={styles.markAllBtn} onClick={handleMarkAll}>
-              تعيين الكل كمقروء ({unreadCount})
-            </button>
-          )}
-        </div>
+    <>
+      <Header />
 
-        {loading ? (
-          <div className={styles.skeletonList}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={styles.skeleton} />
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className={styles.empty}>
-            <div className={styles.emptyIcon}>🔕</div>
-            <h2>لا توجد إشعارات</h2>
-            <p>ستظهر هنا إشعاراتك عند وصولها</p>
-          </div>
-        ) : (
-          <>
-            <div className={styles.list}>
-              {items.map((n) => (
-                <Link
-                  key={n.id}
-                  href={notifHref(n, locale)}
-                  className={`${styles.item} ${!n.is_read ? styles.unread : ''}`}
-                  onClick={() => handleClick(n)}
-                >
-                  <span className={styles.icon}>{notifIcon(n.type)}</span>
-                  <div className={styles.content}>
-                    <span className={styles.itemTitle}>{n.title}</span>
-                    {n.body && <span className={styles.body}>{n.body}</span>}
-                    <span className={styles.time}>{relativeTime(n.created_at)}</span>
-                  </div>
-                  {!n.is_read && <span className={styles.dot} />}
-                </Link>
-              ))}
-            </div>
-            {hasMore && (
-              <button className={styles.loadMore} onClick={() => load(page + 1)}>
-                تحميل المزيد
+      <main className={styles.page}>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <h1 className={styles.title}>🔔 الإشعارات</h1>
+            {unreadCount > 0 && (
+              <button className={styles.markAllBtn} onClick={handleMarkAll}>
+                تعيين الكل كمقروء ({unreadCount})
               </button>
             )}
-          </>
-        )}
-      </div>
-    </main>
+          </div>
+
+          {loading ? (
+            <div className={styles.skeletonList}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className={styles.skeleton} />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <div className={styles.empty}>
+              <div className={styles.emptyIcon}>🔕</div>
+              <h2>لا توجد إشعارات</h2>
+              <p>ستظهر هنا إشعاراتك عند وصولها</p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.list}>
+                {items.map((n) => (
+                  <Link
+                    key={n.id}
+                    href={notifHref(n, locale)}
+                    className={`${styles.item} ${!n.is_read ? styles.unread : ''}`}
+                    onClick={() => handleClick(n)}
+                  >
+                    <span className={styles.icon}>{notifIcon(n.type)}</span>
+                    <div className={styles.content}>
+                      <span className={styles.itemTitle}>{n.title}</span>
+                      {n.body && <span className={styles.body}>{n.body}</span>}
+                      <span className={styles.time}>{relativeTime(n.created_at)}</span>
+                    </div>
+                    {!n.is_read && <span className={styles.dot} />}
+                  </Link>
+                ))}
+              </div>
+              {hasMore && (
+                <button className={styles.loadMore} onClick={() => load(page + 1)}>
+                  تحميل المزيد
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      <Footer />
+    </>
   );
 }

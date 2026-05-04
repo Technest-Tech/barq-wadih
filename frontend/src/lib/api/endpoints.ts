@@ -9,6 +9,8 @@ const ENDPOINTS = {
   AUTH_REGISTER: '/v1/auth/register',
   AUTH_LOGOUT:   '/v1/auth/logout',
   AUTH_ME:       '/v1/auth/me',
+  AUTH_AVATAR:   '/v1/auth/me/avatar',
+  AUTH_COVER:    '/v1/auth/me/cover',
 
   // ── Sprint 4: Categories & Regions ─────────────────────────────────────
   CATEGORIES:    '/v1/categories',
@@ -17,6 +19,8 @@ const ENDPOINTS = {
   ALL_CITIES:    '/v1/cities',
   /** Call as: REGION_CITIES('riyadh') → '/v1/regions/riyadh/cities' */
   REGION_CITIES: (slug: string) => `/v1/regions/${slug}/cities`,
+  /** Districts within a city — GET /v1/cities/{id}/districts */
+  CITY_DISTRICTS: (cityId: number) => `/v1/cities/${cityId}/districts`,
 
   // ── Sprint 5: Ads ────────────────────────────────────────────────────────
   ADS:              '/v1/ads',
@@ -33,6 +37,12 @@ const ENDPOINTS = {
   CATEGORY_FIELDS:  (categoryId: number) => `/v1/categories/${categoryId}/fields`,
   /** Commission preview — GET /v1/ads/commission-preview?price=X&is_free=0 */
   COMMISSION_PREVIEW: '/v1/ads/commission-preview',
+
+  // ── Publish-fee payment lifecycle ─────────────────────────────────────
+  /** Create payment intent — POST /v1/ads/{id}/payment/init */
+  AD_PAYMENT_INIT:    (id: number) => `/v1/ads/${id}/payment/init`,
+  /** Confirm payment — POST /v1/ads/{id}/payment/confirm */
+  AD_PAYMENT_CONFIRM: (id: number) => `/v1/ads/${id}/payment/confirm`,
 
   // ── Sprint 7: Search ─────────────────────────────────────────────────────
   /** Full-text search — GET /v1/search?q=&category_id=&city_id=&price_min=&... */
@@ -53,12 +63,24 @@ const ENDPOINTS = {
   AD_RATINGS:           (id: number) => `/v1/ads/${id}/ratings`,
   /** Submit rating — POST /v1/ads/{id}/ratings */
   AD_RATE:              (id: number) => `/v1/ads/${id}/ratings`,
+  /** Public seller profile — GET /v1/users/{id} */
+  USER_PROFILE:         (id: number) => `/v1/users/${id}`,
+  /** Seller's active ads — GET /v1/users/{id}/ads */
+  USER_ADS:             (id: number) => `/v1/users/${id}/ads`,
   /** Ratings received by a user — GET /v1/users/{id}/ratings */
   USER_RATINGS:         (id: number) => `/v1/users/${id}/ratings`,
   /** Rating summary (avg + distribution) — GET /v1/users/{id}/rating-summary */
   USER_RATING_SUMMARY:  (id: number) => `/v1/users/${id}/rating-summary`,
   /** Delete own rating — DELETE /v1/ratings/{id} */
   DELETE_RATING:        (id: number) => `/v1/ratings/${id}`,
+
+  // ── Questions ────────────────────────────────────────────────────────────
+  /** List questions for an ad — GET /v1/ads/{id}/questions */
+  AD_QUESTIONS:     (id: number) => `/v1/ads/${id}/questions`,
+  /** Post a question — POST /v1/ads/{id}/questions */
+  AD_QUESTION_POST: (id: number) => `/v1/ads/${id}/questions`,
+  /** Reply to a question — POST /v1/questions/{id}/reply */
+  QUESTION_REPLY:   (id: number) => `/v1/questions/${id}/reply`,
 
   // ── Sprint 9: Favorites ──────────────────────────────────────────────────
   /** User's favorited ads — GET /v1/favorites */
@@ -85,6 +107,14 @@ const ENDPOINTS = {
   CATEGORY_FOLLOW_STATUS: (id: number) => `/v1/categories/${id}/follow-status`,
   /** User's followed categories — GET /v1/follows */
   FOLLOWS:              '/v1/follows',
+
+  // ── Seller (User) Follow ──────────────────────────────────────────────
+  /** Toggle seller follow — POST /v1/users/{id}/follow */
+  USER_FOLLOW:          (id: number) => `/v1/users/${id}/follow`,
+  /** Seller follow status — GET /v1/users/{id}/follow-status */
+  USER_FOLLOW_STATUS:   (id: number) => `/v1/users/${id}/follow-status`,
+  /** Followed sellers list — GET /v1/seller-follows */
+  SELLER_FOLLOWS:       '/v1/seller-follows',
 
   // ── Sprint 10: Notifications ──────────────────────────────────────────
   /** Paginated notifications — GET /v1/notifications */

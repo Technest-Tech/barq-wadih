@@ -15,7 +15,7 @@ function formatDate(dateStr: string): string {
 }
 
 const cardStyle: React.CSSProperties = {
-  background: 'var(--admin-card-bg, #1a1f2e)',
+  background: 'var(--admin-card-bg)',
   border: '1px solid var(--admin-border, rgba(255,255,255,0.06))',
   borderRadius: '14px',
   padding: '1.5rem',

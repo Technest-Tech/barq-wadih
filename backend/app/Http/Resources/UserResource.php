@@ -18,9 +18,13 @@ class UserResource extends JsonResource
             'name'                        => $this->name,
             'email'                       => $this->email,
             'phone'                       => $this->phone,
-            'avatar_url'                  => $this->avatar
-                ? asset('storage/' . $this->avatar)
-                : null,
+            // The Firebase UID that the backend mints for this user's chat
+            // sessions. Must match ChatService::mintCustomToken(), which uses
+            // strval($user->id) — a stable identifier that won't drift when
+            // the underlying `firebase_uid` column changes (e.g. phone OTP).
+            'firebase_uid'                => strval($this->id),
+            'avatar_url'                  => $this->avatar_url,
+            'cover_image_url'             => $this->cover_image_url,
             'bio'                         => $this->bio,
             'role'                        => $this->role->value,
             'locale'                      => $this->locale,

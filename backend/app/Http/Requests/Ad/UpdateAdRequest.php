@@ -17,11 +17,17 @@ class UpdateAdRequest extends FormRequest
             'title'           => ['sometimes', 'string', 'min:3', 'max:100'],
             'description'     => ['sometimes', 'string', 'min:10', 'max:5000'],
             'price'           => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999'],
+            'price_hidden'    => ['sometimes', 'boolean'],
             'is_negotiable'   => ['sometimes', 'boolean'],
             'is_free'         => ['sometimes', 'boolean'],
             'city_id'         => ['sometimes', 'integer', 'exists:cities,id'],
+            'district_id'     => ['sometimes', 'nullable', 'integer', 'exists:districts,id'],
+            'district_name_free' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'latitude'        => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'longitude'       => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'contact_phone'   => ['sometimes', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
             'contact_whatsapp'=> ['sometimes', 'nullable', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
+            'show_phone_publicly' => ['sometimes', 'boolean'],
 
             // New images to append (optional)
             'images'          => ['sometimes', 'array', 'max:10'],

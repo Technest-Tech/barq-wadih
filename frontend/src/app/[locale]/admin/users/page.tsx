@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   fetchAdminUsers,
   updateUserStatus,
@@ -31,6 +31,8 @@ export default function AdminUsersPage() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [modal, setModal] = useState<ConfirmModal | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
+  const router = useRouter();
 
   const loadUsers = useCallback(async (overrideFilters?: AdminUserFilters) => {
     setLoading(true);
@@ -50,19 +52,20 @@ export default function AdminUsersPage() {
     loadUsers();
   }, [loadUsers]);
 
+  // Real-time search with 400ms debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const newFilters = { ...filters, q: searchQuery || undefined, page: 1 };
+      setFilters(newFilters);
+      loadUsers(newFilters);
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleSearch = () => {
-    const newFilters = { ...filters, q: searchQuery, page: 1 };
-    setFilters(newFilters);
-    loadUsers(newFilters);
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
   };
 
   const handleFilterChange = (key: keyof AdminUserFilters, value: string) => {
@@ -132,6 +135,16 @@ export default function AdminUsersPage() {
 
   return (
     <div className={styles.page}>
+      {/* Navigation loading overlay */}
+      {navigatingTo !== null && (
+        <div className={styles.navOverlay}>
+          <div className={styles.navSpinnerWrap}>
+            <div className={styles.navSpinner} />
+            <span className={styles.navSpinnerLabel}>جاري التحميل...</span>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       {toast && (
         <div className={`${styles.toast} ${styles[toast.type]}`}>{toast.message}</div>
@@ -172,14 +185,18 @@ export default function AdminUsersPage() {
       {/* Filter Bar */}
       <div className={styles.filterBar}>
         <div className={styles.searchRow}>
-          <input
-            className={styles.searchInput}
-            type="text"
-            placeholder="🔍 بحث بالاسم، البريد، أو الهاتف..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-          />
+          <div className={styles.searchWrap}>
+            <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              className={styles.searchInput}
+              type="text"
+              placeholder="بحث بالاسم، البريد، أو الهاتف..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
           <select
             className={styles.select}
             value={filters.role || ''}
@@ -253,8 +270,9 @@ export default function AdminUsersPage() {
               <thead>
                 <tr>
                   <th onClick={() => handleSort('name')} className={filters.sort === 'name' ? styles.sorted : ''}>
-                    <span className={styles.sortArrow}>{getSortArrow('name')}</span> المستخدم
+                    <span className={styles.sortArrow}>{getSortArrow('name')}</span> الاسم
                   </th>
+                  <th>رقم الهاتف</th>
                   <th>الدور</th>
                   <th>الحالة</th>
                   <th>الموقع</th>
@@ -280,15 +298,13 @@ export default function AdminUsersPage() {
                         ) : (
                           <div className={styles.userAvatar}>{user.name?.[0] || '?'}</div>
                         )}
-                        <div className={styles.userInfo}>
-                          <span className={styles.userName}>
-                            {user.name}
-                            {user.is_verified && <span className={styles.verifiedBadge}> ✓</span>}
-                          </span>
-                          <span className={styles.userPhone}>{user.phone || user.email || '—'}</span>
-                        </div>
+                        <span className={styles.userName}>
+                          {user.name}
+                          {user.is_verified && <span className={styles.verifiedBadge}> ✓</span>}
+                        </span>
                       </div>
                     </td>
+                    <td><span className={styles.phoneValue}>{user.phone || '—'}</span></td>
                     <td>
                       <span className={`${styles.roleBadge} ${styles[user.role]}`}>
                         {user.role_label}
@@ -314,12 +330,15 @@ export default function AdminUsersPage() {
                     <td className={styles.dateCell}>{formatDate(user.created_at)}</td>
                     <td>
                       <div className={styles.actions}>
-                        <Link
-                          href={`/admin/users/${user.id}`}
+                        <button
                           className={`${styles.actionBtn} ${styles.view}`}
+                          onClick={() => {
+                            setNavigatingTo(user.id);
+                            router.push(`/admin/users/${user.id}`);
+                          }}
                         >
                           عرض
-                        </Link>
+                        </button>
                         <button
                           className={`${styles.actionBtn} ${styles.toggle}`}
                           onClick={() => handleToggleStatus(user)}

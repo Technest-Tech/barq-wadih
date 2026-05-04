@@ -26,10 +26,109 @@ class ChatRepository {
   // ── Conversations ────────────────────────────────────────────────────────────
 
   /// Create or find an existing conversation for the given ad.
-  /// Returns the Firestore conversation ID.
-  Future<String> createConversation(int adId) async {
+  /// Returns the seed metadata the client uses to (idempotently) create the
+  /// Firestore conversation doc on first message.
+  Future<Map<String, dynamic>> createConversation(int adId) async {
     final res = await _dio.post('/chat/conversations', data: {'ad_id': adId});
-    return res.data['data']['conversation_id'] as String;
+    return Map<String, dynamic>.from(res.data['data'] as Map);
+  }
+
+  /// Seed the conversation doc the first time a participant writes to it.
+  /// Idempotent — on subsequent calls it merges in the latest metadata.
+  Future<void> _seedConversation({
+    required String conversationId,
+    required List<String> participantIds,
+    required List<String> participantUids,
+    required String myId,
+    required String adId,
+    required String adTitle,
+    String? adImage,
+    Map<String, String> peerNames = const {},
+    Map<String, String?> peerAvatars = const {},
+  }) async {
+    final convRef = _fs.collection('conversations').doc(conversationId);
+    final existing = await convRef.get();
+    if (existing.exists) return;
+
+    final now = FieldValue.serverTimestamp();
+    final unread = <String, int>{};
+    for (final pid in participantIds) {
+      unread[pid] = 0;
+    }
+
+    await convRef.set({
+      'participantIds':       participantIds,
+      'participantUids':      participantUids,
+      'adId':                 adId,
+      'adTitle':              adTitle,
+      'adImage':              adImage,
+      'peerNames':            peerNames,
+      'peerAvatars':          peerAvatars,
+      'lastMessage':          null,
+      'lastMessageAt':        now,
+      'lastMessageSenderId':  null,
+      'unreadCount':          unread,
+      'createdAt':            now,
+      'updatedAt':            now,
+    }, SetOptions(merge: true));
+  }
+
+  /// Create a conversation and post the buyer's opening message in one shot.
+  /// Returns the conversation id. The notify call is best-effort.
+  Future<String> startConversation({
+    required int adId,
+    required String myId,
+    required String myUid,
+    required String initialMessage,
+  }) async {
+    await ensureFirebaseSignedIn();
+    final meta = await createConversation(adId);
+
+    final conversationId  = meta['conversation_id'] as String;
+    final participantIds  = List<String>.from(meta['participant_ids']  ?? []);
+    final participantUids = List<String>.from(meta['participant_uids'] ?? []);
+    final ad              = Map<String, dynamic>.from(meta['ad']     as Map);
+    final seller          = Map<String, dynamic>.from(meta['seller'] as Map);
+    final buyer           = Map<String, dynamic>.from(meta['buyer']  as Map);
+
+    final sellerId = seller['id'].toString();
+    final buyerId  = buyer['id'].toString();
+
+    await _seedConversation(
+      conversationId:  conversationId,
+      participantIds:  participantIds,
+      participantUids: participantUids,
+      myId:            myId,
+      adId:            ad['id'].toString(),
+      adTitle:         ad['title'] as String? ?? '',
+      adImage:         ad['image'] as String?,
+      peerNames: {
+        sellerId: seller['name'] as String? ?? '',
+        buyerId:  buyer['name']  as String? ?? '',
+      },
+      peerAvatars: {
+        sellerId: seller['avatar'] as String?,
+        buyerId:  buyer['avatar']  as String?,
+      },
+    );
+
+    await sendMessage(
+      conversationId: conversationId,
+      myId:           myId,
+      myUid:          myUid,
+      text:           initialMessage,
+    );
+
+    final sellerId = (seller['id'] as num?)?.toInt();
+    if (sellerId != null) {
+      notifyNewMessage(
+        conversationId: conversationId,
+        receiverId:     sellerId,
+        messagePreview: initialMessage,
+      );
+    }
+
+    return conversationId;
   }
 
   /// Real-time stream of all conversations for the current user.

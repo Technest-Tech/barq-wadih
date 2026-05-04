@@ -5,21 +5,14 @@ namespace App\Services;
 use App\Models\Ad;
 use App\Models\User;
 use App\Services\PushService;
-use Kreait\Firebase\Contract\Firestore;
 use Kreait\Firebase\Contract\Auth as FirebaseAuth;
-use Google\Cloud\Firestore\FirestoreClient;
 
 class ChatService
 {
-    private FirestoreClient $db;
     private FirebaseAuth $auth;
 
     public function __construct()
     {
-        /** @var Firestore $firestore */
-        $firestore = app('firebase.firestore');
-        $this->db  = $firestore->database();
-
         /** @var FirebaseAuth $fbAuth */
         $fbAuth     = app('firebase.auth');
         $this->auth = $fbAuth;
@@ -29,108 +22,99 @@ class ChatService
 
     public function mintCustomToken(User $user): string
     {
-        // Use the MySQL user ID as the Firebase UID so it's stable across devices.
-        // If the user already has a firebase_uid (from phone OTP), use that instead.
-        $uid = $user->firebase_uid ?? strval($user->id);
+        // ALWAYS use the MySQL user ID as the chat Firebase UID. It must match
+        // the value stamped into `participantUids` on every conversation doc
+        // (see buildConversationMetadata), which is also strval($user->id).
+        //
+        // We deliberately ignore `firebase_uid` (which can hold a phone-OTP
+        // UID): if it changed after a conversation was created, the cached
+        // participantUids would diverge and Firestore would deny reads with
+        // "Missing or insufficient permissions". MySQL ID is stable forever.
+        $uid = strval($user->id);
 
-        return (string) $this->auth->createCustomToken($uid);
+        return $this->auth->createCustomToken($uid)->toString();
     }
 
-    // ── Create or retrieve an existing conversation ───────────────────────────
+    // ── Build a deterministic conversation id ─────────────────────────────────
 
     /**
-     * Returns ['conversation_id' => string, 'is_new' => bool]
+     * Deterministic conversation ID per (ad, participant pair). Stable across calls
+     * so the buyer cannot create duplicate conversations with the same seller on the
+     * same ad — re-calling the endpoint just returns the same ID.
      */
-    public function findOrCreateConversation(User $buyer, Ad $ad): array
+    public static function conversationId(int $adId, int $userIdA, int $userIdB): string
     {
-        $seller   = $ad->user;
-        $buyerId  = strval($buyer->id);
-        $sellerId = strval($seller->id);
+        $low  = min($userIdA, $userIdB);
+        $high = max($userIdA, $userIdB);
 
-        // Canonical participant order: always [smaller_id, larger_id] for stable dedup
-        $participantIds = [(int)$buyerId < (int)$sellerId ? $buyerId : $sellerId,
-                           (int)$buyerId < (int)$sellerId ? $sellerId : $buyerId];
+        return "ad{$adId}_u{$low}_u{$high}";
+    }
 
-        $adIdStr = strval($ad->id);
+    // ── Build the metadata payload the client uses to seed the Firestore doc ──
 
-        // Query Firestore for an existing conversation between these two users on this ad
-        $existing = $this->db
-            ->collection('conversations')
-            ->where('adId', '=', $adIdStr)
-            ->where('participantIds', 'array-contains', $buyerId)
-            ->documents();
+    /**
+     * Returns the metadata the frontend needs to call Firestore's
+     * setDoc(merge:true) on the conversation doc the first time a message is
+     * sent. The backend itself does NOT touch Firestore here — it just returns
+     * canonical participant ordering and matching Firebase UIDs so the client
+     * can write a doc that complies with the security rules.
+     *
+     * @return array{
+     *   conversation_id: string,
+     *   participant_ids: array{0: string, 1: string},
+     *   participant_uids: array{0: string, 1: string},
+     *   ad_id: string,
+     *   ad_title: string,
+     *   ad_image: string|null,
+     *   seller: array{id: int, name: string, avatar: string|null, firebase_uid: string},
+     *   buyer:  array{id: int, name: string, firebase_uid: string},
+     * }
+     */
+    public function buildConversationMetadata(User $buyer, Ad $ad): array
+    {
+        $seller = $ad->user;
 
-        foreach ($existing as $doc) {
-            if ($doc->exists()) {
-                $data = $doc->data();
-                // Confirm other participant is the seller
-                if (in_array($sellerId, $data['participantIds'] ?? [])) {
-                    return ['conversation_id' => $doc->id(), 'is_new' => false];
-                }
-            }
-        }
+        $buyerId  = (int) $buyer->id;
+        $sellerId = (int) $seller->id;
 
-        // Build Firebase UIDs (fall back to "user_{id}" sentinel if no Firebase account yet)
-        $buyerUid  = $buyer->firebase_uid  ?? "user_{$buyer->id}";
-        $sellerUid = $seller->firebase_uid ?? "user_{$seller->id}";
+        // Canonical participant order: [smaller_id, larger_id] for stable dedup.
+        $participantIds = $buyerId < $sellerId
+            ? [strval($buyerId), strval($sellerId)]
+            : [strval($sellerId), strval($buyerId)];
 
-        $participantUids = [(int)$buyerId < (int)$sellerId ? $buyerUid : $sellerUid,
-                            (int)$buyerId < (int)$sellerId ? $sellerUid : $buyerUid];
+        // IMPORTANT: must match the UID used by mintCustomToken() — always
+        // strval($user->id), never $user->firebase_uid. Otherwise the doc's
+        // participantUids would go stale if the user later sets/changes their
+        // firebase_uid (e.g. via phone OTP) and Firestore would deny reads.
+        $buyerUid  = strval($buyer->id);
+        $sellerUid = strval($seller->id);
 
-        // Primary image
+        $participantUids = $buyerId < $sellerId
+            ? [$buyerUid, $sellerUid]
+            : [$sellerUid, $buyerUid];
+
         $adImage = $ad->images()->orderBy('sort_order')->value('image_url');
 
-        $now = new \Google\Cloud\Core\Timestamp(new \DateTime());
-
-        $docRef = $this->db->collection('conversations')->newDocument();
-        $docRef->set([
-            'participantIds'       => $participantIds,
-            'participantUids'      => $participantUids,
-            'adId'                 => $adIdStr,
-            'adTitle'              => $ad->title,
-            'adImage'              => $adImage,
-            'lastMessage'          => null,
-            'lastMessageAt'        => $now,
-            'lastMessageSenderId'  => null,
-            'unreadCount'          => [$buyerId => 0, $sellerId => 0],
-            'createdAt'            => $now,
-            'updatedAt'            => $now,
-        ]);
-
-        // Bump the ad's chat counter
-        $ad->increment('chats_count');
-
-        return ['conversation_id' => $docRef->id(), 'is_new' => true];
-    }
-
-    // ── List all conversations for a user (sorted by latest message) ──────────
-
-    /**
-     * Returns array of conversation data arrays, sorted by lastMessageAt desc.
-     */
-    public function listConversations(User $user): array
-    {
-        $userId = strval($user->id);
-
-        $snapshot = $this->db
-            ->collection('conversations')
-            ->where('participantIds', 'array-contains', $userId)
-            ->orderBy('lastMessageAt', 'DESCENDING')
-            ->limit(50)
-            ->documents();
-
-        $conversations = [];
-        foreach ($snapshot as $doc) {
-            if (!$doc->exists()) {
-                continue;
-            }
-            $data                     = $doc->data();
-            $data['id']               = $doc->id();
-            $data['my_unread_count']  = $data['unreadCount'][$userId] ?? 0;
-            $conversations[]          = $data;
-        }
-
-        return $conversations;
+        return [
+            'conversation_id' => self::conversationId($ad->id, $buyerId, $sellerId),
+            'participant_ids' => $participantIds,
+            'participant_uids' => $participantUids,
+            'ad_id'    => strval($ad->id),
+            'ad_title' => $ad->title,
+            'ad_image' => $adImage,
+            'seller'   => [
+                'id'           => $seller->id,
+                'name'         => $seller->name,
+                'avatar'       => $seller->avatar_url,
+                'firebase_uid' => $sellerUid,
+            ],
+            'buyer'    => [
+                'id'           => $buyer->id,
+                'name'         => $buyer->name,
+                'avatar'       => $buyer->avatar_url,
+                'firebase_uid' => $buyerUid,
+            ],
+        ];
     }
 
     // ── Trigger a push notification for a new message ─────────────────────────

@@ -1,33 +1,28 @@
 version: '3.9'
 
 services:
-  # ─── MySQL 8 ────────────────────────────────────────────────────────────────
-  mysql:
-    image: mysql:8.0
-    container_name: barq_mysql
+  # ─── PostgreSQL 15 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: barq_postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-***REMOVED***}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-barq_wadih}
-      MYSQL_USER: ${MYSQL_USER:-barq_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-***REMOVED***}
+      POSTGRES_DB: ${POSTGRES_DB:-barq_wadih}
+      POSTGRES_USER: ${POSTGRES_USER:-barq_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-***REMOVED***}
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./infra/mysql/conf.d:/etc/mysql/conf.d:ro
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - barq_network
-    command:
-      - '--character-set-server=utf8mb4'
-      - '--collation-server=utf8mb4_unicode_ci'
-      - '--default-authentication-plugin=mysql_native_password'
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-***REMOVED***}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barq_user} -d ${POSTGRES_DB:-barq_wadih}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 20s
 
   # ─── Redis 7 ────────────────────────────────────────────────────────────────
   redis:
@@ -70,7 +65,7 @@ services:
 
 # ─── Named Volumes ──────────────────────────────────────────────────────────
 volumes:
-  mysql_data:
+  postgres_data:
     driver: local
   redis_data:
     driver: local

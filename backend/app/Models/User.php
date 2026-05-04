@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -23,7 +24,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'email', 'phone', 'password',
         'phone_verified_at', 'email_verified_at',
-        'avatar', 'bio',
+        'avatar', 'cover_image', 'bio',
         'region_id', 'city_id',
         'is_dealer', 'is_verified', 'is_active',
         'role', 'firebase_uid', 'locale',
@@ -112,6 +113,18 @@ class User extends Authenticatable
         return $this->hasMany(CategoryFollow::class);
     }
 
+    /** Sellers this user follows. */
+    public function sellerFollows(): HasMany
+    {
+        return $this->hasMany(UserFollow::class, 'follower_id');
+    }
+
+    /** Users following this user (i.e. this user is the seller). */
+    public function followers(): HasMany
+    {
+        return $this->hasMany(UserFollow::class, 'followed_id');
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
@@ -172,6 +185,32 @@ class User extends Authenticatable
             ->where('ends_at', '>', now())
             ->latest()
             ->first();
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar) {
+            return null;
+        }
+        if (str_starts_with($this->avatar, 'http')) {
+            return $this->avatar;
+        }
+        // Legacy relative path — resolve via active disk.
+        $disk = config('filesystems.default', 'local') === 'local' ? 'public' : config('filesystems.default');
+        return Storage::disk($disk)->url($this->avatar);
+    }
+
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        if (! $this->cover_image) {
+            return null;
+        }
+        if (str_starts_with($this->cover_image, 'http')) {
+            return $this->cover_image;
+        }
+        // Legacy relative path — resolve via active disk.
+        $disk = config('filesystems.default', 'local') === 'local' ? 'public' : config('filesystems.default');
+        return Storage::disk($disk)->url($this->cover_image);
     }
 
     public function getUnreadNotificationsCountAttribute(): int

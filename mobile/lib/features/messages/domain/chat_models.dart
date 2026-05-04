@@ -12,6 +12,8 @@ class ConversationModel {
   final String? lastMessageSenderId;
   final Map<String, int> unreadCount;
   final DateTime createdAt;
+  final Map<String, String> peerNames;
+  final Map<String, String?> peerAvatars;
 
   const ConversationModel({
     required this.id,
@@ -25,9 +27,23 @@ class ConversationModel {
     this.lastMessageSenderId,
     required this.unreadCount,
     required this.createdAt,
+    this.peerNames = const {},
+    this.peerAvatars = const {},
   });
 
   int myUnreadCount(String myId) => unreadCount[myId] ?? 0;
+
+  /// Returns the display name for the other participant.
+  String otherName(String myId) {
+    final otherId = participantIds.firstWhere((id) => id != myId, orElse: () => '');
+    return peerNames[otherId] ?? adTitle;
+  }
+
+  /// Returns the avatar URL for the other participant (falls back to ad image).
+  String? otherAvatar(String myId) {
+    final otherId = participantIds.firstWhere((id) => id != myId, orElse: () => '');
+    return peerAvatars[otherId] ?? adImage;
+  }
 
   factory ConversationModel.fromFirestore(String id, Map<String, dynamic> data) {
     DateTime? toDateTime(dynamic v) {
@@ -55,6 +71,14 @@ class ConversationModel {
             .map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
       ),
       createdAt:             toDateTime(data['createdAt']) ?? DateTime.now(),
+      peerNames:             Map<String, String>.from(
+        (data['peerNames'] as Map<dynamic, dynamic>? ?? {})
+            .map((k, v) => MapEntry(k.toString(), v.toString())),
+      ),
+      peerAvatars:           Map<String, String?>.from(
+        (data['peerAvatars'] as Map<dynamic, dynamic>? ?? {})
+            .map((k, v) => MapEntry(k.toString(), v?.toString())),
+      ),
     );
   }
 }

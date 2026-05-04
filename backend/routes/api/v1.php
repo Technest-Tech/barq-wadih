@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AdController;
+use App\Http\Controllers\Api\V1\AdPaymentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DistrictController;
 use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\BoostController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -14,7 +16,10 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\RatingController;
 use App\Http\Controllers\Api\V1\RegionController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\SearchController;
+use App\Http\Controllers\Api\V1\UserFollowController;
+use App\Http\Controllers\Api\V1\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +40,10 @@ Route::get('categories',               [CategoryController::class, 'index'])->na
 Route::get('regions',                  [RegionController::class, 'index'])->name('regions.index');
 Route::get('regions/{slug}/cities',    [RegionController::class, 'cities'])->name('regions.cities');
 Route::get('cities',                   [RegionController::class, 'allCities'])->name('cities.index');
+Route::get('cities/{city}/districts',  [DistrictController::class, 'index'])->name('cities.districts');
+
+// ── Payment webhook (PSP-callable, signature-verified inside controller) ──
+Route::post('payment/webhook/moyasar', [AdPaymentController::class, 'webhook'])->name('payment.webhook.moyasar');
 
 // ── Sprint 5: Ads — public read ───────────────────────────────────────────────
 Route::get('ads',                      [AdController::class, 'index'])->name('ads.index');
@@ -52,8 +61,13 @@ Route::post('banners/{banner}/click',   [BannerController::class, 'click'])->nam
 // ── Sprint 13: Boost config — public, no auth required ─────────────────────
 Route::get('boost-config',               [BoostController::class, 'config'])->name('boost.config');
 
+// ── Questions — public read ───────────────────────────────────────────────────
+Route::get('ads/{ad}/questions',             [QuestionController::class, 'index'])->name('questions.index');
+
 // ── Sprint 9: Ratings & Reports — public reads ────────────────────────────────
 Route::get('ads/{ad}/ratings',               [RatingController::class, 'index'])->name('ratings.index');
+Route::get('users/{user}',                   [UserProfileController::class, 'show'])->name('users.show');
+Route::get('users/{user}/ads',               [UserProfileController::class, 'ads'])->name('users.ads');
 Route::get('users/{user}/ratings',           [RatingController::class, 'userRatings'])->name('users.ratings');
 Route::get('users/{user}/rating-summary',    [RatingController::class, 'summary'])->name('users.rating-summary');
 Route::get('reports/reasons',               [ReportController::class, 'reasons'])->name('reports.reasons');
@@ -72,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('me',           [AuthController::class, 'me'])->name('me');
         Route::put('me',           [AuthController::class, 'updateProfile'])->name('me.update');
         Route::post('me/avatar',   [AuthController::class, 'uploadAvatar'])->name('me.avatar');
+        Route::post('me/cover',    [AuthController::class, 'uploadCover'])->name('me.cover');
         Route::post('logout',      [AuthController::class, 'logout'])->name('logout');
         Route::post('logout-all',  [AuthController::class, 'logoutAll'])->name('logout.all');
     });
@@ -82,6 +97,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('ads/{ad}/sold',   [AdController::class, 'markSold'])->name('ads.sold');
     Route::patch('ads/{ad}',       [AdController::class, 'update'])->name('ads.update');
     Route::delete('ads/{ad}',      [AdController::class, 'destroy'])->name('ads.destroy');
+
+    // Publish-fee payment lifecycle (mocked driver in dev, Moyasar later)
+    Route::post('ads/{ad}/payment/init',    [AdPaymentController::class, 'init'])->name('ads.payment.init');
+    Route::post('ads/{ad}/payment/confirm', [AdPaymentController::class, 'confirm'])->name('ads.payment.confirm');
 
     // Sprint 13: Boost & Refresh
     Route::post('ads/{ad}/boost',         [BoostController::class, 'boost'])->name('ads.boost');
@@ -100,6 +119,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Sprint 9: Reports
     Route::post('ads/{ad}/report',           [ReportController::class, 'store'])->name('reports.store');
 
+    // Questions & Replies
+    Route::post('ads/{ad}/questions',           [QuestionController::class, 'store'])->name('questions.store');
+    Route::post('questions/{question}/reply',   [QuestionController::class, 'reply'])->name('questions.reply');
+
     // Sprint 8: Chat — Firestore companion API
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('token',                        [ChatController::class, 'token'])->name('token');
@@ -116,6 +139,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('categories/{category}/follow',          [CategoryFollowController::class, 'toggle'])->name('categories.follow');
     Route::get('categories/{category}/follow-status',    [CategoryFollowController::class, 'status'])->name('categories.follow.status');
     Route::get('follows',                                [CategoryFollowController::class, 'index'])->name('follows.index');
+
+    // Seller (User) Follow
+    Route::post('users/{user}/follow',                   [UserFollowController::class, 'toggle'])->name('users.follow');
+    Route::get('users/{user}/follow-status',             [UserFollowController::class, 'status'])->name('users.follow.status');
+    Route::get('seller-follows',                         [UserFollowController::class, 'index'])->name('seller-follows.index');
 
     // Sprint 10: Notifications
     Route::get('notifications',                          [NotificationController::class, 'index'])->name('notifications.index');

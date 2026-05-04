@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { List, LayoutGrid } from 'lucide-react';
 import Header from '@/components/layout/Header/Header';
 import CategoryTabs from '@/components/layout/CategoryTabs/CategoryTabs';
 import Footer from '@/components/layout/Footer/Footer';
@@ -32,6 +34,32 @@ const SORT_OPTS: { val: AdsFilters['sort']; label: string }[] = [
   { val: 'price_desc', label: '⬇ أعلى سعر' },
 ];
 
+type SelectedRegion = Pick<Region, 'id' | 'name_ar' | 'name_en' | 'slug'>;
+
+// Haversine distance in km between two lat/lng points.
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function findNearestCity(cities: City[], lat: number, lng: number): City | null {
+  let best: City | null = null;
+  let bestDist = Infinity;
+  for (const c of cities) {
+    if (c.latitude == null || c.longitude == null) continue;
+    const d = haversineKm(lat, lng, c.latitude, c.longitude);
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  return best;
+}
+
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   // Location — flat searchable city list
@@ -41,16 +69,15 @@ export default function HomePage() {
   const [citiesLoading, setCitiesLoading] = useState(true);
   const [locationOpen, setLocationOpen]   = useState(false);
   // Keep selectedRegion for feed filtering compatibility
-  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<SelectedRegion | null>(null);
   const locationRef = useRef<HTMLDivElement>(null);
 
-  // Search
-  const [query, setQuery]               = useState('');
-  const [searchResults, setSearchResults] = useState<AdListItem[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchOpen, setSearchOpen]     = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const params = useParams<{ locale?: string }>();
+  const searchParams = useSearchParams();
+  const locale = params?.locale ?? 'ar';
+  const urlQuery    = (searchParams?.get('q') ?? '').trim();
+  const urlCategory = (searchParams?.get('category') ?? '').trim();
 
   // Feed
   const [ads, setAds]             = useState<AdListItem[]>([]);
@@ -62,6 +89,10 @@ export default function HomePage() {
   const [total, setTotal]         = useState(0);
   const [viewMode, setViewMode]   = useState<'list' | 'grid'>('list');
   const [nearMe, setNearMe]     = useState(false);
+  const [feedError, setFeedError] = useState(false);
+  const [citiesError, setCitiesError] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   // Categories (quick nav & dropdown)
   const [categories, setCategories] = useState<Category[]>([]);
@@ -77,23 +108,36 @@ export default function HomePage() {
   const sbDropRef = useRef<HTMLDivElement>(null);
 
   // ── Boot ───────────────────────────────────────────────────────────────────
-  useEffect(() => {
+  const loadCities = useCallback(() => {
     setCitiesLoading(true);
+    setCitiesError(false);
     fetchAllCities()
       .then(setAllCities)
-      .catch(console.error)
+      .catch((e) => { console.error(e); setCitiesError(true); })
       .finally(() => setCitiesLoading(false));
-    fetchCategories().then(setCategories).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    loadCities();
+    fetchCategories().then(setCategories).catch(console.error);
+  }, [loadCities]);
+
+  // Sync ?category= URL param → selectedCategory once categories list is loaded
+  useEffect(() => {
+    if (!categories.length) return;
+    if (!urlCategory) {
+      setSelectedCategory(null);
+      return;
+    }
+    const match = categories.find(c => c.slug === urlCategory) ?? null;
+    setSelectedCategory(match);
+  }, [urlCategory, categories]);
 
   // Close dropdowns on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (locationRef.current && !locationRef.current.contains(e.target as Node)) {
         setLocationOpen(false);
-      }
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchOpen(false);
       }
       if (sbDropRef.current && !sbDropRef.current.contains(e.target as Node)) {
         setSbDropOpen(false);
@@ -103,63 +147,100 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // ── Live search ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (!query.trim()) { setSearchResults([]); setSearchOpen(false); return; }
-    setSearchLoading(true);
-    searchTimer.current = setTimeout(async () => {
-      try {
-        const res = await searchAds({ q: query.trim(), page: 1 });
-        setSearchResults(res.data.slice(0, 8));
-        setSearchOpen(true);
-      } catch { /* ignore */ } finally {
-        setSearchLoading(false);
-      }
-    }, 350);
-    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-  }, [query]);
-
   // ── Feed load ──────────────────────────────────────────────────────────────
+  // Uses searchAds when q is present (search term came from header bar / ?q=),
+  // otherwise the standard fetchAds feed.
   const loadAds = useCallback(async (filters: AdsFilters, reset = true) => {
     if (reset) setAdsLoading(true); else setLoadingMore(true);
+    setFeedError(false);
     try {
-      const res = await fetchAds(filters);
+      const res = filters.q && filters.q.trim().length > 0
+        ? await searchAds(filters)
+        : await fetchAds(filters);
       setAds(prev => reset ? res.data : [...prev, ...res.data]);
       setCurrentPage(res.meta?.current_page ?? 1);
       setLastPage(res.meta?.last_page ?? 1);
       setTotal(res.meta?.total ?? res.data.length);
-    } catch { /* silent */ } finally {
+    } catch (e) {
+      console.error(e);
+      if (reset) setAds([]);
+      setFeedError(true);
+    } finally {
       setAdsLoading(false);
       setLoadingMore(false);
     }
   }, []);
 
-  useEffect(() => {
+  // ── Near-me: geolocation → nearest city ────────────────────────────────────
+  const handleNearMeToggle = useCallback((next: boolean) => {
+    setGeoError(null);
+    if (!next) {
+      setNearMe(false);
+      return;
+    }
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoError('المتصفح لا يدعم تحديد الموقع');
+      return;
+    }
+    if (allCities.length === 0) {
+      setGeoError('لم يتم تحميل المدن بعد');
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const nearest = findNearestCity(allCities, pos.coords.latitude, pos.coords.longitude);
+        setGeoLoading(false);
+        if (!nearest) { setGeoError('تعذّر إيجاد مدينة قريبة'); return; }
+        setSelectedCity(nearest);
+        setSelectedRegion(nearest.region ?? null);
+        setNearMe(true);
+      },
+      (err) => {
+        setGeoLoading(false);
+        setGeoError(
+          err.code === err.PERMISSION_DENIED
+            ? 'يجب السماح بالوصول للموقع'
+            : 'تعذّر تحديد موقعك'
+        );
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60_000 }
+    );
+  }, [allCities]);
+
+  const retryLoad = useCallback(() => {
     loadAds({
       sort,
+      q:         urlQuery || undefined,
       city_id:   selectedCity?.id,
       region_id: selectedCity ? undefined : selectedRegion?.id,
       category_id: selectedCategory?.id,
       page: 1,
     }, true);
-  }, [sort, selectedCity, selectedRegion, selectedCategory, loadAds]);
+    if (citiesError) loadCities();
+  }, [loadAds, sort, urlQuery, selectedCity, selectedRegion, selectedCategory, citiesError, loadCities]);
+
+  useEffect(() => {
+    loadAds({
+      sort,
+      q:         urlQuery || undefined,
+      city_id:   selectedCity?.id,
+      region_id: selectedCity ? undefined : selectedRegion?.id,
+      category_id: selectedCategory?.id,
+      page: 1,
+    }, true);
+  }, [sort, urlQuery, selectedCity, selectedRegion, selectedCategory, loadAds]);
 
   const handleLoadMore = () => {
     if (currentPage >= lastPage) return;
     loadAds({
       sort,
+      q:         urlQuery || undefined,
       city_id:   selectedCity?.id,
       region_id: selectedCity ? undefined : selectedRegion?.id,
       category_id: selectedCategory?.id,
       page: currentPage + 1,
     }, false);
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchOpen(false);
-    if (query.trim()) window.location.href = `/ar/search?q=${encodeURIComponent(query.trim())}`;
   };
 
   const locationLabel = selectedCity
@@ -243,7 +324,7 @@ export default function HomePage() {
                         className={`${styles.locItem} ${selectedCity?.id === c.id ? styles.locItemActive : ''}`}
                         onClick={() => {
                           setSelectedCity(c);
-                          setSelectedRegion(c.region ? { id: c.region.id, name_ar: c.region.name_ar, name_en: c.region.name_en, slug: c.region.slug, sort_order: 0, cities_count: 0 } : null);
+                          setSelectedRegion(c.region ?? null);
                           setLocationOpen(false);
                           setCitySearch('');
                         }}
@@ -258,11 +339,16 @@ export default function HomePage() {
             )}
             </div>
 
-            {/* Near Me Toggle */}
-            <label className={`${styles.nearMeToggle} ${nearMe ? styles.nearMeActive : ''}`}>
-              <input type="checkbox" checked={nearMe} onChange={e => setNearMe(e.target.checked)} className={styles.srOnly} />
-              القريب مني
-            </label>
+            {/* Near Me Toggle — uses browser geolocation to snap feed to nearest city */}
+            <button
+              type="button"
+              className={`${styles.nearMeToggle} ${nearMe ? styles.nearMeActive : ''}`}
+              onClick={() => handleNearMeToggle(!nearMe)}
+              disabled={geoLoading || citiesLoading}
+              title={geoError ?? 'اعرض إعلانات أقرب مدينة لموقعك'}
+            >
+              {geoLoading ? '…جارٍ تحديد الموقع' : '📍 القريب مني'}
+            </button>
           </div>
 
 
@@ -337,7 +423,8 @@ export default function HomePage() {
                                 setCategorySearch('');
                               }}
                             >
-                              <span>{c.icon ?? '📁'} {c.name_ar}</span>
+                              <CategoryIcon icon={c.icon} name={c.name_ar} />
+                              <span>{c.name_ar}</span>
                             </button>
                           ))
                       )}
@@ -378,17 +465,18 @@ export default function HomePage() {
                       </label>
                     ))}
                   </div>
-                  {/* Condition */}
+                  {/* Distance */}
                   <div className={styles.sbFilterSection}>
                     <div className={styles.sbFilterLabel}>المسافة</div>
                     <label className={styles.radioItem}>
-                      <input type="radio" name="condition-sb" className={styles.radio} checked={!nearMe} onChange={() => setNearMe(false)} />
+                      <input type="radio" name="condition-sb" className={styles.radio} checked={!nearMe} onChange={() => handleNearMeToggle(false)} />
                       الكل
                     </label>
                     <label className={styles.radioItem}>
-                      <input type="radio" name="condition-sb" className={styles.radio} checked={nearMe} onChange={() => setNearMe(true)} />
-                      القريب مني
+                      <input type="radio" name="condition-sb" className={styles.radio} checked={nearMe} onChange={() => handleNearMeToggle(true)} disabled={geoLoading || citiesLoading} />
+                      القريب مني {geoLoading && '…'}
                     </label>
+                    {geoError && <div className={styles.sbFilterError}>{geoError}</div>}
                   </div>
                   {/* Cities from allCities filtered by selectedRegion */}
                   {selectedRegion && (
@@ -425,19 +513,23 @@ export default function HomePage() {
               <div className={styles.sbCardFlat}>
                 <h3 className={styles.sbNavTitleFlat}>تنقل السريع</h3>
                 <div className={styles.sbNavListFlat}>
-                  {(showMoreCats ? categories : categories.slice(0, 6)).map(cat => (
-                    <Link
-                      key={cat.slug}
-                      href={`/ar/categories/${cat.slug}`}
-                      id={`nav-cat-${cat.slug}`}
-                      className={styles.sbNavItemFlat}
-                      title={cat.name_ar}
-                    >
-                      <span className={styles.sbNavEmojiFlat}>{cat.icon || '📁'}</span>
-                      <span className={styles.sbNavLabelFlat}>{cat.name_ar}</span>
-                      <span className={styles.sbNavArrowFlat}>←</span>
-                    </Link>
-                  ))}
+                  {(showMoreCats ? categories : categories.slice(0, 6)).map(cat => {
+                    const active = selectedCategory?.id === cat.id;
+                    return (
+                      <button
+                        key={cat.slug}
+                        id={`nav-cat-${cat.slug}`}
+                        type="button"
+                        className={`${styles.sbNavItemFlat} ${active ? styles.sbNavItemFlatActive : ''}`}
+                        title={cat.name_ar}
+                        onClick={() => setSelectedCategory(active ? null : cat)}
+                      >
+                        <CategoryIcon icon={cat.icon} name={cat.name_ar} className={styles.sbNavEmojiFlat} />
+                        <span className={styles.sbNavLabelFlat}>{cat.name_ar}</span>
+                        <span className={styles.sbNavArrowFlat}>{active ? '✓' : '←'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {categories.length > 6 && (
@@ -466,7 +558,33 @@ export default function HomePage() {
                 </span>
                 <button
                   className={styles.breadcrumbClear}
-                  onClick={() => { setSelectedRegion(null); setSelectedCity(null); }}
+                  onClick={() => { setSelectedRegion(null); setSelectedCity(null); setNearMe(false); }}
+                >
+                  ✕ إلغاء
+                </button>
+              </div>
+            )}
+
+            {/* Active search-term chip */}
+            {urlQuery && (
+              <div className={styles.activeBreadcrumb}>
+                <span className={styles.breadcrumbText}>🔎 «{urlQuery}»</span>
+                <button
+                  className={styles.breadcrumbClear}
+                  onClick={() => router.replace(`/${locale}`)}
+                >
+                  ✕ إلغاء البحث
+                </button>
+              </div>
+            )}
+
+            {/* Active category chip */}
+            {selectedCategory && (
+              <div className={styles.activeBreadcrumb}>
+                <span className={styles.breadcrumbText}>📦 {selectedCategory.name_ar}</span>
+                <button
+                  className={styles.breadcrumbClear}
+                  onClick={() => setSelectedCategory(null)}
                 >
                   ✕ إلغاء
                 </button>
@@ -476,6 +594,45 @@ export default function HomePage() {
 
             {/* Banner */}
             <BannerCarousel position="home_top" />
+
+            {/* Feed header: result count + view-mode toggle */}
+            <div className={styles.feedHeader}>
+              <div className={styles.feedCount}>
+                {!adsLoading && total > 0 && `${total.toLocaleString('ar-SA')} إعلان`}
+              </div>
+              <div className={styles.viewToggleGroup} role="group" aria-label="نمط العرض">
+                <button
+                  type="button"
+                  className={`${styles.viewToggleBtn} ${viewMode === 'list' ? styles.viewToggleBtnActive : ''}`}
+                  onClick={() => setViewMode('list')}
+                  aria-pressed={viewMode === 'list'}
+                  aria-label="عرض قائمة"
+                  title="عرض قائمة"
+                >
+                  <List size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.viewToggleBtnActive : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  aria-pressed={viewMode === 'grid'}
+                  aria-label="عرض شبكي"
+                  title="عرض شبكي"
+                >
+                  <LayoutGrid size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Error banner */}
+            {feedError && !adsLoading && (
+              <div className={styles.feedError} role="alert">
+                <span>تعذّر تحميل الإعلانات. تحقّق من اتصالك ثم حاول مجدداً.</span>
+                <button className={styles.feedErrorRetry} onClick={() => retryLoad()}>
+                  إعادة المحاولة
+                </button>
+              </div>
+            )}
 
             {/* Skeletons */}
             {adsLoading && (
@@ -493,11 +650,11 @@ export default function HomePage() {
               viewMode === 'list'
                 ? (
                   <div className={styles.adList}>
-                    {ads.map(ad => <AdListRow key={ad.id} ad={ad} />)}
+                    {ads.map(ad => <AdListRow key={ad.id} ad={ad} locale={locale} />)}
                   </div>
                 ) : (
                   <div className={styles.adGrid}>
-                    {ads.map(ad => <AdCard key={ad.id} ad={ad} />)}
+                    {ads.map(ad => <AdCard key={ad.id} ad={ad} locale={locale} />)}
                   </div>
                 )
             )}
@@ -508,7 +665,7 @@ export default function HomePage() {
                 <span className={styles.emptyFeedIcon}>🔍</span>
                 <h3>لا توجد إعلانات</h3>
                 <p>لم يتم العثور على إعلانات بالفلاتر المحددة. جرّب تغيير المدينة أو التصنيف.</p>
-                <Link href="/ar/post-ad" className={styles.emptyFeedCta}>+ نشر أول إعلان</Link>
+                <Link href={`/${locale}/post-ad`} className={styles.emptyFeedCta}>+ نشر أول إعلان</Link>
               </div>
             )}
 
@@ -542,7 +699,7 @@ export default function HomePage() {
         sort={sort}
         onSortChange={setSort}
         nearMe={nearMe}
-        onNearMeChange={setNearMe}
+        onNearMeChange={handleNearMeToggle}
       />
 
       {/* ── Auth Modal ─────────────────────────────────────────────── */}
@@ -551,20 +708,33 @@ export default function HomePage() {
   );
 }
 
+// ── Category icon: renders <img> for URL icons, emoji text otherwise ──────────
+function CategoryIcon({
+  icon,
+  name,
+  className,
+}: {
+  icon: string | null | undefined;
+  name: string;
+  className?: string;
+}) {
+  if (icon?.startsWith('http')) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={icon} alt={name} className={className} style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }} />;
+  }
+  return <span className={className}>{icon ?? '📦'}</span>;
+}
+
 // ── Ad List Row (Haraj-style) ─────────────────────────────────────────────────
-function AdListRow({ ad }: { ad: AdListItem }) {
+function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
   const priceText = ad.is_free
     ? 'مجانية'
     : ad.price
       ? `${Number(ad.price).toLocaleString('ar-SA')}`
       : 'على السوم';
 
-  // Demo image fallback based on ad.id modulo
-  const DEMO_IMAGES = ['/images/car.jpg', '/images/fridge.jpeg', '/images/labtop.webp', '/images/mobile.jpeg'];
-  const imgSrc = ad.primary_image?.thumbnail_url || DEMO_IMAGES[ad.id % DEMO_IMAGES.length];
-
   return (
-    <Link href={`/ar/ads/${ad.id}`} className={styles.adListRowHaraj}>
+    <Link href={`/${locale}/ads/${ad.id}`} className={styles.adListRowHaraj}>
       {/* 1) Info on Right Side (RTL Start) */}
       <div className={styles.adListInfoRight}>
         <h3 className={styles.adListTitleHaraj}>{ad.title}</h3>
@@ -598,7 +768,15 @@ function AdListRow({ ad }: { ad: AdListItem }) {
       {/* 3) Image on Left Side (RTL End) */}
       <div className={styles.adListMediaLeft}>
         <div className={styles.adListImgWrapper}>
-          <img src={imgSrc} alt={ad.title} className={styles.adListImgReal} />
+          {ad.primary_image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={ad.primary_image.thumbnail_url} alt={ad.title} className={styles.adListImgReal} />
+          ) : (
+            <div className={styles.adImgPlaceholder}>
+              <CategoryIcon icon={ad.category?.icon} name={ad.category?.name_ar ?? ''} />
+              <small>لا توجد صورة</small>
+            </div>
+          )}
           {ad.is_boosted && <span className={styles.boostBadgeTop}>⭐ مميز</span>}
         </div>
       </div>
@@ -607,7 +785,7 @@ function AdListRow({ ad }: { ad: AdListItem }) {
 }
 
 // ── Ad Grid Card ──────────────────────────────────────────────────────────────
-function AdCard({ ad }: { ad: AdListItem }) {
+function AdCard({ ad, locale }: { ad: AdListItem; locale: string }) {
   const priceText = ad.is_free
     ? 'مجاني'
     : ad.price
@@ -615,14 +793,14 @@ function AdCard({ ad }: { ad: AdListItem }) {
       : 'السعر عند التواصل';
 
   return (
-    <Link href={`/ar/ads/${ad.id}`} className={styles.adCard}>
+    <Link href={`/${locale}/ads/${ad.id}`} className={styles.adCard}>
       <div className={styles.adImg}>
         {ad.primary_image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={ad.primary_image.thumbnail_url} alt={ad.title} className={styles.adImgReal} />
         ) : (
           <div className={styles.adImgPlaceholder}>
-            <span>{ad.category?.icon ?? '📦'}</span>
+            <CategoryIcon icon={ad.category?.icon} name={ad.category?.name_ar ?? ''} />
             <small>لا توجد صورة</small>
           </div>
         )}

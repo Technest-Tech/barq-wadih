@@ -1,16 +1,17 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { usePathname } from 'next/navigation';
 import styles from './layout.module.css';
 
-export const metadata: Metadata = {
-  title: 'تسجيل الدخول | برق واضح',
-  description: 'سجّل دخولك أو أنشئ حسابك في برق واضح — منصة الإعلانات المبوبة الأولى في السعودية',
-};
-
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className={styles.wrapper}>
+  const pathname = usePathname() ?? '';
+  const isRegister = pathname.endsWith('/register');
 
-      {/* ── Brand mural (desktop only) ── */}
+  return (
+    <div className={`${styles.wrapper} ${isRegister ? styles.wrapperFocused : ''}`}>
+
+      {/* ── Brand mural (desktop only, hidden on register for focus) ── */}
+      {!isRegister && (
       <div className={styles.mural}>
         <div className={styles.muralContent}>
           <div className={styles.logoMark}>⚡</div>
@@ -38,6 +39,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Form panel ── */}
       <div className={styles.formPanel}>

@@ -31,6 +31,11 @@ class Region extends Model
         return $this->hasMany(City::class);
     }
 
+    public function districts(): HasMany
+    {
+        return $this->hasMany(District::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
 
     /** @param  \Illuminate\Database\Eloquent\Builder<Region>  $query */

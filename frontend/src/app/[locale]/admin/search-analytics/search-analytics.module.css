@@ -10,8 +10,8 @@
 }
 
 .summaryCard {
-  background: var(--admin-card-bg, #1a1f2e);
-  border: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  background: var(--admin-card-bg);
+  border: 1px solid var(--admin-border, rgba(0,0,0,0.08));
   border-radius: 14px;
   padding: 1.25rem;
   text-align: center;
@@ -19,11 +19,11 @@
 .summaryValue {
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--admin-text, #f1f5f9);
+  color: var(--admin-text);
 }
 .summaryLabel {
   font-size: .82rem;
-  color: var(--admin-text-muted, #94a3b8);
+  color: var(--admin-text-muted);
   margin-top: .25rem;
 }
 
@@ -36,8 +36,8 @@
 }
 
 .card {
-  background: var(--admin-card-bg, #1a1f2e);
-  border: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  background: var(--admin-card-bg);
+  border: 1px solid var(--admin-border, rgba(0,0,0,0.08));
   border-radius: 14px;
   padding: 1.5rem;
 }
@@ -45,7 +45,7 @@
 .cardTitle {
   font-size: .95rem;
   font-weight: 700;
-  color: var(--admin-text, #f1f5f9);
+  color: var(--admin-text);
   margin-bottom: 1rem;
 }
 
@@ -67,17 +67,17 @@
   padding: .7rem .75rem;
   text-align: right;
   font-weight: 600;
-  color: var(--admin-text-muted, #94a3b8);
+  color: var(--admin-text-muted);
   font-size: .75rem;
   text-transform: uppercase;
   letter-spacing: .03em;
-  border-bottom: 1px solid var(--admin-border, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--admin-border, rgba(0,0,0,0.08));
 }
 
 .termsTable td {
   padding: .6rem .75rem;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  color: var(--admin-text, #f1f5f9);
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  color: var(--admin-text);
 }
 
 .queryText {
@@ -97,7 +97,7 @@
 
 .avgResults {
   font-size: .82rem;
-  color: var(--admin-text-muted, #94a3b8);
+  color: var(--admin-text-muted);
 }
 
 .zeroCountBadge {
@@ -111,7 +111,7 @@
 
 .dateCell {
   font-size: .78rem;
-  color: var(--admin-text-muted, #64748b);
+  color: var(--admin-text-muted);
 }
 
 /* ── Platform chips ──────────────────────────────────────────────────────── */
@@ -139,13 +139,13 @@
 
 .platformLabel {
   font-size: .85rem;
-  color: var(--admin-text, #f1f5f9);
+  color: var(--admin-text);
 }
 
 .platformCount {
   font-size: .85rem;
   font-weight: 700;
-  color: var(--admin-text, #f1f5f9);
+  color: var(--admin-text);
 }
 
 /* ── Scrollable ──────────────────────────────────────────────────────────── */
@@ -161,11 +161,11 @@
   justify-content: center;
   gap: 1rem;
   padding: 4rem 2rem;
-  color: var(--admin-text-muted, #94a3b8);
+  color: var(--admin-text-muted);
 }
 .loadingSpinner {
   width: 24px; height: 24px;
-  border: 3px solid rgba(255,255,255,0.1);
+  border: 3px solid rgba(0,0,0,0.1);
   border-top-color: #6366f1;
   border-radius: 50%;
   animation: spin .7s linear infinite;

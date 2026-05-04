@@ -261,6 +261,9 @@ export interface AdminCategory {
   description_ar: string | null;
   description_en: string | null;
   commission_rate: string | null;
+  publish_fee_individual: string | null;
+  publish_fee_dealer: string | null;
+  fee_deductible_from_commission: boolean;
   is_free: boolean;
   is_active: boolean;
   sort_order: number;

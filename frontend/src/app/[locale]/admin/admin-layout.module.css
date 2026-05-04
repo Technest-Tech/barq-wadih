@@ -1,43 +1,44 @@
-/* ── Admin Layout — Premium Dark Theme ──────────────────────────────────── */
+/* ── Admin Layout — Premium Light ────────────────────────────────────────── */
 
-/* ── Admin Design Tokens ─────────────────────────────────────────────────── */
 :root {
-  --admin-bg:             #0a0e1a;
-  --admin-bg-secondary:   #111827;
-  --admin-surface:        #1a1f2e;
-  --admin-surface-hover:  #242b3d;
-  --admin-surface-active: #2d3548;
-  --admin-border:         rgba(255, 255, 255, 0.06);
-  --admin-border-strong:  rgba(255, 255, 255, 0.12);
+  --admin-bg:             #f5f7fb;
+  --admin-bg-secondary:   #eef1f6;
+  --admin-surface:        #ffffff;
+  --admin-surface-hover:  #f4f6fa;
+  --admin-surface-active: #edf0f6;
+  --admin-border:         #e8edf3;
+  --admin-border-strong:  #d1d9e0;
 
-  --admin-text:           #f1f5f9;
-  --admin-text-secondary: #94a3b8;
-  --admin-text-muted:     #64748b;
+  --admin-text:           #0f172a;
+  --admin-text-secondary: #475569;
+  --admin-text-muted:     #94a3b8;
 
   --admin-accent:         #6366f1;
   --admin-accent-hover:   #818cf8;
   --admin-accent-glow:    rgba(99, 102, 241, 0.15);
   --admin-accent-soft:    rgba(99, 102, 241, 0.08);
 
-  --admin-success:        #22c55e;
-  --admin-success-bg:     rgba(34, 197, 94, 0.1);
-  --admin-warning:        #f59e0b;
-  --admin-warning-bg:     rgba(245, 158, 11, 0.1);
-  --admin-danger:         #ef4444;
-  --admin-danger-bg:      rgba(239, 68, 68, 0.1);
-  --admin-info:           #3b82f6;
-  --admin-info-bg:        rgba(59, 130, 246, 0.1);
+  --admin-success:        #16a34a;
+  --admin-success-bg:     rgba(22, 163, 74, 0.08);
+  --admin-warning:        #d97706;
+  --admin-warning-bg:     rgba(217, 119, 6, 0.08);
+  --admin-danger:         #dc2626;
+  --admin-danger-bg:      rgba(220, 38, 38, 0.08);
+  --admin-info:           #2563eb;
+  --admin-info-bg:        rgba(37, 99, 235, 0.08);
 
-  --admin-sidebar-width:  260px;
-  --admin-sidebar-collapsed: 72px;
-  --admin-header-height:  64px;
+  --admin-card-bg:        #ffffff;
+  --admin-input-bg:       #f8fafc;
+  --admin-sidebar-width:  256px;
+  --admin-sidebar-collapsed: 68px;
+  --admin-header-height:  60px;
   --admin-radius:         12px;
   --admin-radius-sm:      8px;
   --admin-radius-lg:      16px;
 
-  --admin-shadow:         0 4px 24px rgba(0, 0, 0, 0.3);
-  --admin-shadow-lg:      0 8px 40px rgba(0, 0, 0, 0.4);
-  --admin-shadow-glow:    0 0 30px rgba(99, 102, 241, 0.1);
+  --admin-shadow:         0 1px 8px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.04);
+  --admin-shadow-lg:      0 4px 24px rgba(15, 23, 42, 0.1), 0 8px 40px rgba(15, 23, 42, 0.06);
+  --admin-shadow-glow:    0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 /* ── Layout Grid ─────────────────────────────────────────────────────────── */
@@ -48,10 +49,11 @@
   grid-template-areas:
     "sidebar header"
     "sidebar main";
-  min-height: 100svh;
+  height: 100svh;
+  overflow: hidden;
   background: var(--admin-bg);
   color: var(--admin-text);
-  font-family: 'Inter', 'Segoe UI', 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'Tajawal', system-ui, sans-serif;
   direction: rtl;
   transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -60,22 +62,14 @@
   grid-template-columns: var(--admin-sidebar-collapsed) 1fr;
 }
 
+/* ── Main Content ────────────────────────────────────────────────────────── */
 .adminMain {
   grid-area: main;
-  padding: 24px;
+  padding: 28px;
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--admin-bg);
-}
-
-/* ── Glassmorphism utilities ─────────────────────────────────────────────── */
-.glassCard {
-  background: linear-gradient(135deg, rgba(26, 31, 46, 0.8), rgba(26, 31, 46, 0.5));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow);
+  min-height: 0;
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
@@ -92,23 +86,19 @@
   }
 
   .adminMain {
-    padding: 16px;
+    padding: 20px 16px;
   }
 }
 
 @media (max-width: 640px) {
   .adminMain {
-    padding: 12px;
+    padding: 14px 12px;
   }
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
-.adminMain::-webkit-scrollbar {
-  width: 6px;
-}
-.adminMain::-webkit-scrollbar-track {
-  background: transparent;
-}
+.adminMain::-webkit-scrollbar { width: 5px; }
+.adminMain::-webkit-scrollbar-track { background: transparent; }
 .adminMain::-webkit-scrollbar-thumb {
   background: var(--admin-border-strong);
   border-radius: 3px;
@@ -132,21 +122,24 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  color: var(--admin-text-muted);
+  font-size: 14px;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border: 3px solid var(--admin-border);
   border-top-color: var(--admin-accent);
   border-radius: 50%;
-  animation: adminSpin 0.8s linear infinite;
+  animation: adminSpin 0.75s linear infinite;
 }
 
 @keyframes adminSpin {
   to { transform: rotate(360deg); }
 }
 
+/* ── Access Denied ───────────────────────────────────────────────────────── */
 .accessDenied {
   display: flex;
   flex-direction: column;
@@ -161,13 +154,15 @@
 }
 
 .accessDenied h1 {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
   color: var(--admin-danger);
 }
 
 .accessDenied p {
   color: var(--admin-text-secondary);
   max-width: 400px;
+  font-size: 15px;
 }
 
 .backLink {
@@ -176,14 +171,17 @@
   padding: 10px 24px;
   border: 1px solid var(--admin-accent);
   border-radius: var(--admin-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
   transition: all 0.2s;
 }
+
 .backLink:hover {
   background: var(--admin-accent);
   color: white;
 }
 
-/* ── Mobileoverlay ───────────────────────────────────────────────────────── */
+/* ── Mobile overlay ──────────────────────────────────────────────────────── */
 .mobileOverlay {
   display: none;
 }
@@ -193,7 +191,9 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
     z-index: 998;
     animation: fadeIn 0.2s ease;
   }
@@ -201,5 +201,5 @@
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }

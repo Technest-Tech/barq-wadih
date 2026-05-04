@@ -19,7 +19,10 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
-  overflow-x: hidden;
+  /* clip = clips visually but does NOT create a scroll container,
+     so position:sticky on descendants continues to work. */
+  overflow-x: clip;
+  scroll-padding-top: var(--pinned-height, 202px);
 }
 
 body {
@@ -32,7 +35,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color var(--transition-base), color var(--transition-base);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* ── RTL / LTR font switching ────────────────────────────────────────────── */

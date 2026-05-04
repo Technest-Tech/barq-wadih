@@ -25,11 +25,19 @@ class StoreAdRequest extends FormRequest
             'title'          => ['required', 'string', 'min:3', 'max:100'],
             'description'    => ['required', 'string', 'min:10', 'max:5000'],
             'price'          => ['required_if:is_free,false', 'nullable', 'numeric', 'min:0', 'max:9999999'],
+            'price_hidden'   => ['sometimes', 'boolean'],
             'is_negotiable'  => ['sometimes', 'boolean'],
             'is_free'        => ['sometimes', 'boolean'],
-            'contact_phone'  => ['required', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
+            'contact_phone'  => ['nullable', 'required_if:show_phone_publicly,1', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
             'contact_whatsapp' => ['nullable', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
+            'show_phone_publicly' => ['sometimes', 'boolean'],
             'pledge_accepted'=> ['required', 'accepted'],
+
+            // Location depth
+            'district_id'        => ['nullable', 'integer', 'exists:districts,id'],
+            'district_name_free' => ['nullable', 'string', 'max:120'],
+            'latitude'           => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'          => ['nullable', 'numeric', 'between:-180,180'],
 
             // Images — 1 to 10
             'images'         => ['required', 'array', 'min:1', 'max:10'],
@@ -68,6 +76,27 @@ class StoreAdRequest extends FormRequest
             foreach ($requiredFields as $key) {
                 if (! array_key_exists($key, $submittedFields) || blank($submittedFields[$key])) {
                     $v->errors()->add("fields.{$key}", "الحقل '{$key}' مطلوب لهذا التصنيف.");
+                }
+            }
+
+            // Need at least one location-depth signal: a district FK, a free-text
+            // district name, or a map pin. The wizard always gathers at least one.
+            $hasDistrict     = ! blank($this->input('district_id'));
+            $hasDistrictFree = ! blank($this->input('district_name_free'));
+            $hasMapPin       = ! blank($this->input('latitude')) && ! blank($this->input('longitude'));
+            if (! $hasDistrict && ! $hasDistrictFree && ! $hasMapPin) {
+                $v->errors()->add('district_id', 'يجب اختيار الحي أو تحديد الموقع على الخريطة.');
+            }
+
+            // If district_id is given, it must belong to the same city.
+            if ($hasDistrict) {
+                $cityId     = (int) $this->input('city_id');
+                $districtId = (int) $this->input('district_id');
+                $belongs = \App\Models\District::where('id', $districtId)
+                    ->where('city_id', $cityId)
+                    ->exists();
+                if (! $belongs) {
+                    $v->errors()->add('district_id', 'الحي المحدد لا ينتمي إلى المدينة المختارة.');
                 }
             }
         });

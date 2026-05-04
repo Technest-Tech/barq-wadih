@@ -11,7 +11,11 @@ export interface AuthUser {
   name: string;
   email: string | null;
   phone: string | null;
+  /** The Firebase UID that the backend mints for this user. The frontend
+   *  compares this to firebaseAuth.currentUser?.uid to detect stale sessions. */
+  firebase_uid: string;
   avatar_url: string | null;
+  cover_image_url: string | null;
   bio: string | null;
   role: 'user' | 'admin' | 'super_admin';
   locale: 'ar' | 'en';

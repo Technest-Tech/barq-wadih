@@ -17,32 +17,40 @@ class Ad extends Model
     use HasFactory, SoftDeletes, Searchable;
 
     protected $fillable = [
-        'user_id', 'category_id', 'city_id', 'region_id',
-        'title', 'description', 'price',
+        'user_id', 'category_id', 'city_id', 'region_id', 'district_id', 'district_name_free',
+        'latitude', 'longitude',
+        'title', 'description', 'price', 'price_hidden',
         'is_negotiable', 'is_free',
         'status', 'moderation_status', 'moderation_note',
         'views_count', 'favorites_count', 'chats_count',
-        'contact_phone', 'contact_whatsapp',
+        'contact_phone', 'contact_whatsapp', 'show_phone_publicly',
         'commission_amount', 'commission_status', 'sale_declared_at',
+        'payment_status', 'payment_amount', 'payment_provider', 'payment_reference', 'paid_at',
         'is_boosted', 'boosted_until',
         'pledge_accepted', 'expires_at', 'expiry_notified_at', 'published_at',
     ];
 
     protected $casts = [
-        'status'            => AdStatus::class,
-        'moderation_status' => ModerationStatus::class,
-        'commission_status' => CommissionStatus::class,
-        'price'             => 'decimal:2',
-        'commission_amount' => 'decimal:2',
-        'is_negotiable'     => 'boolean',
-        'is_free'           => 'boolean',
-        'is_boosted'        => 'boolean',
-        'pledge_accepted'   => 'boolean',
-        'expires_at'        => 'datetime',
-        'boosted_until'     => 'datetime',
-        'sale_declared_at'  => 'datetime',
-        'expiry_notified_at'=> 'datetime',
-        'published_at'      => 'datetime',
+        'status'              => AdStatus::class,
+        'moderation_status'   => ModerationStatus::class,
+        'commission_status'   => CommissionStatus::class,
+        'price'               => 'decimal:2',
+        'price_hidden'        => 'boolean',
+        'commission_amount'   => 'decimal:2',
+        'payment_amount'      => 'decimal:2',
+        'paid_at'             => 'datetime',
+        'is_negotiable'       => 'boolean',
+        'is_free'             => 'boolean',
+        'is_boosted'          => 'boolean',
+        'pledge_accepted'     => 'boolean',
+        'show_phone_publicly' => 'boolean',
+        'latitude'            => 'float',
+        'longitude'           => 'float',
+        'expires_at'          => 'datetime',
+        'boosted_until'       => 'datetime',
+        'sale_declared_at'    => 'datetime',
+        'expiry_notified_at'  => 'datetime',
+        'published_at'        => 'datetime',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
@@ -65,6 +73,11 @@ class Ad extends Model
     public function region(): BelongsTo
     {
         return $this->belongsTo(Region::class);
+    }
+
+    public function district(): BelongsTo
+    {
+        return $this->belongsTo(District::class);
     }
 
     public function images(): HasMany

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <defs>
+    <pattern id="haraj-bg" x="0" y="0" width="240" height="240" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.18">
+        <!-- chat bubble -->
+        <path d="M14 22 h28 a6 6 0 0 1 6 6 v14 a6 6 0 0 1 -6 6 h-18 l-10 8 v-8 a6 6 0 0 1 -6 -6 v-14 a6 6 0 0 1 6 -6z"/>
+        <!-- envelope -->
+        <rect x="78" y="26" width="36" height="22" rx="3"/>
+        <path d="M78 30 l18 12 l18 -12"/>
+        <!-- camera -->
+        <rect x="148" y="22" width="38" height="26" rx="4"/>
+        <circle cx="167" cy="35" r="6"/>
+        <path d="M156 22 l3 -4 h16 l3 4"/>
+        <!-- shoe -->
+        <path d="M198 38 c4 -8 14 -14 24 -10 c4 2 6 6 6 10 v6 h-30z"/>
+        <line x1="206" y1="40" x2="208" y2="44"/>
+        <line x1="212" y1="38" x2="214" y2="42"/>
+
+        <!-- watch -->
+        <circle cx="30" cy="84" r="11"/>
+        <circle cx="30" cy="84" r="6"/>
+        <line x1="30" y1="84" x2="30" y2="80"/>
+        <line x1="30" y1="84" x2="33" y2="86"/>
+        <path d="M24 73 l2 -5 h8 l2 5"/>
+        <path d="M24 95 l2 5 h8 l2 -5"/>
+        <!-- car -->
+        <path d="M70 92 l4 -10 h28 l4 10"/>
+        <rect x="64" y="92" width="44" height="10" rx="2"/>
+        <circle cx="74" cy="104" r="3"/>
+        <circle cx="98" cy="104" r="3"/>
+        <!-- headphones -->
+        <path d="M132 88 a18 18 0 0 1 36 0"/>
+        <rect x="128" y="86" width="8" height="14" rx="2"/>
+        <rect x="164" y="86" width="8" height="14" rx="2"/>
+        <!-- glasses -->
+        <circle cx="196" cy="92" r="6"/>
+        <circle cx="216" cy="92" r="6"/>
+        <line x1="202" y1="92" x2="210" y2="92"/>
+
+        <!-- guitar -->
+        <path d="M22 156 c-6 -6 -2 -16 6 -16 c4 0 6 4 4 6 l16 -18"/>
+        <circle cx="28" cy="150" r="4"/>
+        <!-- bag -->
+        <rect x="68" y="146" width="26" height="20" rx="2"/>
+        <path d="M74 146 v-6 a7 7 0 0 1 14 0 v6"/>
+        <!-- key -->
+        <circle cx="118" cy="152" r="6"/>
+        <line x1="124" y1="152" x2="142" y2="152"/>
+        <line x1="138" y1="152" x2="138" y2="156"/>
+        <line x1="142" y1="152" x2="142" y2="158"/>
+        <!-- gamepad -->
+        <rect x="158" y="146" width="36" height="18" rx="9"/>
+        <circle cx="166" cy="155" r="2"/>
+        <circle cx="186" cy="153" r="1.6"/>
+        <circle cx="190" cy="157" r="1.6"/>
+        <!-- bicycle -->
+        <circle cx="210" cy="158" r="8"/>
+        <circle cx="226" cy="158" r="4"/>
+        <line x1="210" y1="158" x2="220" y2="148"/>
+        <line x1="220" y1="148" x2="226" y2="158"/>
+
+        <!-- house -->
+        <path d="M16 220 v-14 l12 -10 l12 10 v14z"/>
+        <rect x="24" y="210" width="8" height="10"/>
+        <!-- magnifier -->
+        <circle cx="68" cy="208" r="8"/>
+        <line x1="74" y1="214" x2="82" y2="222"/>
+        <!-- mobile -->
+        <rect x="106" y="196" width="16" height="28" rx="3"/>
+        <line x1="112" y1="221" x2="116" y2="221"/>
+        <!-- ring -->
+        <circle cx="156" cy="214" r="8"/>
+        <path d="M152 206 l4 -6 l4 6"/>
+        <!-- envelope2 -->
+        <rect x="186" y="200" width="32" height="20" rx="2"/>
+        <path d="M186 204 l16 10 l16 -10"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="240" height="240" fill="url(#haraj-bg)"/>
+</svg>

@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RegionSeeder::class,
             CitySeeder::class,
+            DistrictSeeder::class,
             CategorySeeder::class,
             CategoryFieldSeeder::class,
             SystemSettingSeeder::class,
@@ -21,6 +22,7 @@ class DatabaseSeeder extends Seeder
         if (app()->environment(['local', 'staging'])) {
             $this->call([
                 DevDemoSeeder::class,
+                SellersAndRatingsSeeder::class,
             ]);
         }
     }

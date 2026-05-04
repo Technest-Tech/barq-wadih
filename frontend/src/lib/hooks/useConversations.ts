@@ -24,11 +24,12 @@ interface UseConversationsResult {
  * Real-time hook that listens to Firestore for all conversations the current
  * user participates in, sorted by latest message.
  *
- * Uses participantIds (MySQL integer IDs as strings) for querying — this avoids
- * requiring a Firebase UID on every request and works immediately after
- * Sanctum login even before Firebase custom-token auth completes.
+ * Pass `enabled = false` (e.g. while Firebase Auth is still signing in) to
+ * prevent the listener from starting before auth is ready. Starting a Firestore
+ * listener before auth is stable can cause the SDK to throw
+ * "Unexpected state" assertion errors when the auth token changes mid-flight.
  */
-export function useConversations(): UseConversationsResult {
+export function useConversations(enabled = true): UseConversationsResult {
   const { user } = useAuthStore();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -36,19 +37,22 @@ export function useConversations(): UseConversationsResult {
   const unsubRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!enabled || !user?.firebase_uid || !user?.id) {
       setConversations([]);
-      setLoading(false);
+      setLoading(!enabled);
       return;
     }
 
-    const userId = String(user.id);
+    const myUid = user.firebase_uid;
+    const myId  = String(user.id);
 
     const q = query(
       collection(db, 'conversations'),
-      where('participantIds', 'array-contains', userId),
+      where('participantUids', 'array-contains', myUid),
       orderBy('lastMessageAt', 'desc')
     );
+
+    console.log('[useConversations] starting listener for uid =', myUid);
 
     unsubRef.current = onSnapshot(
       q,
@@ -56,13 +60,19 @@ export function useConversations(): UseConversationsResult {
         const docs = snapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
-          my_unread_count: (doc.data().unreadCount?.[userId] ?? 0) as number,
+          my_unread_count: (doc.data().unreadCount?.[myId] ?? 0) as number,
         })) as ConversationSummary[];
+        console.log('[useConversations] snapshot received:', {
+          myUid,
+          docCount: docs.length,
+          ids: docs.map(d => d.id),
+        });
         setConversations(docs);
         setLoading(false);
         setError(null);
       },
       (err) => {
+        console.error('[useConversations] listener error:', err);
         setError(err.message);
         setLoading(false);
       }
@@ -71,7 +81,7 @@ export function useConversations(): UseConversationsResult {
     return () => {
       unsubRef.current?.();
     };
-  }, [user?.id]);
+  }, [user?.id, user?.firebase_uid, enabled]);
 
   const totalUnread = conversations.reduce(
     (sum, c) => sum + (c.my_unread_count ?? 0),

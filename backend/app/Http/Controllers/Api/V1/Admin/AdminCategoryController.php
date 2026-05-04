@@ -40,12 +40,15 @@ class AdminCategoryController extends BaseController
             'parent_id'           => 'nullable|exists:categories,id',
             'description_ar'      => 'nullable|string|max:500',
             'description_en'      => 'nullable|string|max:500',
-            'commission_rate'     => 'nullable|numeric|min:0|max:100',
-            'is_free'             => 'boolean',
-            'is_active'           => 'boolean',
-            'sort_order'          => 'integer|min:0',
-            'meta_keywords'       => 'nullable|string|max:500',
-            'prohibited_keywords' => 'nullable|array',
+            'commission_rate'                 => 'nullable|numeric|min:0|max:100',
+            'publish_fee_individual'          => 'nullable|numeric|min:0|max:99999.99',
+            'publish_fee_dealer'              => 'nullable|numeric|min:0|max:99999.99',
+            'fee_deductible_from_commission'  => 'boolean',
+            'is_free'                         => 'boolean',
+            'is_active'                       => 'boolean',
+            'sort_order'                      => 'integer|min:0',
+            'meta_keywords'                   => 'nullable|string|max:500',
+            'prohibited_keywords'             => 'nullable|array',
         ]);
 
         $category = Category::create($data);
@@ -67,12 +70,15 @@ class AdminCategoryController extends BaseController
             'parent_id'           => 'nullable|exists:categories,id',
             'description_ar'      => 'nullable|string|max:500',
             'description_en'      => 'nullable|string|max:500',
-            'commission_rate'     => 'nullable|numeric|min:0|max:100',
-            'is_free'             => 'boolean',
-            'is_active'           => 'boolean',
-            'sort_order'          => 'integer|min:0',
-            'meta_keywords'       => 'nullable|string|max:500',
-            'prohibited_keywords' => 'nullable|array',
+            'commission_rate'                 => 'nullable|numeric|min:0|max:100',
+            'publish_fee_individual'          => 'nullable|numeric|min:0|max:99999.99',
+            'publish_fee_dealer'              => 'nullable|numeric|min:0|max:99999.99',
+            'fee_deductible_from_commission'  => 'boolean',
+            'is_free'                         => 'boolean',
+            'is_active'                       => 'boolean',
+            'sort_order'                      => 'integer|min:0',
+            'meta_keywords'                   => 'nullable|string|max:500',
+            'prohibited_keywords'             => 'nullable|array',
         ]);
 
         // Prevent circular parent reference

@@ -22,8 +22,8 @@ class ApiClient {
         // iOS simulator → host: localhost
         // Physical device → use machine's LAN IP
         baseUrl: _resolveBaseUrl(),
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ class ApiClient {
     // For physical devices, use the machine's LAN IP
     const envUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.1.44:8000/api/v1',
+      defaultValue: 'http://192.168.1.45:8080/api/v1',
     );
     return envUrl;
   }

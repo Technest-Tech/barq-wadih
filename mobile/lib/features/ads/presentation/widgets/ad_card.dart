@@ -6,6 +6,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../domain/ad_model.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -138,6 +139,10 @@ class AdCard extends StatefulWidget {
             ),
           ],
         ),
+        if (ad.seller != null) ...[
+          const SizedBox(height: 6),
+          _SellerChip(seller: ad.seller!),
+        ],
       ],
     );
   }
@@ -244,6 +249,63 @@ class AdCard extends StatefulWidget {
     if (diff.inHours < 24) return 'منذ ${diff.inHours} س';
     if (diff.inDays < 7) return 'منذ ${diff.inDays} يوم';
     return '${dt.day}/${dt.month}';
+  }
+}
+
+class _SellerChip extends StatelessWidget {
+  final AdSellerSummary seller;
+  const _SellerChip({required this.seller});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRating = (seller.ratingCount ?? 0) > 0 && seller.avgRating != null;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        context.push('/users/${seller.id}');
+      },
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 9,
+            backgroundColor: AppTheme.neutralGray200,
+            backgroundImage: seller.avatar != null && seller.avatar!.isNotEmpty
+                ? NetworkImage(AppConstants.normalizeImageUrl(seller.avatar!))
+                : null,
+            child: seller.avatar == null || seller.avatar!.isEmpty
+                ? const Icon(Icons.person, size: 11, color: AppTheme.neutralGray500)
+                : null,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              seller.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryBlue,
+              ),
+            ),
+          ),
+          if (seller.isVerified) ...[
+            const SizedBox(width: 3),
+            const Icon(Icons.verified_rounded, size: 11, color: AppTheme.primaryBlue),
+          ],
+          if (hasRating) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.star_rounded, size: 11, color: Color(0xFFFFC107)),
+            const SizedBox(width: 1),
+            Text(
+              '${seller.avgRating!.toStringAsFixed(1)} (${seller.ratingCount})',
+              style: const TextStyle(fontSize: 10, color: AppTheme.neutralGray500),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

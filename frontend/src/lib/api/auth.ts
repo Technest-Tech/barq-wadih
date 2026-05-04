@@ -1,7 +1,6 @@
 import apiClient from './client';
+import ENDPOINTS from './endpoints';
 import type { AuthResponse, AuthUser } from './auth.types';
-import type { ApiResponse } from './types';
-
 export const authApi = {
   register: (data: {
     name: string;
@@ -29,6 +28,18 @@ export const authApi = {
     region_id?: number;
     city_id?: number;
   }) => apiClient.put<AuthUser>('/v1/auth/me', data),
+
+  uploadAvatar: (file: File) => {
+    const fd = new FormData();
+    fd.append('avatar', file);
+    return apiClient.postFormData<{ avatar_url: string | null }>(ENDPOINTS.AUTH_AVATAR, fd);
+  },
+
+  uploadCover: (file: File) => {
+    const fd = new FormData();
+    fd.append('cover', file);
+    return apiClient.postFormData<{ cover_image_url: string | null }>(ENDPOINTS.AUTH_COVER, fd);
+  },
 
   logout: () => apiClient.post<null>('/v1/auth/logout', {}),
 

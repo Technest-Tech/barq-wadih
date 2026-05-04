@@ -142,7 +142,7 @@ export default function AdminAdsPage() {
             <table className={s.table}>
               <thead><tr>
                 <th>الصورة</th><th>العنوان</th><th>المُعلن</th><th>التصنيف</th><th>السعر</th>
-                <th>الحالة</th><th>المراجعة</th><th>⚠️</th><th>التاريخ</th><th>إجراءات</th>
+                <th>الحالة</th><th>المراجعة</th><th>البلاغات</th><th>التاريخ</th><th>إجراءات</th>
               </tr></thead>
               <tbody>
                 {ads.map(ad => (

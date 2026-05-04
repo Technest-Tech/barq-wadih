@@ -2,7 +2,7 @@
 
 .page {
   direction: rtl;
-  max-width: 1200px;
+  width: 100%;
 }
 
 /* ── Back Link ───────────────────────────────────────────────────────────── */
@@ -23,7 +23,7 @@
 
 /* ── Profile Card ────────────────────────────────────────────────────────── */
 .profileCard {
-  background: linear-gradient(135deg, rgba(26, 31, 46, 0.8), rgba(26, 31, 46, 0.5));
+  background: #ffffff;
   backdrop-filter: blur(20px);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-lg);
@@ -277,7 +277,7 @@
 }
 
 .tabContent {
-  background: linear-gradient(135deg, rgba(26, 31, 46, 0.8), rgba(26, 31, 46, 0.5));
+  background: #ffffff;
   backdrop-filter: blur(20px);
   border: 1px solid var(--admin-border);
   border-top: none;

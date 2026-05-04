@@ -8,16 +8,34 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/chat_providers.dart';
 import '../../domain/chat_models.dart';
 
-class MessagesScreen extends ConsumerWidget {
+const _kHeaderBlue = Color(0xFF1B4FE4);
+const _kBgLight    = Color(0xFFF5F7FB);
+
+class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MessagesScreen> createState() => _MessagesScreenState();
+}
+
+class _MessagesScreenState extends ConsumerState<MessagesScreen> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
 
     if (user == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF4F6FA),
+        backgroundColor: _kBgLight,
+        appBar: _buildAppBar(),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -39,42 +57,112 @@ class MessagesScreen extends ConsumerWidget {
     }
 
     final myId = user.id.toString();
+
+    // Ensure Firebase is signed in before starting the Firestore stream.
+    // Without auth, the security rule (request.auth != null) rejects every read.
+    final firebaseAuth = ref.watch(firebaseChatAuthProvider);
+    if (firebaseAuth.isLoading) {
+      return Scaffold(backgroundColor: _kBgLight, appBar: _buildAppBar(), body: _buildSkeleton());
+    }
+
     final convAsync = ref.watch(conversationsStreamProvider(myId));
 
-    // Ensure Firebase is signed in for Firestore access
-    ref.watch(firebaseChatAuthProvider);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0A1628),
-        title: const Text(
-          'الرسائل',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-        ),
-        elevation: 0,
-        centerTitle: false,
+      backgroundColor: _kBgLight,
+      appBar: _buildAppBar(),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: convAsync.when(
+              loading: () => _buildSkeleton(),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('خطأ في تحميل الرسائل: $e',
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center),
+                ),
+              ),
+              data: (conversations) {
+                final filtered = _filter(conversations);
+                if (conversations.isEmpty) return _buildEmptyState();
+                if (filtered.isEmpty) return _buildNoMatchState();
+                return ListView.separated(
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, indent: 76, endIndent: 0),
+                  itemBuilder: (context, index) {
+                    final conv = filtered[index];
+                    return _ConversationTile(conv: conv, myId: myId);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      body: convAsync.when(
-        loading: () => _buildSkeleton(),
-        error: (e, _) => Center(
-          child: Text('خطأ في تحميل الرسائل: $e',
-              style: const TextStyle(color: Colors.red)),
+    );
+  }
+
+  List<ConversationModel> _filter(List<ConversationModel> conversations) {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return conversations;
+    return conversations.where((c) {
+      final hay = '${c.adTitle} ${c.lastMessage ?? ''}'.toLowerCase();
+      return hay.contains(q);
+    }).toList();
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: _kHeaderBlue,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      title: const Text(
+        'الرسائل',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 17,
+          letterSpacing: 0.2,
         ),
-        data: (conversations) {
-          if (conversations.isEmpty) {
-            return _buildEmptyState();
-          }
-          return ListView.separated(
-            itemCount: conversations.length,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, indent: 76, endIndent: 0),
-            itemBuilder: (context, index) {
-              final conv = conversations[index];
-              return _ConversationTile(conv: conv, myId: myId);
-            },
-          );
-        },
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      systemOverlayStyle: null,
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      color: _kHeaderBlue,
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchCtrl,
+          onChanged: (v) => setState(() => _query = v),
+          textAlign: TextAlign.right,
+          decoration: InputDecoration(
+            hintText: 'بحث',
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+            prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+          ),
+        ),
       ),
     );
   }
@@ -105,6 +193,24 @@ class MessagesScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildNoMatchState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.search_off_rounded,
+              size: 56, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text(
+            'لا توجد نتائج لبحثك',
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSkeleton() {
     return ListView.separated(
       itemCount: 6,
@@ -124,9 +230,14 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread   = conv.myUnreadCount(myId);
-    final isMe     = conv.lastMessageSenderId == myId;
-    final lastTime = conv.lastMessageAt != null ? _relTime(conv.lastMessageAt!) : '';
+    final unread      = conv.myUnreadCount(myId);
+    final isMe        = conv.lastMessageSenderId == myId;
+    final lastTime    = conv.lastMessageAt != null ? _relTime(conv.lastMessageAt!) : '';
+    final displayName = conv.otherName(myId);
+    final avatarUrl   = conv.otherAvatar(myId);
+    final initial     = displayName.trim().isEmpty
+        ? '?'
+        : displayName.trim().substring(0, 1).toUpperCase();
 
     return InkWell(
       onTap: () => context.push(AppRoutes.conversationPath(conv.id)),
@@ -135,22 +246,40 @@ class _ConversationTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // Ad thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: conv.adImage != null
-                  ? Image.network(
-                      conv.adImage!,
-                      width: 52,
-                      height: 52,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _thumbFallback(),
-                    )
-                  : _thumbFallback(),
+            // Avatar (circular)
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ClipOval(
+                  child: avatarUrl != null
+                      ? Image.network(
+                          avatarUrl,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _avatarFallback(initial),
+                        )
+                      : _avatarFallback(initial),
+                ),
+                if (unread > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _kHeaderBlue,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 12),
 
-            // Content
+            // Body
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,10 +288,10 @@ class _ConversationTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          conv.adTitle,
+                          displayName,
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                             color: Color(0xFF0A1628),
                           ),
                           maxLines: 1,
@@ -171,18 +300,31 @@ class _ConversationTile extends StatelessWidget {
                       ),
                       Text(
                         lastTime,
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: unread > 0 ? _kHeaderBlue : Colors.grey[500],
+                          fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
+                      // Read receipt for outgoing last message
+                      if (isMe) ...[
+                        Icon(
+                          Icons.done_all_rounded,
+                          size: 14,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       Expanded(
                         child: Text(
-                          '${isMe ? 'أنت: ' : ''}${conv.lastMessage ?? 'بدأت محادثة جديدة'}',
+                          '${isMe ? '' : ''}${conv.lastMessage ?? 'بدأت محادثة جديدة'}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.5,
                             color: unread > 0
                                 ? const Color(0xFF0A1628)
                                 : Colors.grey[600],
@@ -196,17 +338,18 @@ class _ConversationTile extends StatelessWidget {
                       ),
                       if (unread > 0)
                         Container(
+                          margin: const EdgeInsets.only(right: 6),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1B4FE4),
+                            color: _kHeaderBlue,
                             borderRadius: BorderRadius.circular(99),
                           ),
                           child: Text(
                             unread.toString(),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -216,32 +359,35 @@ class _ConversationTile extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_left_rounded, color: Colors.grey[400], size: 18),
           ],
         ),
       ),
     );
   }
 
-  Widget _thumbFallback() {
+  Widget _avatarFallback(String initial) {
     return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(10),
+      width: 48,
+      height: 48,
+      color: const Color(0xFFE7EAEF),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF6B7280),
+        ),
       ),
-      child: const Center(child: Text('📦', style: TextStyle(fontSize: 24))),
     );
   }
 
   String _relTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inHours < 1) return '${diff.inMinutes} د';
-    if (diff.inDays < 1) return '${diff.inHours} س';
-    if (diff.inDays < 7) return '${diff.inDays} ي';
+    if (diff.inHours < 1) return '${diff.inMinutes} دقيقة';
+    if (diff.inDays < 1) return '${diff.inHours} ساعة';
+    if (diff.inDays < 7) return '${diff.inDays} يوم';
     return DateFormat('d/M').format(dt);
   }
 }
@@ -258,15 +404,15 @@ class _SkeletonTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          _box(52, 52, radius: 10),
+          _circle(48),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _box(12, double.infinity),
+                _box(11, double.infinity),
                 const SizedBox(height: 8),
-                _box(12, 160),
+                _box(11, 160),
               ],
             ),
           ),
@@ -275,13 +421,24 @@ class _SkeletonTile extends StatelessWidget {
     );
   }
 
-  Widget _box(double h, double w, {double radius = 6}) {
+  Widget _circle(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEEEEEE),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  Widget _box(double h, double w) {
     return Container(
       height: h,
       width: w,
       decoration: BoxDecoration(
         color: const Color(0xFFEEEEEE),
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(6),
       ),
     );
   }

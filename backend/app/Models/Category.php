@@ -26,18 +26,24 @@ class Category extends Model
         'is_active',
         'is_free',
         'commission_rate',
+        'publish_fee_individual',
+        'publish_fee_dealer',
+        'fee_deductible_from_commission',
         'meta_keywords',
         'ads_count',
         'prohibited_keywords',
     ];
 
     protected $casts = [
-        'is_active'           => 'boolean',
-        'is_free'             => 'boolean',
-        'commission_rate'     => 'decimal:4',
-        'ads_count'           => 'integer',
-        'sort_order'          => 'integer',
-        'prohibited_keywords' => 'array',
+        'is_active'                      => 'boolean',
+        'is_free'                        => 'boolean',
+        'commission_rate'                => 'decimal:4',
+        'publish_fee_individual'         => 'decimal:2',
+        'publish_fee_dealer'             => 'decimal:2',
+        'fee_deductible_from_commission' => 'boolean',
+        'ads_count'                      => 'integer',
+        'sort_order'                     => 'integer',
+        'prohibited_keywords'            => 'array',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useParams, useSearchParams } from 'next/navigation';
 import { fetchCategories, type Category } from '@/lib/api/categories';
 import styles from './CategoryTabs.module.css';
 
@@ -23,8 +24,12 @@ const FALLBACK_CATEGORIES: Pick<Category, 'id' | 'icon' | 'name_ar' | 'slug'>[] 
 export default function CategoryTabs() {
   const [categories, setCategories] = useState<typeof FALLBACK_CATEGORIES>([]);
   const [loading, setLoading] = useState(true);
-  const [activeSlug, setActiveSlug] = useState<string>('all');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const params       = useParams();
+  const searchParams = useSearchParams();
+  const locale       = (params?.locale as string) || 'ar';
+  const activeSlug   = searchParams?.get('category') ?? 'all';
 
   useEffect(() => {
     fetchCategories()
@@ -49,10 +54,9 @@ export default function CategoryTabs() {
 
         {/* "All" tab — always first */}
         <Link
-          href="/ar"
+          href={`/${locale}`}
           id="category-tab-all"
           className={`${styles.tab} ${activeSlug === 'all' ? styles.tabActive : ''}`}
-          onClick={() => setActiveSlug('all')}
         >
           <span className={styles.tabIcon}>🏠</span>
           <span className={styles.tabName}>الكل</span>
@@ -66,16 +70,20 @@ export default function CategoryTabs() {
           </div>
         ))}
 
-        {/* Real category tabs */}
+        {/* Real category tabs — navigate to home with ?category=slug so home page filters the feed */}
         {!loading && categories.map((cat) => (
           <Link
             key={cat.id}
-            href={`/ar/categories/${cat.slug}`}
+            href={`/${locale}?category=${cat.slug}`}
             id={`category-tab-${cat.slug}`}
             className={`${styles.tab} ${activeSlug === cat.slug ? styles.tabActive : ''}`}
-            onClick={() => setActiveSlug(cat.slug)}
           >
-            <span className={styles.tabIcon}>{cat.icon}</span>
+            {cat.icon?.startsWith('http') ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={cat.icon} alt={cat.name_ar} className={styles.tabIconImg} />
+            ) : (
+              <span className={styles.tabIcon}>{cat.icon ?? '📦'}</span>
+            )}
             <span className={styles.tabName}>{cat.name_ar}</span>
           </Link>
         ))}

@@ -45,6 +45,11 @@ class City extends Model
         return $this->hasMany(Ad::class);
     }
 
+    public function districts(): HasMany
+    {
+        return $this->hasMany(District::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
 
     /** @param  \Illuminate\Database\Eloquent\Builder<City>  $query */
