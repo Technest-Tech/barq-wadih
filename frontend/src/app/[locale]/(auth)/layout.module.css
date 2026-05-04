@@ -164,7 +164,11 @@
 }
 
 @media (max-width: 640px) {
-  .formPanel { justify-content: flex-start; }
+  .formPanel {
+    justify-content: flex-start;
+    align-items: stretch;
+    padding-inline: var(--space-4);
+  }
 }
 
 /* Mobile-only logo */
