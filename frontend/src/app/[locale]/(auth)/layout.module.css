@@ -166,8 +166,7 @@
 @media (max-width: 640px) {
   .formPanel {
     justify-content: flex-start;
-    align-items: stretch;
-    padding-inline: var(--space-4);
+    padding: var(--space-8) var(--space-5) var(--space-10);
   }
 }
 
