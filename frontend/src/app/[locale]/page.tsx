@@ -684,10 +684,7 @@ export default function HomePage() {
       <Footer />
 
       {/* ── Mobile Bottom Nav ───────────────────────────────────────── */}
-      <BottomNav
-        onCategoriesOpen={() => setDrawerOpen(true)}
-        onAuthOpen={() => setAuthOpen(true)}
-      />
+      <BottomNav onAuthOpen={() => setAuthOpen(true)} />
 
       {/* ── Mobile Categories & Filter Drawer ──────────────────────── */}
       <MobileDrawer

@@ -1,28 +1,39 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Grid3X3, Plus, MessageCircle, User } from 'lucide-react';
+import { usePathname, useParams } from 'next/navigation';
+import { Home, Heart, Plus, MessageCircle, User } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import styles from './BottomNav.module.css';
 
 interface BottomNavProps {
-  onCategoriesOpen: () => void;
   onAuthOpen: () => void;
 }
 
-export default function BottomNav({ onCategoriesOpen, onAuthOpen }: BottomNavProps) {
+export default function BottomNav({ onAuthOpen }: BottomNavProps) {
   const pathname = usePathname();
+  const params   = useParams();
   const { isAuthenticated } = useAuthStore();
+  const locale   = (params?.locale as string) || 'ar';
 
-  const isHome = pathname === '/ar' || pathname === '/en';
+  const isHome      = pathname === `/${locale}` || pathname === `/${locale}/`;
+  const isFavorites = pathname === `/${locale}/favorites`;
+  const isMessages  = pathname === `/${locale}/messages`;
+  const isProfile   = pathname === `/${locale}/profile`;
 
   const handlePostAd = () => {
     if (!isAuthenticated) {
       onAuthOpen();
     } else {
-      window.location.href = '/ar/post-ad';
+      window.location.href = `/${locale}/post-ad`;
+    }
+  };
+
+  const handleFavorites = () => {
+    if (!isAuthenticated) {
+      onAuthOpen();
+    } else {
+      window.location.href = `/${locale}/favorites`;
     }
   };
 
@@ -30,22 +41,25 @@ export default function BottomNav({ onCategoriesOpen, onAuthOpen }: BottomNavPro
     if (!isAuthenticated) {
       onAuthOpen();
     } else {
-      window.location.href = '/ar/profile';
+      window.location.href = `/${locale}/profile`;
     }
   };
 
   return (
     <nav className={styles.bottomNav} dir="rtl">
       {/* Home */}
-      <Link href="/ar" className={`${styles.navItem} ${isHome ? styles.navItemActive : ''}`}>
+      <Link href={`/${locale}`} className={`${styles.navItem} ${isHome ? styles.navItemActive : ''}`}>
         <Home size={22} className={styles.navIcon} />
         <span className={styles.navLabel}>الرئيسية</span>
       </Link>
 
-      {/* Categories */}
-      <button className={styles.navItem} onClick={onCategoriesOpen}>
-        <Grid3X3 size={22} className={styles.navIcon} />
-        <span className={styles.navLabel}>الأقسام</span>
+      {/* Favorites */}
+      <button
+        className={`${styles.navItem} ${isFavorites ? styles.navItemActive : ''}`}
+        onClick={handleFavorites}
+      >
+        <Heart size={22} className={styles.navIcon} />
+        <span className={styles.navLabel}>المفضلة</span>
       </button>
 
       {/* Post Ad (center — accent button) */}
@@ -58,15 +72,18 @@ export default function BottomNav({ onCategoriesOpen, onAuthOpen }: BottomNavPro
 
       {/* Messages */}
       <button
-        className={styles.navItem}
-        onClick={() => isAuthenticated ? window.location.href = '/ar/messages' : onAuthOpen()}
+        className={`${styles.navItem} ${isMessages ? styles.navItemActive : ''}`}
+        onClick={() => isAuthenticated ? window.location.href = `/${locale}/messages` : onAuthOpen()}
       >
         <MessageCircle size={22} className={styles.navIcon} />
         <span className={styles.navLabel}>الرسائل</span>
       </button>
 
       {/* Profile */}
-      <button className={styles.navItem} onClick={handleProfile}>
+      <button
+        className={`${styles.navItem} ${isProfile ? styles.navItemActive : ''}`}
+        onClick={handleProfile}
+      >
         <User size={22} className={styles.navIcon} />
         <span className={styles.navLabel}>حسابي</span>
       </button>
