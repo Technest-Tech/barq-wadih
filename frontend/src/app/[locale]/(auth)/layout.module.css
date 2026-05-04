@@ -163,6 +163,10 @@
   background: var(--surface-primary);
 }
 
+@media (max-width: 640px) {
+  .formPanel { justify-content: flex-start; }
+}
+
 /* Mobile-only logo */
 .mobileLogo {
   display: flex;
