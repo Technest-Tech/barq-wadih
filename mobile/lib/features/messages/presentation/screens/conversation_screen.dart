@@ -133,8 +133,41 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user      = ref.watch(currentUserProvider);
-    final myId      = user?.id.toString() ?? '';
+    final user = ref.watch(currentUserProvider);
+    final myId = user?.id.toString() ?? '';
+
+    final firebaseAuth = ref.watch(firebaseChatAuthProvider);
+    if (firebaseAuth.isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFECE5DD),
+        appBar: _buildAppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (firebaseAuth.hasError) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFECE5DD),
+        appBar: _buildAppBar(),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_rounded, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 12),
+              Text('تعذّر تحميل الرسائل',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 15)),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => ref.invalidate(firebaseChatAuthProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('إعادة المحاولة'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final msgsAsync = ref.watch(messagesStreamProvider(widget.conversationId));
 
     ref.listen(messagesStreamProvider(widget.conversationId), (_, __) {

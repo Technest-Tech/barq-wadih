@@ -105,8 +105,7 @@ class SearchController extends BaseController
                 $options['sort'] = match ($sort) {
                     'price_asc'  => ['price:asc'],
                     'price_desc' => ['price:desc'],
-                    'newest'     => ['published_at:desc'],
-                    default      => ['is_boosted:desc', 'published_at:desc'],
+                    default      => ['published_at:desc'],
                 };
 
                 $options['limit'] = 20;
@@ -174,10 +173,9 @@ class SearchController extends BaseController
 
         // Sort
         match ($sort) {
-            'price_asc'  => $query->reorder()->orderBy('price'),
-            'price_desc' => $query->reorder()->orderByDesc('price'),
-            'newest'     => $query->reorder()->orderByDesc('published_at'),
-            default      => null, // Keep scopeFeed ordering (boosted first, then newest)
+            'price_asc'  => $query->reorder()->orderBy('price')->orderByDesc('created_at'),
+            'price_desc' => $query->reorder()->orderByDesc('price')->orderByDesc('created_at'),
+            default      => $query->reorder()->orderByDesc('published_at')->orderByDesc('created_at'),
         };
 
         return $query->paginate(20);

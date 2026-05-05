@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,12 +86,10 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
     });
 
     try {
-      final repo  = ref.read(chatRepositoryProvider);
-      final myUid = FirebaseAuth.instance.currentUser?.uid ?? 'user_${user.id}';
+      final repo   = ref.read(chatRepositoryProvider);
       final convId = await repo.startConversation(
         adId:           widget.adId,
         myId:           user.id.toString(),
-        myUid:          myUid,
         initialMessage: text,
       );
 
@@ -126,9 +123,14 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
         ),
         child: SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+          // When keyboard is open, viewInsets covers the safe area — adding
+          // bottom padding again would double-consume space and cause overflow.
+          bottom: viewInsets == 0,
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               // Drag handle
               Container(
                 margin: const EdgeInsets.only(top: 8, bottom: 12),
@@ -393,8 +395,9 @@ class _ContactSheetState extends ConsumerState<ContactSheet> {
               ),
             ],
           ),
-        ),
-      ),
+        ),  // SingleChildScrollView
+        ),  // SafeArea
+      ),    // Container
     );
   }
 }

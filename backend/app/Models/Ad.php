@@ -160,15 +160,15 @@ class Ad extends Model
               ->whereBetween('expires_at', [now(), now()->addDays($days)]);
     }
 
-    /** Main feed: boosted first, then by published_at.
+    /** Main feed: newest first.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<Ad>  $query
      */
     public function scopeFeed($query): void
     {
         $query->active()
-              ->orderByDesc('is_boosted')
-              ->orderByDesc('published_at');
+              ->orderByDesc('published_at')
+              ->orderByDesc('created_at');
     }
 
     /** @param  \Illuminate\Database\Eloquent\Builder<Ad>  $query */

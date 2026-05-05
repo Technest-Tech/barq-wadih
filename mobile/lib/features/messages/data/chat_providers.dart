@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -20,18 +21,20 @@ final firebaseChatAuthProvider = FutureProvider<void>((ref) async {
 // ── Conversations stream ──────────────────────────────────────────────────────
 
 /// Real-time stream of all conversations for the current user, sorted by
-/// latest message. Keyed by MySQL user ID string.
+/// latest message. [myUid] must be the Firebase UID (not the backend integer ID).
 final conversationsStreamProvider =
-    StreamProvider.family<List<ConversationModel>, String>((ref, myId) {
-  return ref.read(chatRepositoryProvider).conversationsStream(myId);
+    StreamProvider.family<List<ConversationModel>, String>((ref, myUid) {
+  return ref.read(chatRepositoryProvider).conversationsStream(myUid);
 });
 
 // ── Total unread count ────────────────────────────────────────────────────────
 
 /// Derived provider — sums all unread counts across conversations.
-/// Used by the bottom nav badge and chat header icon.
+/// [myId] is the backend integer ID string (used for unread map lookup).
+/// Firebase UID is read directly from FirebaseAuth (available after ensureFirebaseSignedIn).
 final totalUnreadProvider = Provider.family<int, String>((ref, myId) {
-  final convAsync = ref.watch(conversationsStreamProvider(myId));
+  final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  final convAsync = ref.watch(conversationsStreamProvider(myUid));
   return convAsync.when(
     data: (conversations) => conversations.fold(
       0,

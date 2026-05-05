@@ -20,8 +20,7 @@ service cloud.firestore {
       allow read:   if isParticipant();
       allow create: if isParticipantOnCreate()
         && request.resource.data.keys().hasAll([
-          'participantIds', 'participantUids', 'adId',
-          'adTitle', 'lastMessageAt', 'unreadCount', 'createdAt'
+          'participantIds', 'participantUids', 'adId', 'adTitle'
         ]);
       allow update: if isParticipant();
       allow delete: if false; // Conversations are never deleted

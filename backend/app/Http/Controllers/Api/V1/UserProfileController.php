@@ -63,7 +63,7 @@ class UserProfileController extends BaseController
         } elseif ($sort === 'price_desc') {
             $query->orderByDesc('price');
         } else {
-            $query->orderByDesc('is_boosted')->orderByDesc('published_at');
+            $query->orderByDesc('published_at')->orderByDesc('created_at');
         }
 
         $ads = $query->paginate(20);

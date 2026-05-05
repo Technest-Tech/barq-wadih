@@ -65,8 +65,6 @@ class AdListResource extends JsonResource
                 'avg_rating'   => $user->avg_rating,
                 'rating_count' => $user->rating_count,
             ] : null,
-            'is_boosted'   => $ad->is_boosted,
-            'boosted_until'=> $ad->boosted_until,
             'published_at' => $ad->published_at,
             'created_at'   => $ad->created_at,
         ];

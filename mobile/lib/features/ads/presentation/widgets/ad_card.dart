@@ -57,8 +57,7 @@ class AdCard extends StatefulWidget {
           ),
           padding: widget.isGrid
             ? const EdgeInsets.all(8)
-            : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          height: widget.isGrid ? null : 130,
+            : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: widget.isGrid
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,13 +72,13 @@ class AdCard extends StatefulWidget {
                 ],
               )
             : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(child: _buildTextSection(ad)),
                   const SizedBox(width: 12),
                   SizedBox(
                     width: 110,
-                    height: double.infinity,
+                    height: 90,
                     child: _buildImageSection(ad),
                   ),
                 ],
@@ -105,7 +104,7 @@ class AdCard extends StatefulWidget {
             height: 1.35,
           ),
         ),
-        if (!widget.isGrid) const Spacer() else const SizedBox(height: 4),
+        const SizedBox(height: 4),
 
         // Price — green like Haraj
         Text(
@@ -313,17 +312,24 @@ class _ImagePlaceholder extends StatelessWidget {
   final String? icon;
   const _ImagePlaceholder({this.icon});
 
+  bool get _isUrl =>
+      icon != null && (icon!.startsWith('http') || icon!.startsWith('/'));
+
   @override
   Widget build(BuildContext context) {
     return Container(
       color: AppTheme.neutralGray100,
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon ?? '📦', style: const TextStyle(fontSize: 32)),
-          ],
-        ),
+        child: _isUrl
+            ? CachedNetworkImage(
+                imageUrl: AppConstants.normalizeImageUrl(icon!),
+                width: 36,
+                height: 36,
+                fit: BoxFit.contain,
+                errorWidget: (_, __, ___) =>
+                    const Text('📦', style: TextStyle(fontSize: 28)),
+              )
+            : Text(icon ?? '📦', style: const TextStyle(fontSize: 32)),
       ),
     );
   }

@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/rating_providers.dart';
 
@@ -47,12 +49,63 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
       );
       setState(() => _success = true);
       await Future<void>.delayed(const Duration(milliseconds: 1200));
-      if (mounted) Navigator.of(context).pop(true); // true = submitted
+      if (mounted) Navigator.of(context).pop(true);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 401) {
+        Navigator.of(context).pop();
+        _showLoginPrompt(context);
+      } else {
+        final msg = e.response?.data?['message'] as String?
+            ?? e.message
+            ?? 'حدث خطأ، يرجى المحاولة مجدداً';
+        setState(() => _error = msg);
+      }
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showLoginPrompt(BuildContext ctx) {
+    showDialog<void>(
+      context: ctx,
+      builder: (dialogCtx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('تسجيل الدخول مطلوب',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          content: const Text(
+            'يجب تسجيل الدخول أولاً لتتمكن من كتابة تقييم.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('إلغاء',
+                  style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0075C4),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                ctx.push('/login');
+              },
+              child: const Text('تسجيل الدخول',
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

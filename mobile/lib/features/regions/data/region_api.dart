@@ -13,7 +13,6 @@ class RegionRepository {
 
   const RegionRepository(this._dio);
 
-  /// Fetch all 13 Saudi regions from GET /regions.
   Future<List<RegionModel>> getRegions() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>('/regions');
@@ -29,7 +28,6 @@ class RegionRepository {
     }
   }
 
-  /// Fetch cities for a region from GET /regions/{slug}/cities.
   Future<List<CityModel>> getCities(String regionSlug) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -47,7 +45,6 @@ class RegionRepository {
     }
   }
 
-  /// Fetch all cities across Saudi Arabia from GET /cities.
   Future<List<CityModel>> getAllCities() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>('/cities');
@@ -62,6 +59,21 @@ class RegionRepository {
       );
     }
   }
+
+  Future<List<DistrictModel>> getDistricts(int cityId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/cities/$cityId/districts');
+      final data = response.data!['data'] as List<dynamic>;
+      return data
+          .map((e) => DistrictModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل الأحياء',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
 }
 
 // ── Providers ─────────────────────────────────────────────────────────────────
@@ -70,7 +82,6 @@ final regionRepositoryProvider = Provider<RegionRepository>((ref) {
   return RegionRepository(ref.watch(dioProvider));
 });
 
-/// Fetches and caches all regions.
 final regionsProvider =
     AsyncNotifierProvider<RegionsNotifier, List<RegionModel>>(
   RegionsNotifier.new,
@@ -90,14 +101,14 @@ class RegionsNotifier extends AsyncNotifier<List<RegionModel>> {
   }
 }
 
-/// Family provider: fetches cities for a specific region slug.
-/// Usage: ref.watch(citiesProvider('riyadh'))
 final citiesProvider = FutureProvider.family<List<CityModel>, String>((ref, regionSlug) {
   return ref.read(regionRepositoryProvider).getCities(regionSlug);
 });
 
-/// Fetches all cities across Saudi Arabia.
 final allCitiesProvider = FutureProvider<List<CityModel>>((ref) {
   return ref.read(regionRepositoryProvider).getAllCities();
 });
 
+final districtsProvider = FutureProvider.family<List<DistrictModel>, int>((ref, cityId) {
+  return ref.read(regionRepositoryProvider).getDistricts(cityId);
+});

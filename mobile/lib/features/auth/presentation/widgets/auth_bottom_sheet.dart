@@ -4,9 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
-import 'register_bottom_sheet.dart';
 
 /// Shows the auth bottom sheet. After successful login, [onSuccess] is called.
 Future<void> showAuthBottomSheet(
@@ -49,6 +50,7 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet>
   final _passwordCtrl = TextEditingController();
   final _formKey      = GlobalKey<FormState>();
   bool _obscure       = true;
+  String? _emailError;
 
   @override
   void initState() {
@@ -194,14 +196,19 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet>
 
   Future<void> _loginEmail() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _emailError = null);
     await ref.read(authProvider.notifier).login(
       email:    _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
     if (!mounted) return;
-    if (ref.read(authProvider) is AuthAuthenticated) {
+    final authState = ref.read(authProvider);
+    if (authState is AuthAuthenticated) {
       Navigator.of(context).pop();
       widget.onSuccess();
+    } else if (authState is AuthError) {
+      setState(() => _emailError = authState.message);
+      ref.read(authProvider.notifier).clearError();
     }
   }
 
@@ -225,13 +232,6 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(authProvider, (_, next) {
-      if (next is AuthError) {
-        _showError(next.message);
-        ref.read(authProvider.notifier).clearError();
-      }
-    });
-
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Directionality(
@@ -312,14 +312,10 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet>
               const SizedBox(height: 20),
 
               // ── Tab content ──────────────────────────────────────────────────
-              AnimatedSize(
-                duration: const Duration(milliseconds: 250),
-                child: SizedBox(
-                  height: _otpSent ? 280 : 220,
-                  child: TabBarView(
-                    controller: _tab,
-                    children: [
-                      _PhoneOtpTab(
+              ListenableBuilder(
+                listenable: _tab,
+                builder: (context, _) => _tab.index == 0
+                    ? _PhoneOtpTab(
                         phoneCtrl:       _phoneCtrl,
                         otpCtrl:         _otpCtrl,
                         otpSent:         _otpSent,
@@ -334,19 +330,17 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet>
                           _otpCtrl.clear();
                           _resendTimer?.cancel();
                         }),
-                      ),
-                      _EmailTab(
+                      )
+                    : _EmailTab(
                         formKey:         _formKey,
                         emailCtrl:       _emailCtrl,
                         passwordCtrl:    _passwordCtrl,
                         obscure:         _obscure,
                         loading:         ref.watch(authProvider) is AuthLoading,
+                        errorMessage:    _emailError,
                         onToggleObscure: () => setState(() => _obscure = !_obscure),
                         onLogin:         _loginEmail,
                       ),
-                    ],
-                  ),
-                ),
               ),
 
               const SizedBox(height: 20),
@@ -372,7 +366,7 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet>
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).pop();
-                      showRegisterBottomSheet(context, onSuccess: widget.onSuccess);
+                      context.push('/register');
                     },
                     child: const Text('إنشاء حساب',
                       style: TextStyle(
@@ -513,11 +507,13 @@ class _EmailTab extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController emailCtrl, passwordCtrl;
   final bool obscure, loading;
+  final String? errorMessage;
   final VoidCallback onToggleObscure, onLogin;
 
   const _EmailTab({
     required this.formKey, required this.emailCtrl, required this.passwordCtrl,
     required this.obscure, required this.loading,
+    this.errorMessage,
     required this.onToggleObscure, required this.onLogin,
   });
 
@@ -557,7 +553,34 @@ class _EmailTab extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          if (errorMessage != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEBEB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFFCDD2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: Color(0xFFD32F2F), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(
+                        color: Color(0xFFD32F2F),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
           _AuthButton(label: 'دخول', loading: loading, onTap: onLogin),
         ],
       ),

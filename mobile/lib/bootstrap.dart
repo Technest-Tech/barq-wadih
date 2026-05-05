@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
+import 'core/services/fcm_service.dart';
 import 'firebase_options.dart';
 
 /// Application bootstrap — initialises dependencies, sets up error handling,
@@ -24,6 +25,11 @@ Future<void> bootstrap() async {
 
   // ── Firebase ───────────────────────────────────────────────────────────────
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ── Push notifications ────────────────────────────────────────────────────
+  // Registers the background handler and sets up notification channels.
+  // Must run before ProviderScope / runApp so the background isolate is ready.
+  await FCMService.instance.init();
 
   // Remove the native splash NOW — Flutter takes over immediately
   FlutterNativeSplash.remove();

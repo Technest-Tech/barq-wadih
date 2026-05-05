@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,8 +65,40 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     if (firebaseAuth.isLoading) {
       return Scaffold(backgroundColor: _kBgLight, appBar: _buildAppBar(), body: _buildSkeleton());
     }
+    if (firebaseAuth.hasError) {
+      return Scaffold(
+        backgroundColor: _kBgLight,
+        appBar: _buildAppBar(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_off_rounded, size: 56, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'تعذّر الاتصال بخدمة الرسائل',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () => ref.invalidate(firebaseChatAuthProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-    final convAsync = ref.watch(conversationsStreamProvider(myId));
+    // Use the Firebase UID for the Firestore query (participantUids field).
+    // myId (backend integer string) is kept for display logic (peerNames, unreadCount maps).
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final convAsync = ref.watch(conversationsStreamProvider(myUid));
 
     return Scaffold(
       backgroundColor: _kBgLight,

@@ -10,17 +10,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'map_location_picker.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../categories/presentation/category_browser_sheet.dart';
+import '../../../categories/data/category_api.dart';
 import '../../../categories/domain/category_model.dart';
 import '../../../regions/presentation/region_city_picker.dart';
 import '../../../regions/domain/region_model.dart';
+import '../../../regions/data/region_api.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
 
 class PostAdScreen extends ConsumerStatefulWidget {
-  /// `null` = create mode, non-null = edit mode with that ad ID
   final int? adId;
   const PostAdScreen({super.key, this.adId});
 
@@ -29,11 +32,14 @@ class PostAdScreen extends ConsumerStatefulWidget {
 }
 
 class _PostAdScreenState extends ConsumerState<PostAdScreen> {
-  final _pageController = PageController();
-  int _step = 0;
+  late final PageController _pageController;
+  late int _step;
   bool _submitting = false;
   bool _loadingExisting = false;
   Map<String, String> _fieldErrors = {};
+
+  // Step 0 — Pledge
+  bool _pledgeAccepted = false;
 
   // Step 1 — Category
   CategoryModel? _selectedCategory;
@@ -44,35 +50,46 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   final _priceCtrl    = TextEditingController();
   final _phoneCtrl    = TextEditingController();
   final _whatsappCtrl = TextEditingController();
-  bool _isFree        = false;
-  bool _isNegotiable  = false;
+  bool _isFree           = false;
+  bool _isNegotiable     = false;
+  bool _priceHidden      = false;
+  bool _showPhonePublicly = true;
 
-  // Dynamic category field controllers — keyed by fieldKey to avoid recreation
+  // Dynamic category field controllers
   final Map<String, TextEditingController> _dynControllers = {};
   final Map<String, String> _fieldValues = {};
 
   // Step 3 — Images
   final List<XFile> _images = [];
 
-  // Step 4 — Location + Pledge
-  RegionModel? _selectedRegion;
-  CityModel?   _selectedCity;
-  bool _pledgeAccepted = false;
+  // Step 4 — Location + District
+  RegionModel?    _selectedRegion;
+  CityModel?      _selectedCity;
+  DistrictModel?  _selectedDistrict;
+  final _districtFreeTextCtrl = TextEditingController();
+  List<DistrictModel>? _districtsForCity;
+  int? _districtsLoadedForCityId;
+  bool _loadingDistricts = false;
+  double? _latitude;
+  double? _longitude;
 
   bool get _isEditMode => widget.adId != null;
-
-  // ── Step 2 validation gate ─────────────────────────────────────────────────
 
   bool get _step2Valid =>
       _titleCtrl.text.trim().isNotEmpty &&
       _descCtrl.text.trim().isNotEmpty &&
-      _phoneCtrl.text.trim().isNotEmpty &&
-      (_isFree || _priceCtrl.text.trim().isNotEmpty);
+      (!_showPhonePublicly || _phoneCtrl.text.trim().isNotEmpty) &&
+      (_isFree || _priceHidden || _priceCtrl.text.trim().isNotEmpty);
 
   @override
   void initState() {
     super.initState();
+    // Edit mode skips the pledge step (already agreed when first posting)
+    final initialPage = _isEditMode ? 1 : 0;
+    _pageController = PageController(initialPage: initialPage);
+    _step = initialPage;
     if (_isEditMode) {
+      _pledgeAccepted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingAd());
     }
   }
@@ -85,11 +102,12 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     _priceCtrl.dispose();
     _phoneCtrl.dispose();
     _whatsappCtrl.dispose();
+    _districtFreeTextCtrl.dispose();
     for (final c in _dynControllers.values) { c.dispose(); }
     super.dispose();
   }
 
-  // ── Load existing ad (edit mode) ───────────────────────────────────────────
+  // ── Load existing ad ───────────────────────────────────────────────────────
 
   Future<void> _loadExistingAd() async {
     setState(() => _loadingExisting = true);
@@ -97,9 +115,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       final ad = await ref.read(adRepositoryProvider).getAd(widget.adId!);
       if (!mounted) return;
       setState(() {
-        // Step 1 — set category stub (will be locked)
         if (ad.category != null) {
-          _selectedCategory = CategoryModel(
+          final cat = CategoryModel(
             id:          ad.category!.id,
             nameAr:      ad.category!.nameAr,
             nameEn:      '',
@@ -111,22 +128,22 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
             adsCount:    0,
             fieldsCount: 0,
           );
+          _selectedCategory = cat;
         }
-        // Step 2 — details
         _titleCtrl.text    = ad.title;
         _descCtrl.text     = ad.description;
         _priceCtrl.text    = ad.price?.toStringAsFixed(0) ?? '';
         _phoneCtrl.text    = ad.contactPhone;
         _whatsappCtrl.text = ad.contactWhatsapp ?? '';
-        _isFree            = ad.isFree;
-        _isNegotiable      = ad.isNegotiable;
+        _isFree             = ad.isFree;
+        _isNegotiable       = ad.isNegotiable;
+        _priceHidden        = ad.priceHidden;
+        _showPhonePublicly  = ad.showPhonePublicly;
 
-        // Dynamic fields
         for (final fv in ad.fieldValues) {
           _fieldValues[fv.fieldKey] = fv.value?.toString() ?? '';
         }
 
-        // Step 4 — location (pre-fill from saved data if available)
         if (ad.region != null) {
           _selectedRegion = RegionModel(
             id:          ad.region!.id,
@@ -146,10 +163,19 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
             adsCount: 0,
           );
         }
+        if (ad.district != null) {
+          _selectedDistrict = DistrictModel(
+            id:     ad.district!.id,
+            nameAr: ad.district!.nameAr,
+            nameEn: '',
+          );
+        }
 
-        // Pledge pre-accepted for edits
-        _pledgeAccepted = true;
       });
+
+      if (_selectedCity != null) {
+        _loadDistricts(_selectedCity!.id);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -165,7 +191,57 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     }
   }
 
+  // ── Districts ──────────────────────────────────────────────────────────────
+
+  Future<void> _loadDistricts(int cityId) async {
+    if (_districtsLoadedForCityId == cityId) return;
+    setState(() {
+      _loadingDistricts = true;
+      _selectedDistrict = null;
+      _districtFreeTextCtrl.clear();
+    });
+    try {
+      final districts =
+          await ref.read(regionRepositoryProvider).getDistricts(cityId);
+      if (mounted) {
+        setState(() {
+          _districtsForCity = districts;
+          _districtsLoadedForCityId = cityId;
+          _loadingDistricts = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _districtsForCity = [];
+          _districtsLoadedForCityId = cityId;
+          _loadingDistricts = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showDistrictPicker() async {
+    if (_districtsForCity == null || _districtsForCity!.isEmpty) return;
+    final result = await showModalBottomSheet<DistrictModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DistrictPickerSheet(districts: _districtsForCity!),
+    );
+    if (result != null) setState(() => _selectedDistrict = result);
+  }
+
   // ── Navigation ─────────────────────────────────────────────────────────────
+
+  void _jumpToStep(int step) {
+    _pageController.animateToPage(
+      step,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+    );
+    setState(() => _step = step);
+  }
 
   void _next() {
     _pageController.nextPage(
@@ -182,8 +258,6 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     );
     setState(() => _step--);
   }
-
-  // ── Dynamic field controller ───────────────────────────────────────────────
 
   TextEditingController _dynCtrl(String key) {
     return _dynControllers.putIfAbsent(key, () {
@@ -204,7 +278,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   Future<void> _pickFromCamera() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+    final picked = await picker.pickImage(
+        source: ImageSource.camera, imageQuality: 80);
     if (picked != null && _images.length < 10) {
       setState(() => _images.add(picked));
     }
@@ -223,20 +298,31 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         )),
       );
 
+      final regionId = _selectedCity?.region?.id ?? _selectedRegion?.id;
+
       final formFields = <String, dynamic>{
-        'city_id':         _selectedCity!.id.toString(),
-        'title':           _titleCtrl.text.trim(),
-        'description':     _descCtrl.text.trim(),
-        'price':           _isFree ? '0' : _priceCtrl.text.trim(),
-        'is_free':         _isFree ? '1' : '0',
-        'is_negotiable':   _isNegotiable ? '1' : '0',
-        'contact_phone':   _phoneCtrl.text.trim(),
-        if (_whatsappCtrl.text.isNotEmpty) 'contact_whatsapp': _whatsappCtrl.text.trim(),
-        'pledge_accepted': '1',
+        'city_id':              _selectedCity!.id.toString(),
+        if (regionId != null) 'region_id': regionId.toString(),
+        'title':                _titleCtrl.text.trim(),
+        'description':          _descCtrl.text.trim(),
+        'price':                (_isFree || _priceHidden) ? '0' : _priceCtrl.text.trim(),
+        'is_free':              _isFree ? '1' : '0',
+        'is_negotiable':        _isNegotiable ? '1' : '0',
+        'price_hidden':         _priceHidden ? '1' : '0',
+        'show_phone_publicly':  _showPhonePublicly ? '1' : '0',
+        'contact_phone':        _phoneCtrl.text.trim(),
+        if (_whatsappCtrl.text.isNotEmpty)
+          'contact_whatsapp':   _whatsappCtrl.text.trim(),
+        if (_selectedDistrict != null)
+          'district_id':        _selectedDistrict!.id.toString()
+        else if (_districtFreeTextCtrl.text.trim().isNotEmpty)
+          'district_name_free': _districtFreeTextCtrl.text.trim(),
+        'pledge_accepted':      '1',
+        if (_latitude != null)  'latitude':  _latitude.toString(),
+        if (_longitude != null) 'longitude': _longitude.toString(),
         ..._fieldValues.map((k, v) => MapEntry('fields[$k]', v)),
       };
 
-      // Only set category_id in create mode
       if (!_isEditMode) {
         formFields['category_id'] = _selectedCategory!.id.toString();
       }
@@ -274,13 +360,31 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         );
       }
     } on ApiException catch (e) {
-      setState(() {
-        _fieldErrors = (e.errors ?? {}).map((k, v) => MapEntry(k, (v as List).first as String));
-      });
-      if (_fieldErrors.isNotEmpty && mounted) {
-        _pageController.animateToPage(1,
-            duration: const Duration(milliseconds: 350), curve: Curves.easeInOutCubic);
-        setState(() => _step = 1);
+      final errors = (e.errors ?? {}).map(
+          (k, v) => MapEntry(k, (v as List).first as String));
+      setState(() => _fieldErrors = errors);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => _ErrorDialog(message: e.message, errors: errors),
+      );
+      if (!mounted) return;
+      if (errors.containsKey('category_id')) {
+        _jumpToStep(1); // التصنيف step
+      } else if (errors.isNotEmpty) {
+        _jumpToStep(2); // التفاصيل step
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ غير متوقع: ${e.toString()}',
+                textDirection: TextDirection.rtl),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -291,31 +395,19 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Loading spinner while fetching existing ad in edit mode
     if (_loadingExisting) {
       return Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          foregroundColor: AppTheme.neutralGray900,
-          title: Text(
-            _isEditMode ? 'تعديل الإعلان' : 'نشر إعلان',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
-            onPressed: () => context.pop(),
-          ),
-        ),
+        appBar: _appBar(),
         body: const Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: AppTheme.primaryBlue, strokeWidth: 2.5),
+              CircularProgressIndicator(
+                  color: AppTheme.primaryBlue, strokeWidth: 2.5),
               SizedBox(height: 16),
-              Text('جارٍ تحميل الإعلان...', style: TextStyle(color: AppTheme.neutralGray500)),
+              Text('جارٍ تحميل الإعلان...',
+                  style: TextStyle(color: AppTheme.neutralGray500)),
             ],
           ),
         ),
@@ -324,7 +416,121 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
+      appBar: _appBar(),
+      body: Column(
+        children: [
+          _StepIndicator(current: _step),
+          const Divider(height: 1, color: AppTheme.neutralGray200),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                // ── Step 0: Pledge (القسم) ─────────────────────────────────
+                _Step0Pledge(
+                  pledgeAccepted: _pledgeAccepted,
+                  onPledgeChanged: (v) => setState(() => _pledgeAccepted = v),
+                  onNext: _pledgeAccepted ? _next : () {},
+                ),
+                // ── Step 1: Category ───────────────────────────────────────
+                _Step1Category(
+                  selected: _selectedCategory,
+                  isLocked: _isEditMode,
+                  onSelect: (cat) {
+                    setState(() => _selectedCategory = cat);
+                    _next();
+                  },
+                  onNextLocked: _isEditMode ? () => _jumpToStep(2) : null,
+                ),
+                // ── Step 2: Details ────────────────────────────────────────
+                _Step2Details(
+                  titleCtrl:         _titleCtrl,
+                  descCtrl:          _descCtrl,
+                  priceCtrl:         _priceCtrl,
+                  phoneCtrl:         _phoneCtrl,
+                  whatsappCtrl:      _whatsappCtrl,
+                  isFree:            _isFree,
+                  isNegotiable:      _isNegotiable,
+                  priceHidden:       _priceHidden,
+                  showPhonePublicly: _showPhonePublicly,
+                  categoryId:        _selectedCategory?.id,
+                  fieldValues:       _fieldValues,
+                  errors:            _fieldErrors,
+                  onFreeChanged:        (v) => setState(() { _isFree = v; if (v) { _priceHidden = false; } }),
+                  onNegotiableChanged:  (v) => setState(() => _isNegotiable = v),
+                  onPriceHiddenChanged: (v) => setState(() { _priceHidden = v; if (v) { _isNegotiable = false; } }),
+                  onShowPhoneChanged:   (v) => setState(() => _showPhonePublicly = v),
+                  onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
+                  dynCtrl:   _dynCtrl,
+                  isValid:   _step2Valid,
+                  onBack:    _prev,
+                  onNext:    () { if (_step2Valid) _next(); },
+                ),
+                // ── Step 3: Images ─────────────────────────────────────────
+                _Step3Images(
+                  images:        _images,
+                  onPickGallery: _pickImages,
+                  onPickCamera:  _pickFromCamera,
+                  onRemove:      (i) => setState(() => _images.removeAt(i)),
+                  onBack:        _prev,
+                  onNext:        _next,
+                ),
+                // ── Step 4: Location + Submit ──────────────────────────────
+                _Step4LocationSubmit(
+                  selectedRegion:   _selectedRegion,
+                  selectedCity:     _selectedCity,
+                  selectedDistrict: _selectedDistrict,
+                  districtsForCity: _districtsForCity,
+                  loadingDistricts: _loadingDistricts,
+                  districtFreeTextCtrl: _districtFreeTextCtrl,
+                  latitude:         _latitude,
+                  longitude:        _longitude,
+                  submitting:       _submitting,
+                  isEditMode:       _isEditMode,
+                  priceText:        _isFree ? null : _priceCtrl.text.trim(),
+                  categoryId:       _selectedCategory?.id,
+                  onSelectLocation: (r, c) {
+                    setState(() {
+                      _selectedRegion   = r;
+                      _selectedCity     = c;
+                      _selectedDistrict = null;
+                      _districtFreeTextCtrl.clear();
+                    });
+                    if (c != null) _loadDistricts(c.id);
+                  },
+                  onPickDistrict:   _showDistrictPicker,
+                  onClearDistrict:  () => setState(() => _selectedDistrict = null),
+                  onPickMapLocation: () async {
+                    final picked = await Navigator.push<LatLng>(
+                      context,
+                      MaterialPageRoute(
+                        fullscreenDialog: true,
+                        builder: (_) => MapLocationPicker(
+                          initialLocation: (_latitude != null && _longitude != null)
+                              ? LatLng(_latitude!, _longitude!)
+                              : null,
+                        ),
+                      ),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _latitude  = picked.latitude;
+                        _longitude = picked.longitude;
+                      });
+                    }
+                  },
+                  onBack:   _prev,
+                  onSubmit: _submit,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  AppBar _appBar() => AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -337,77 +543,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
           icon: const Icon(Icons.close_rounded),
           onPressed: () => context.pop(),
         ),
-      ),
-      body: Column(
-        children: [
-          // Step indicator
-          _StepIndicator(current: _step),
-          const Divider(height: 1, color: AppTheme.neutralGray200),
-
-          // Page content
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _Step1Category(
-                  selected: _selectedCategory,
-                  isLocked: _isEditMode,
-                  onSelect: (cat) {
-                    setState(() => _selectedCategory = cat);
-                    _next();
-                  },
-                  onNext: _isEditMode ? _next : null,
-                ),
-                _Step2Details(
-                  titleCtrl: _titleCtrl,
-                  descCtrl: _descCtrl,
-                  priceCtrl: _priceCtrl,
-                  phoneCtrl: _phoneCtrl,
-                  whatsappCtrl: _whatsappCtrl,
-                  isFree: _isFree,
-                  isNegotiable: _isNegotiable,
-                  categoryId: _selectedCategory?.id,
-                  fieldValues: _fieldValues,
-                  errors: _fieldErrors,
-                  onFreeChanged: (v) => setState(() => _isFree = v),
-                  onNegotiableChanged: (v) => setState(() => _isNegotiable = v),
-                  onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
-                  dynCtrl: _dynCtrl,
-                  isValid: _step2Valid,
-                  onBack: _prev,
-                  onNext: () {
-                    if (_step2Valid) _next();
-                  },
-                ),
-                _Step3Images(
-                  images: _images,
-                  onPickGallery: _pickImages,
-                  onPickCamera: _pickFromCamera,
-                  onRemove: (i) => setState(() => _images.removeAt(i)),
-                  onBack: _prev,
-                  onNext: _next,
-                ),
-                _Step4LocationSubmit(
-                  selectedRegion: _selectedRegion,
-                  selectedCity: _selectedCity,
-                  pledgeAccepted: _pledgeAccepted,
-                  submitting: _submitting,
-                  isEditMode: _isEditMode,
-                  priceText: _isFree ? null : _priceCtrl.text.trim(),
-                  categoryId: _selectedCategory?.id,
-                  onSelectLocation: (r, c) => setState(() { _selectedRegion = r; _selectedCity = c; }),
-                  onPledgeChanged: (v) => setState(() => _pledgeAccepted = v),
-                  onBack: _prev,
-                  onSubmit: _submit,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      );
 }
 
 // ── Step Indicator ────────────────────────────────────────────────────────────
@@ -415,7 +551,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 class _StepIndicator extends StatelessWidget {
   final int current;
   const _StepIndicator({required this.current});
-  static const _labels = ['التصنيف', 'التفاصيل', 'الصور', 'الموقع'];
+  static const _labels = ['القسم', 'التصنيف', 'التفاصيل', 'الصور', 'الموقع'];
 
   @override
   Widget build(BuildContext context) {
@@ -450,12 +586,15 @@ class _StepIndicator extends StatelessWidget {
                         ),
                         child: Center(
                           child: isDone
-                              ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                              ? const Icon(Icons.check_rounded,
+                                  size: 15, color: Colors.white)
                               : Text(
                                   '${i + 1}',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: isActive ? AppTheme.primaryBlue : AppTheme.neutralGray500,
+                                    color: isActive
+                                        ? AppTheme.primaryBlue
+                                        : AppTheme.neutralGray500,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -466,12 +605,12 @@ class _StepIndicator extends StatelessWidget {
                         _labels[i],
                         style: TextStyle(
                           fontSize: 10,
-                          color: isActive
+                          color: isActive || isDone
                               ? AppTheme.primaryBlue
-                              : isDone
-                                  ? AppTheme.primaryBlue
-                                  : AppTheme.neutralGray500,
-                          fontWeight: isActive || isDone ? FontWeight.w700 : FontWeight.normal,
+                              : AppTheme.neutralGray500,
+                          fontWeight: isActive || isDone
+                              ? FontWeight.w700
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -484,7 +623,9 @@ class _StepIndicator extends StatelessWidget {
                       height: 2,
                       width: 20,
                       decoration: BoxDecoration(
-                        color: isDone ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+                        color: isDone
+                            ? AppTheme.primaryBlue
+                            : AppTheme.neutralGray200,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -498,132 +639,575 @@ class _StepIndicator extends StatelessWidget {
   }
 }
 
+// ── Shared color palette for category lists ───────────────────────────────────
+
+const _kCategoryColors = [
+  Color(0xFF6C63FF), Color(0xFF00B4D8), Color(0xFFFF6B6B), Color(0xFF2EC4B6),
+  Color(0xFFFF9F1C), Color(0xFF8338EC), Color(0xFF06D6A0), Color(0xFFEF476F),
+  Color(0xFF118AB2), Color(0xFFFFD166), Color(0xFF073B4C), Color(0xFFE63946),
+];
+
+// ── Step 0: Pledge (القسم) ────────────────────────────────────────────────────
+
+class _Step0Pledge extends StatelessWidget {
+  final bool pledgeAccepted;
+  final void Function(bool) onPledgeChanged;
+  final VoidCallback onNext;
+
+  const _Step0Pledge({
+    required this.pledgeAccepted,
+    required this.onPledgeChanged,
+    required this.onNext,
+  });
+
+  static const _quranVerse =
+      '﴿وَأَوْفُوا بِالْعَهْدِ ۖ إِنَّ الْعَهْدَ كَانَ مَسْئُولًا﴾';
+
+  static const _pledgeBody =
+      'بسم الله الرحمن الرحيم.\n\n'
+      'أتعهد وأقسم بالله العظيم أنا المعلن المسجّل في موقع برق وادي ما يلي:\n\n'
+      '١. أن جميع المعلومات والصور المنشورة في إعلاني صحيحة ودقيقة، وتعبّر عن السلعة أو الخدمة كما هي بدون غش أو تدليس.\n\n'
+      '٢. أن أدفع للموقع رسوم العمولة المستحقة وقدرها 1% من قيمة البيع الفعلية، خلال مدة لا تتجاوز 10 أيام من استلامي لكامل مبلغ المبايعة من المشتري.\n\n'
+      '٣. أن رسوم النشر المدفوعة عند إنشاء الإعلان غير مستردة، وذلك مقابل خدمة عرض الإعلان والوصول إلى المهتمين.\n\n'
+      '٤. أن أتحمل كامل المسؤولية القانونية والشرعية عن صحة الإعلان ومحتواه، وأن للموقع الحق في حذفه أو إيقاف حسابي عند مخالفة الشروط.\n\n'
+      '٥. ألتزم بعدم نشر إعلانات تحتوي على ما يخالف الأنظمة المعمول بها في المملكة العربية السعودية.\n\n'
+      'والله على ما أقول شهيد.';
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withValues(alpha: .05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: AppTheme.primaryBlue.withValues(alpha: .2)),
+            ),
+            child: const Column(
+              children: [
+                Text('🤝', style: TextStyle(fontSize: 40)),
+                SizedBox(height: 10),
+                Text(
+                  'تعهّد المعلن',
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.neutralGray900),
+                  textDirection: TextDirection.rtl,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'اقرأ الميثاق ثم وافق للمتابعة',
+                  style: TextStyle(
+                      fontSize: 13, color: AppTheme.neutralGray500),
+                  textDirection: TextDirection.rtl,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Quranic verse
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.teal.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.teal.shade200),
+            ),
+            child: Text(
+              _quranVerse,
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.teal.shade800,
+                height: 1.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Pledge body
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.neutralGray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.neutralGray200),
+            ),
+            child: const Text(
+              _pledgeBody,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                  fontSize: 13,
+                  height: 1.9,
+                  color: AppTheme.neutralGray800),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Agreement checkbox
+          GestureDetector(
+            onTap: () => onPledgeChanged(!pledgeAccepted),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: pledgeAccepted
+                    ? AppTheme.primaryBlue.withValues(alpha: .06)
+                    : AppTheme.neutralGray50,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: pledgeAccepted
+                      ? AppTheme.primaryBlue
+                      : AppTheme.neutralGray200,
+                  width: pledgeAccepted ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'أوافق على هذا التعهّد وأقسم بالله أن المعلومات المنشورة صحيحة، وأن أدفع الرسوم المستحقة وفق الشروط أعلاه.',
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.6,
+                        color: pledgeAccepted
+                            ? AppTheme.primaryBlue
+                            : AppTheme.neutralGray700,
+                        fontWeight: pledgeAccepted
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: pledgeAccepted
+                          ? AppTheme.primaryBlue
+                          : Colors.white,
+                      border: Border.all(
+                        color: pledgeAccepted
+                            ? AppTheme.primaryBlue
+                            : AppTheme.neutralGray300,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: pledgeAccepted
+                        ? const Icon(Icons.check_rounded,
+                            color: Colors.white, size: 14)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          SizedBox(
+            width: double.infinity,
+            child: _PrimaryButton(
+              label: 'أوافق وأتابع',
+              icon: Icons.arrow_forward_ios_rounded,
+              onPressed: pledgeAccepted ? onNext : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Step 1: Category ──────────────────────────────────────────────────────────
 
-class _Step1Category extends ConsumerWidget {
+class _Step1Category extends ConsumerStatefulWidget {
   final CategoryModel? selected;
   final bool isLocked;
   final void Function(CategoryModel) onSelect;
-  /// In edit mode this is non-null and navigates to step 2 without changing category
-  final VoidCallback? onNext;
+  final VoidCallback? onNextLocked;
 
   const _Step1Category({
     required this.selected,
     required this.isLocked,
     required this.onSelect,
-    this.onNext,
+    this.onNextLocked,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Step1Category> createState() => _Step1CategoryState();
+}
+
+class _Step1CategoryState extends ConsumerState<_Step1Category> {
+  CategoryModel? _browsing; // parent being drilled into
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isLocked) return _buildLocked();
+
+    final catsAsync = ref.watch(categoriesProvider);
+    return catsAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(
+            color: AppTheme.primaryBlue, strokeWidth: 2.5),
+      ),
+      error: (_, __) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 12),
+            const Text('فشل تحميل الأقسام',
+                textDirection: TextDirection.rtl),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => ref.refresh(categoriesProvider),
+              child: const Text('إعادة المحاولة'),
+            ),
+          ],
+        ),
+      ),
+      data: (cats) => _browsing != null
+          ? _buildSubList(_browsing!)
+          : _buildParentList(cats),
+    );
+  }
+
+  Widget _buildLocked() {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Icon
           Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: AppTheme.primaryBlue.withValues(alpha: .08),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.grid_view_rounded, size: 36, color: AppTheme.primaryBlue),
+            child: const Icon(Icons.grid_view_rounded,
+                size: 36, color: AppTheme.primaryBlue),
           ),
           const SizedBox(height: 20),
-
-          Text(
-            isLocked ? 'تصنيف الإعلان' : 'اختر تصنيف إعلانك',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.neutralGray900),
-          ),
+          const Text('تصنيف الإعلان',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.neutralGray900)),
           const SizedBox(height: 8),
-          Text(
-            isLocked
-                ? 'لا يمكن تغيير التصنيف عند تعديل الإعلان'
-                : 'سيساعد اختيار التصنيف الصحيح في الوصول للمشترين',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.neutralGray500, fontSize: 13, height: 1.5),
-          ),
+          const Text('لا يمكن تغيير التصنيف عند تعديل الإعلان',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppTheme.neutralGray500, fontSize: 13)),
           const SizedBox(height: 32),
-
-          // Selected badge
-          if (selected != null) ...[
+          if (widget.selected != null) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.primaryBlue, width: 1.5),
+                border: Border.all(
+                    color: AppTheme.primaryBlue, width: 1.5),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(selected!.icon ?? '📂', style: const TextStyle(fontSize: 22)),
                   const SizedBox(width: 10),
-                  Text(
-                    selected!.nameAr,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryBlue,
-                      fontSize: 15,
-                    ),
-                  ),
+                  Text(widget.selected!.nameAr,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryBlue,
+                          fontSize: 15)),
                   const SizedBox(width: 8),
-                  const Icon(Icons.check_circle_rounded, color: AppTheme.primaryBlue, size: 18),
+                  const Icon(Icons.check_circle_rounded,
+                      color: AppTheme.primaryBlue, size: 18),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-          ],
-
-          // In edit mode: show locked hint + Continue button
-          if (isLocked) ...[
-            if (selected != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.lock_outline_rounded, size: 15, color: Colors.amber.shade700),
-                    const SizedBox(width: 6),
-                    Text(
-                      'التصنيف مقفل أثناء التعديل',
-                      style: TextStyle(fontSize: 12, color: Colors.amber.shade700),
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade200),
               ),
-              const SizedBox(height: 20),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: _PrimaryButton(
-                label: 'المتابعة للتفاصيل',
-                icon: Icons.arrow_forward_ios_rounded,
-                onPressed: onNext,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_outline_rounded,
+                      size: 15, color: Colors.amber.shade700),
+                  const SizedBox(width: 6),
+                  Text('التصنيف مقفل أثناء التعديل',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade700)),
+                ],
               ),
             ),
-          ] else ...[
-            // Browse button (create mode)
-            SizedBox(
-              width: double.infinity,
-              child: _PrimaryButton(
-                label: selected == null ? 'تصفح التصنيفات' : 'تغيير التصنيف',
-                icon: Icons.grid_view_rounded,
-                onPressed: () async {
-                  final result = await showCategoryBrowserSheet(context, ref);
-                  if (result != null) onSelect(result);
-                },
-              ),
-            ),
+            const SizedBox(height: 20),
           ],
+          SizedBox(
+            width: double.infinity,
+            child: _PrimaryButton(
+              label: 'المتابعة للتفاصيل',
+              icon: Icons.arrow_forward_ios_rounded,
+              onPressed: widget.onNextLocked,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildParentList(List<CategoryModel> cats) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: Text(
+            'اختر القسم',
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.neutralGray600),
+            textDirection: TextDirection.rtl,
+          ),
+        ),
+        const Divider(height: 1, color: AppTheme.neutralGray100),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.only(bottom: 16),
+            itemCount: cats.length,
+            separatorBuilder: (_, __) => const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppTheme.neutralGray100),
+            itemBuilder: (_, i) {
+              final cat = cats[i];
+              final color =
+                  _kCategoryColors[i % _kCategoryColors.length];
+              final isSelected = widget.selected?.id == cat.id;
+              return InkWell(
+                onTap: () {
+                  if (cat.children.isNotEmpty) {
+                    setState(() => _browsing = cat);
+                  } else {
+                    widget.onSelect(cat);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  color: isSelected
+                      ? AppTheme.primaryBlue.withValues(alpha: .05)
+                      : null,
+                  child: Row(
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                            color: color, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          cat.nameAr,
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected
+                                ? AppTheme.primaryBlue
+                                : AppTheme.neutralGray900,
+                          ),
+                        ),
+                      ),
+                      if (cat.children.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${cat.children.length}',
+                            style: TextStyle(
+                                color: color,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_back_ios,
+                            size: 12,
+                            color: AppTheme.neutralGray400),
+                      ] else
+                        Icon(
+                          isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
+                          size: 18,
+                          color: isSelected
+                              ? AppTheme.primaryBlue
+                              : AppTheme.neutralGray300,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubList(CategoryModel parent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Back header
+        InkWell(
+          onTap: () => setState(() => _browsing = null),
+          child: Container(
+            padding:
+                const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                  bottom:
+                      BorderSide(color: AppTheme.neutralGray100)),
+            ),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppTheme.neutralGray100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.arrow_forward_ios,
+                      size: 14,
+                      color: AppTheme.neutralGray600),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.end,
+                    children: [
+                      const Text('اختر القسم الفرعي',
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.neutralGray500)),
+                      Text(parent.nameAr,
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  AppTheme.neutralGray900)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.only(bottom: 16),
+            itemCount: parent.children.length,
+            separatorBuilder: (_, __) => const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppTheme.neutralGray100),
+            itemBuilder: (_, i) {
+              final sub = parent.children[i];
+              final color =
+                  _kCategoryColors[i % _kCategoryColors.length];
+              final isSelected = widget.selected?.id == sub.id;
+              return InkWell(
+                onTap: () => widget.onSelect(sub),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  color: isSelected
+                      ? AppTheme.primaryBlue.withValues(alpha: .05)
+                      : null,
+                  child: Row(
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                            color: color, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          sub.nameAr,
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected
+                                ? AppTheme.primaryBlue
+                                : AppTheme.neutralGray900,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : Icons.circle_outlined,
+                        size: 18,
+                        color: isSelected
+                            ? AppTheme.primaryBlue
+                            : AppTheme.neutralGray300,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -631,25 +1215,42 @@ class _Step1Category extends ConsumerWidget {
 // ── Step 2: Details ───────────────────────────────────────────────────────────
 
 class _Step2Details extends ConsumerStatefulWidget {
-  final TextEditingController titleCtrl, descCtrl, priceCtrl, phoneCtrl, whatsappCtrl;
-  final bool isFree, isNegotiable, isValid;
+  final TextEditingController titleCtrl, descCtrl, priceCtrl, phoneCtrl,
+      whatsappCtrl;
+  final bool isFree, isNegotiable, priceHidden, showPhonePublicly, isValid;
   final int? categoryId;
   final Map<String, String> fieldValues;
   final Map<String, String> errors;
   final void Function(bool) onFreeChanged;
   final void Function(bool) onNegotiableChanged;
+  final void Function(bool) onPriceHiddenChanged;
+  final void Function(bool) onShowPhoneChanged;
   final void Function(String, String) onFieldChanged;
   final TextEditingController Function(String) dynCtrl;
   final VoidCallback onBack, onNext;
 
   const _Step2Details({
-    required this.titleCtrl, required this.descCtrl, required this.priceCtrl,
-    required this.phoneCtrl, required this.whatsappCtrl,
-    required this.isFree, required this.isNegotiable, required this.isValid,
+    required this.titleCtrl,
+    required this.descCtrl,
+    required this.priceCtrl,
+    required this.phoneCtrl,
+    required this.whatsappCtrl,
+    required this.isFree,
+    required this.isNegotiable,
+    required this.priceHidden,
+    required this.showPhonePublicly,
+    required this.isValid,
     required this.categoryId,
-    required this.fieldValues, required this.errors,
-    required this.onFreeChanged, required this.onNegotiableChanged, required this.onFieldChanged,
-    required this.dynCtrl, required this.onBack, required this.onNext,
+    required this.fieldValues,
+    required this.errors,
+    required this.onFreeChanged,
+    required this.onNegotiableChanged,
+    required this.onPriceHiddenChanged,
+    required this.onShowPhoneChanged,
+    required this.onFieldChanged,
+    required this.dynCtrl,
+    required this.onBack,
+    required this.onNext,
   });
 
   @override
@@ -669,7 +1270,8 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Basic info ───────────────────────────────────────────────────
-          _SectionHeader(title: 'معلومات الإعلان', icon: Icons.edit_note_rounded),
+          _SectionHeader(
+              title: 'معلومات الإعلان', icon: Icons.edit_note_rounded),
           const SizedBox(height: 12),
 
           _FormField(
@@ -697,7 +1299,7 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               style: const TextStyle(color: AppTheme.neutralGray900),
               onChanged: (_) => setState(() {}),
               decoration: _inputDecoration(
-                hint: 'صف السلعة بتفاصيل كافية — الحالة، الموصفات، سبب البيع...',
+                hint: 'صف السلعة بتفاصيل كافية — الحالة، المواصفات، سبب البيع...',
                 error: widget.errors['description'],
               ),
             ),
@@ -707,36 +1309,57 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           _SectionHeader(title: 'السعر', icon: Icons.payments_outlined),
           const SizedBox(height: 12),
 
-          // Free toggle
           _ToggleRow(
             label: 'مجاني',
             value: widget.isFree,
-            onChanged: (v) { widget.onFreeChanged(v); setState(() {}); },
+            onChanged: (v) {
+              widget.onFreeChanged(v);
+              setState(() {});
+            },
           ),
           if (!widget.isFree) ...[
             _ToggleRow(
-              label: 'قابل للتفاوض',
-              value: widget.isNegotiable,
-              onChanged: (v) { widget.onNegotiableChanged(v); setState(() {}); },
+              label: 'اتصل للسعر',
+              value: widget.priceHidden,
+              onChanged: (v) {
+                widget.onPriceHiddenChanged(v);
+                setState(() {});
+              },
             ),
-            const SizedBox(height: 8),
-            _FormField(
-              label: 'السعر',
-              required: true,
-              child: TextField(
-                controller: widget.priceCtrl,
-                textDirection: TextDirection.rtl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => setState(() {}),
-                style: const TextStyle(color: AppTheme.neutralGray900, fontSize: 18, fontWeight: FontWeight.w700),
-                decoration: _inputDecoration(
-                  hint: '0',
-                  error: widget.errors['price'],
-                  prefix: const Text('ر.س  ', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.w700)),
+            if (!widget.priceHidden) ...[
+              _ToggleRow(
+                label: 'قابل للتفاوض',
+                value: widget.isNegotiable,
+                onChanged: (v) {
+                  widget.onNegotiableChanged(v);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              _FormField(
+                label: 'السعر',
+                required: true,
+                child: TextField(
+                  controller: widget.priceCtrl,
+                  textDirection: TextDirection.rtl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(
+                      color: AppTheme.neutralGray900,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700),
+                  decoration: _inputDecoration(
+                    hint: '0',
+                    error: widget.errors['price'],
+                    prefix: const Text('ر.س  ',
+                        style: TextStyle(
+                            color: AppTheme.primaryBlue,
+                            fontWeight: FontWeight.w700)),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
           const SizedBox(height: 4),
 
@@ -745,7 +1368,10 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
             categoryFieldsState.when(
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue, strokeWidth: 2)),
+                child: Center(
+                  child: CircularProgressIndicator(
+                      color: AppTheme.primaryBlue, strokeWidth: 2),
+                ),
               ),
               error: (_, __) => const SizedBox.shrink(),
               data: (fields) {
@@ -753,54 +1379,67 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionHeader(title: 'المواصفات', icon: Icons.tune_rounded),
+                    _SectionHeader(
+                        title: 'المواصفات', icon: Icons.tune_rounded),
                     const SizedBox(height: 12),
                     ...fields.map((f) {
                       if (f.options.isNotEmpty) {
-                        // Select dropdown
                         return _FormField(
                           label: f.labelAr,
                           required: f.isRequired,
                           child: DropdownButtonFormField<String>(
-                            value: widget.fieldValues[f.fieldKey],
-                            hint: Text(f.placeholderAr ?? 'اختر...', style: const TextStyle(color: AppTheme.neutralGray500)),
+                            initialValue: widget.fieldValues[f.fieldKey],
+                            hint: Text(f.placeholderAr ?? 'اختر...',
+                                style: const TextStyle(
+                                    color: AppTheme.neutralGray500)),
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppTheme.neutralGray200),
+                                borderSide: const BorderSide(
+                                    color: AppTheme.neutralGray200),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppTheme.neutralGray200),
+                                borderSide: const BorderSide(
+                                    color: AppTheme.neutralGray200),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+                                borderSide: const BorderSide(
+                                    color: AppTheme.primaryBlue, width: 1.5),
                               ),
                             ),
-                            items: f.options.map((o) => DropdownMenuItem(
-                              value: o,
-                              child: Text(o, textDirection: TextDirection.rtl),
-                            )).toList(),
-                            onChanged: (v) { if (v != null) widget.onFieldChanged(f.fieldKey, v); },
+                            items: f.options
+                                .map((o) => DropdownMenuItem(
+                                      value: o,
+                                      child: Text(o,
+                                          textDirection: TextDirection.rtl),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) widget.onFieldChanged(f.fieldKey, v);
+                            },
                           ),
                         );
                       }
-                      // Text / number field
                       return _FormField(
                         label: f.labelAr,
                         required: f.isRequired,
                         child: TextField(
                           controller: widget.dynCtrl(f.fieldKey),
                           textDirection: TextDirection.rtl,
-                          keyboardType: f.fieldType == 'number' || f.fieldType == 'year'
-                              ? TextInputType.number
-                              : TextInputType.text,
-                          style: const TextStyle(color: AppTheme.neutralGray900),
-                          decoration: _inputDecoration(hint: f.placeholderAr ?? ''),
+                          keyboardType:
+                              f.fieldType == 'number' || f.fieldType == 'year'
+                                  ? TextInputType.number
+                                  : TextInputType.text,
+                          style: const TextStyle(
+                              color: AppTheme.neutralGray900),
+                          decoration:
+                              _inputDecoration(hint: f.placeholderAr ?? ''),
                         ),
                       );
                     }),
@@ -811,12 +1450,23 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           ],
 
           // ── Contact ──────────────────────────────────────────────────────
-          _SectionHeader(title: 'معلومات التواصل', icon: Icons.phone_outlined),
+          _SectionHeader(
+              title: 'معلومات التواصل', icon: Icons.phone_outlined),
           const SizedBox(height: 12),
+
+          _ToggleRow(
+            label: 'إظهار رقم الجوال للعموم',
+            value: widget.showPhonePublicly,
+            onChanged: (v) {
+              widget.onShowPhoneChanged(v);
+              setState(() {});
+            },
+          ),
+          const SizedBox(height: 8),
 
           _FormField(
             label: 'رقم التواصل',
-            required: true,
+            required: widget.showPhonePublicly,
             child: TextField(
               controller: widget.phoneCtrl,
               textDirection: TextDirection.ltr,
@@ -826,7 +1476,8 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               decoration: _inputDecoration(
                 hint: '05xxxxxxxx',
                 error: widget.errors['contact_phone'],
-                prefix: const Text('🇸🇦 +966  ', style: TextStyle(fontSize: 13)),
+                prefix: const Text('🇸🇦 +966  ',
+                    style: TextStyle(fontSize: 13)),
               ),
             ),
           ),
@@ -841,9 +1492,9 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               style: const TextStyle(color: AppTheme.neutralGray900),
               decoration: _inputDecoration(
                 hint: '05xxxxxxxx (اختياري)',
-                prefix: Row(
+                prefix: const Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Text('💬  ', style: TextStyle(fontSize: 15)),
                   ],
                 ),
@@ -872,8 +1523,12 @@ class _Step3Images extends StatelessWidget {
   final VoidCallback onBack, onNext;
 
   const _Step3Images({
-    required this.images, required this.onPickGallery, required this.onPickCamera,
-    required this.onRemove, required this.onBack, required this.onNext,
+    required this.images,
+    required this.onPickGallery,
+    required this.onPickCamera,
+    required this.onRemove,
+    required this.onBack,
+    required this.onNext,
   });
 
   @override
@@ -891,45 +1546,43 @@ class _Step3Images extends StatelessWidget {
                   color: AppTheme.primaryBlue.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.photo_library_rounded, color: AppTheme.primaryBlue, size: 22),
+                child: const Icon(Icons.photo_library_rounded,
+                    color: AppTheme.primaryBlue, size: 22),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('صور الإعلان', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                  const Text('صور الإعلان',
+                      style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w700)),
                   Text(
                     'أضف حتى 10 صور • الصورة الأولى ستكون الرئيسية',
-                    style: TextStyle(fontSize: 12, color: AppTheme.neutralGray500),
+                    style: TextStyle(
+                        fontSize: 12, color: AppTheme.neutralGray500),
                   ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Count badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '${images.length}/10 صور',
                 style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.neutralGray600,
-                ),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.neutralGray600),
               ),
               if (images.isNotEmpty)
-                Text(
-                  'اضغط × لحذف صورة',
-                  style: TextStyle(fontSize: 12, color: AppTheme.neutralGray500),
-                ),
+                Text('اضغط × لحذف صورة',
+                    style: TextStyle(
+                        fontSize: 12, color: AppTheme.neutralGray500)),
             ],
           ),
           const SizedBox(height: 8),
-
-          // Grid
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -937,7 +1590,8 @@ class _Step3Images extends StatelessWidget {
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: images.length + (images.length < 10 ? 1 : 0),
+              itemCount:
+                  images.length + (images.length < 10 ? 1 : 0),
               itemBuilder: (context, i) {
                 if (i == images.length) {
                   return _AddImageTile(
@@ -953,7 +1607,6 @@ class _Step3Images extends StatelessWidget {
               },
             ),
           ),
-
           const SizedBox(height: 12),
           _NavRow(
             onBack: onBack,
@@ -970,7 +1623,8 @@ class _ImageTile extends StatelessWidget {
   final XFile file;
   final bool isPrimary;
   final VoidCallback onRemove;
-  const _ImageTile({required this.file, required this.isPrimary, required this.onRemove});
+  const _ImageTile(
+      {required this.file, required this.isPrimary, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -981,7 +1635,6 @@ class _ImageTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           child: Image.file(File(file.path), fit: BoxFit.cover),
         ),
-        // Primary badge
         if (isPrimary)
           Positioned(
             bottom: 0, left: 0, right: 0,
@@ -997,19 +1650,23 @@ class _ImageTile extends StatelessWidget {
               child: const Text(
                 'رئيسية',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700),
               ),
             ),
           ),
-        // Remove button
         Positioned(
           top: 4, left: 4,
           child: GestureDetector(
             onTap: onRemove,
             child: Container(
               width: 24, height: 24,
-              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-              child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+              decoration: const BoxDecoration(
+                  color: Colors.black54, shape: BoxShape.circle),
+              child: const Icon(Icons.close_rounded,
+                  color: Colors.white, size: 14),
             ),
           ),
         ),
@@ -1020,7 +1677,8 @@ class _ImageTile extends StatelessWidget {
 
 class _AddImageTile extends StatelessWidget {
   final VoidCallback onPickGallery, onPickCamera;
-  const _AddImageTile({required this.onPickGallery, required this.onPickCamera});
+  const _AddImageTile(
+      {required this.onPickGallery, required this.onPickCamera});
 
   @override
   Widget build(BuildContext context) {
@@ -1036,18 +1694,30 @@ class _AddImageTile extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(width: 40, height: 4, decoration: BoxDecoration(
-                  color: AppTheme.neutralGray200, borderRadius: BorderRadius.circular(2))),
+                Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: AppTheme.neutralGray200,
+                        borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: const Icon(Icons.photo_library_rounded, color: AppTheme.primaryBlue),
+                  leading: const Icon(Icons.photo_library_rounded,
+                      color: AppTheme.primaryBlue),
                   title: const Text('اختر من المعرض'),
-                  onTap: () { Navigator.pop(context); onPickGallery(); },
+                  onTap: () {
+                    Navigator.pop(context);
+                    onPickGallery();
+                  },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryBlue),
+                  leading: const Icon(Icons.camera_alt_rounded,
+                      color: AppTheme.primaryBlue),
                   title: const Text('التقط صورة'),
-                  onTap: () { Navigator.pop(context); onPickCamera(); },
+                  onTap: () {
+                    Navigator.pop(context);
+                    onPickCamera();
+                  },
                 ),
               ],
             ),
@@ -1063,9 +1733,14 @@ class _AddImageTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_photo_alternate_rounded, size: 30, color: AppTheme.primaryBlue),
+            const Icon(Icons.add_photo_alternate_rounded,
+                size: 30, color: AppTheme.primaryBlue),
             const SizedBox(height: 6),
-            Text('إضافة صورة', style: TextStyle(fontSize: 11, color: AppTheme.neutralGray500, fontWeight: FontWeight.w600)),
+            Text('إضافة صورة',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.neutralGray500,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -1073,52 +1748,77 @@ class _AddImageTile extends StatelessWidget {
   }
 }
 
-// ── Step 4: Location + Pledge + Submit ────────────────────────────────────────
+// ── Step 4: Location + District + Pledge + Submit ─────────────────────────────
 
 class _Step4LocationSubmit extends ConsumerWidget {
-  final RegionModel? selectedRegion;
-  final CityModel?   selectedCity;
-  final bool pledgeAccepted, submitting, isEditMode;
+  final RegionModel?   selectedRegion;
+  final CityModel?     selectedCity;
+  final DistrictModel? selectedDistrict;
+  final List<DistrictModel>? districtsForCity;
+  final bool loadingDistricts;
+  final TextEditingController districtFreeTextCtrl;
+  final double? latitude;
+  final double? longitude;
+  final bool submitting, isEditMode;
   final String? priceText;
   final int? categoryId;
   final void Function(RegionModel, CityModel?) onSelectLocation;
-  final void Function(bool) onPledgeChanged;
+  final VoidCallback onPickDistrict;
+  final VoidCallback onClearDistrict;
+  final VoidCallback onPickMapLocation;
   final VoidCallback onBack, onSubmit;
 
   const _Step4LocationSubmit({
-    required this.selectedRegion, required this.selectedCity,
-    required this.pledgeAccepted, required this.submitting,
+    required this.selectedRegion,
+    required this.selectedCity,
+    required this.selectedDistrict,
+    required this.districtsForCity,
+    required this.loadingDistricts,
+    required this.districtFreeTextCtrl,
+    required this.latitude,
+    required this.longitude,
+    required this.submitting,
     required this.isEditMode,
     required this.priceText,
     required this.categoryId,
-    required this.onSelectLocation, required this.onPledgeChanged,
-    required this.onBack, required this.onSubmit,
+    required this.onSelectLocation,
+    required this.onPickDistrict,
+    required this.onClearDistrict,
+    required this.onPickMapLocation,
+    required this.onBack,
+    required this.onSubmit,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canSubmit = selectedCity != null && pledgeAccepted && !submitting;
+    final canSubmit = selectedCity != null && !submitting;
     final price = double.tryParse(priceText ?? '');
     final commissionState = (price != null && price > 0)
         ? ref.watch(commissionPreviewProvider(price))
         : null;
+
+    final hasDistrictsLoaded =
+        districtsForCity != null && districtsForCity!.isNotEmpty;
+    final noDistricts = districtsForCity != null && districtsForCity!.isEmpty;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(title: 'موقع الإعلان', icon: Icons.location_on_rounded),
+          _SectionHeader(
+              title: 'موقع الإعلان', icon: Icons.location_on_rounded),
           const SizedBox(height: 12),
 
-          // Location picker
+          // City / Region picker
           GestureDetector(
             onTap: () async {
               final result = await showRegionCityPicker(
-                context, 
-                ref, 
+                context,
+                ref,
                 isMultiSelect: false,
-                initialSelection: selectedCity != null ? [selectedCity!] : null,
+                initialSelection:
+                    selectedCity != null ? [selectedCity!] : null,
               );
               if (result != null && result.isNotEmpty) {
                 onSelectLocation(result.first.region!, result.first);
@@ -1131,7 +1831,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     ? AppTheme.primaryBlue.withValues(alpha: .05)
                     : AppTheme.neutralGray50,
                 border: Border.all(
-                  color: selectedCity != null ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+                  color: selectedCity != null
+                      ? AppTheme.primaryBlue
+                      : AppTheme.neutralGray200,
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(14),
@@ -1140,35 +1842,200 @@ class _Step4LocationSubmit extends ConsumerWidget {
                 children: [
                   Icon(
                     Icons.location_on_rounded,
-                    color: selectedCity != null ? AppTheme.primaryBlue : AppTheme.neutralGray500,
+                    color: selectedCity != null
+                        ? AppTheme.primaryBlue
+                        : AppTheme.neutralGray500,
                     size: 22,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       selectedCity != null
-                          ? '${selectedCity!.nameAr}، ${selectedRegion!.nameAr}'
+                          ? '${selectedCity!.nameAr}، ${selectedRegion?.nameAr ?? selectedCity!.region?.nameAr ?? ''}'
                           : 'اختر المنطقة والمدينة',
                       style: TextStyle(
                         fontSize: 15,
-                        fontWeight: selectedCity != null ? FontWeight.w700 : FontWeight.normal,
-                        color: selectedCity != null ? AppTheme.neutralGray900 : AppTheme.neutralGray500,
+                        fontWeight: selectedCity != null
+                            ? FontWeight.w700
+                            : FontWeight.normal,
+                        color: selectedCity != null
+                            ? AppTheme.neutralGray900
+                            : AppTheme.neutralGray500,
                       ),
                     ),
                   ),
+                  Icon(Icons.chevron_left_rounded,
+                      color: AppTheme.neutralGray500),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Map location pin ─────────────────────────────────────────────
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onPickMapLocation,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: (latitude != null)
+                    ? AppTheme.primaryBlue.withValues(alpha: .05)
+                    : AppTheme.neutralGray50,
+                border: Border.all(
+                  color: (latitude != null)
+                      ? AppTheme.primaryBlue
+                      : AppTheme.neutralGray200,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
                   Icon(
-                    Icons.chevron_left_rounded,
-                    color: AppTheme.neutralGray500,
+                    Icons.map_rounded,
+                    color: (latitude != null)
+                        ? AppTheme.primaryBlue
+                        : AppTheme.neutralGray500,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (latitude != null)
+                              ? 'تم تحديد الموقع على الخريطة'
+                              : 'تحديد الموقع على الخريطة (اختياري)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: (latitude != null)
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                            color: (latitude != null)
+                                ? AppTheme.neutralGray900
+                                : AppTheme.neutralGray500,
+                          ),
+                          textDirection: TextDirection.rtl,
+                        ),
+                        if (latitude != null)
+                          Text(
+                            '${latitude!.toStringAsFixed(5)}, ${longitude!.toStringAsFixed(5)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.neutralGray500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    (latitude != null)
+                        ? Icons.edit_location_alt_rounded
+                        : Icons.add_location_alt_rounded,
+                    color: AppTheme.neutralGray400,
+                    size: 18,
                   ),
                 ],
               ),
             ),
           ),
 
-          // ── Commission preview ──────────────────────────────────────────
+          // ── District ─────────────────────────────────────────────────────
+          if (selectedCity != null) ...[
+            const SizedBox(height: 16),
+            _SectionHeader(
+                title: 'الحي (اختياري)',
+                icon: Icons.holiday_village_outlined),
+            const SizedBox(height: 8),
+
+            if (loadingDistricts)
+              Container(
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.neutralGray50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.neutralGray200),
+                ),
+                child: const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppTheme.primaryBlue),
+                ),
+              )
+            else if (hasDistrictsLoaded)
+              GestureDetector(
+                onTap: onPickDistrict,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: selectedDistrict != null
+                        ? AppTheme.primaryBlue.withValues(alpha: .05)
+                        : AppTheme.neutralGray50,
+                    border: Border.all(
+                      color: selectedDistrict != null
+                          ? AppTheme.primaryBlue
+                          : AppTheme.neutralGray200,
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.maps_home_work_outlined,
+                        size: 18,
+                        color: selectedDistrict != null
+                            ? AppTheme.primaryBlue
+                            : AppTheme.neutralGray400,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          selectedDistrict?.nameAr ?? 'اختر الحي',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: selectedDistrict != null
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            color: selectedDistrict != null
+                                ? AppTheme.neutralGray900
+                                : AppTheme.neutralGray500,
+                          ),
+                        ),
+                      ),
+                      if (selectedDistrict != null)
+                        GestureDetector(
+                          onTap: onClearDistrict,
+                          child: const Icon(Icons.close_rounded,
+                              size: 16, color: AppTheme.neutralGray400),
+                        )
+                      else
+                        const Icon(Icons.chevron_left_rounded,
+                            color: AppTheme.neutralGray400),
+                    ],
+                  ),
+                ),
+              )
+            else if (noDistricts)
+              TextField(
+                controller: districtFreeTextCtrl,
+                textDirection: TextDirection.rtl,
+                maxLength: 120,
+                style: const TextStyle(color: AppTheme.neutralGray900),
+                decoration: _inputDecoration(
+                  hint: 'اكتب اسم الحي (اختياري)',
+                ),
+              ),
+          ],
+
+          // ── Commission ────────────────────────────────────────────────────
           if (commissionState != null) ...[
             const SizedBox(height: 20),
-            _SectionHeader(title: 'عمولة الخدمة', icon: Icons.percent_rounded),
+            _SectionHeader(
+                title: 'عمولة الخدمة', icon: Icons.percent_rounded),
             const SizedBox(height: 8),
             commissionState.when(
               loading: () => Container(
@@ -1180,8 +2047,10 @@ class _Step4LocationSubmit extends ConsumerWidget {
                 ),
                 child: const Center(
                   child: SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.amber),
                   ),
                 ),
               ),
@@ -1201,7 +2070,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                         color: Colors.amber.shade100,
                         shape: BoxShape.circle,
                       ),
-                      child: const Center(child: Text('💰', style: TextStyle(fontSize: 18))),
+                      child: const Center(
+                          child: Text('💰',
+                              style: TextStyle(fontSize: 18))),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1219,7 +2090,10 @@ class _Step4LocationSubmit extends ConsumerWidget {
                           const SizedBox(height: 2),
                           Text(
                             preview.note,
-                            style: TextStyle(fontSize: 11, color: Colors.amber.shade800, height: 1.4),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.amber.shade800,
+                                height: 1.4),
                             textDirection: TextDirection.rtl,
                           ),
                         ],
@@ -1231,61 +2105,33 @@ class _Step4LocationSubmit extends ConsumerWidget {
             ),
           ],
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // ── Pledge ─────────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: pledgeAccepted
-                  ? AppTheme.primaryBlue.withValues(alpha: .04)
-                  : AppTheme.neutralGray50,
-              border: Border.all(
-                color: pledgeAccepted ? AppTheme.primaryBlue : AppTheme.neutralGray200,
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Transform.scale(
-                  scale: 1.1,
-                  child: Checkbox(
-                    value: pledgeAccepted,
-                    onChanged: (v) => onPledgeChanged(v ?? false),
-                    activeColor: AppTheme.primaryBlue,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          // ── Submit row ────────────────────────────────────────────────────
+          Row(
+            children: [
+              GestureDetector(
+                onTap: submitting ? null : onBack,
+                child: Container(
+                  height: 50,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.neutralGray200),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 13),
-                    child: const Text(
-                      'أُقِرُّ بأن هذا الإعلان حقيقي وغير مخالف للأنظمة، وأوافق على شروط الاستخدام وسياسة الخصوصية',
-                      style: TextStyle(fontSize: 13, height: 1.6, color: AppTheme.neutralGray800),
-                      textDirection: TextDirection.rtl,
+                  child: Center(
+                    child: Text(
+                      '→ السابق',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: submitting
+                            ? AppTheme.neutralGray400
+                            : AppTheme.neutralGray600,
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Bottom nav ─────────────────────────────────────────────────
-          Row(
-            children: [
-              OutlinedButton(
-                onPressed: submitting ? null : onBack,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppTheme.neutralGray200),
-                  foregroundColor: AppTheme.neutralGray600,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('→ السابق'),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1296,40 +2142,53 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     height: 50,
                     decoration: BoxDecoration(
                       gradient: canSubmit
-                          ? const LinearGradient(
-                              colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight],
-                            )
+                          ? const LinearGradient(colors: [
+                              AppTheme.primaryBlue,
+                              AppTheme.primaryBlueLight
+                            ])
                           : null,
                       color: canSubmit ? null : AppTheme.neutralGray200,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: canSubmit
-                          ? [BoxShadow(
-                              color: AppTheme.primaryBlue.withValues(alpha: .3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            )]
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primaryBlue
+                                    .withValues(alpha: .3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ]
                           : null,
                     ),
                     child: Center(
                       child: submitting
                           ? const SizedBox(
-                              width: 22, height: 22,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5),
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  isEditMode ? Icons.save_rounded : Icons.rocket_launch_rounded,
-                                  color: Colors.white, size: 18,
+                                  isEditMode
+                                      ? Icons.save_rounded
+                                      : Icons.rocket_launch_rounded,
+                                  color: Colors.white,
+                                  size: 18,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  isEditMode ? 'حفظ التعديلات' : 'نشر الإعلان',
+                                  isEditMode
+                                      ? 'حفظ التعديلات'
+                                      : 'نشر الإعلان',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
-                                    color: canSubmit ? Colors.white : AppTheme.neutralGray500,
+                                    color: canSubmit
+                                        ? Colors.white
+                                        : AppTheme.neutralGray500,
                                   ),
                                 ),
                               ],
@@ -1341,6 +2200,144 @@ class _Step4LocationSubmit extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── District picker sheet ─────────────────────────────────────────────────────
+
+class _DistrictPickerSheet extends StatefulWidget {
+  final List<DistrictModel> districts;
+  const _DistrictPickerSheet({required this.districts});
+
+  @override
+  State<_DistrictPickerSheet> createState() => _DistrictPickerSheetState();
+}
+
+class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _query.trim().isEmpty
+        ? widget.districts
+        : widget.districts
+            .where((d) => d.nameAr.contains(_query.trim()))
+            .toList();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      minChildSize: 0.4,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.neutralGray200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'اختر الحي',
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppTheme.neutralGray100,
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                textDirection: TextDirection.rtl,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: 'بحث في الأحياء...',
+                  hintTextDirection: TextDirection.rtl,
+                  hintStyle: const TextStyle(
+                      color: AppTheme.neutralGray500, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search_rounded,
+                      color: AppTheme.neutralGray400, size: 20),
+                  filled: true,
+                  fillColor: AppTheme.neutralGray50,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: AppTheme.neutralGray200, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: AppTheme.primaryBlue, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: AppTheme.neutralGray100),
+            Expanded(
+              child: ListView.separated(
+                controller: ctrl,
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AppTheme.neutralGray100),
+                itemBuilder: (_, i) {
+                  final d = filtered[i];
+                  return ListTile(
+                    title: Text(
+                      d.nameAr,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                    trailing: const Icon(Icons.arrow_back_ios,
+                        size: 14, color: AppTheme.neutralGray400),
+                    onTap: () => Navigator.pop(context, d),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1379,7 +2376,8 @@ class _FormField extends StatelessWidget {
   final String label;
   final bool required;
   final Widget child;
-  const _FormField({required this.label, required this.required, required this.child});
+  const _FormField(
+      {required this.label, required this.required, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1397,7 +2395,11 @@ class _FormField extends StatelessWidget {
                 color: AppTheme.neutralGray800,
               ),
               children: required
-                  ? [const TextSpan(text: ' *', style: TextStyle(color: Colors.red))]
+                  ? [
+                      const TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Colors.red))
+                    ]
                   : [],
             ),
           ),
@@ -1413,7 +2415,8 @@ class _ToggleRow extends StatelessWidget {
   final String label;
   final bool value;
   final void Function(bool) onChanged;
-  const _ToggleRow({required this.label, required this.value, required this.onChanged});
+  const _ToggleRow(
+      {required this.label, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -1428,15 +2431,22 @@ class _ToggleRow extends StatelessWidget {
               width: 22, height: 22,
               decoration: BoxDecoration(
                 color: value ? AppTheme.primaryBlue : Colors.white,
-                border: Border.all(color: value ? AppTheme.primaryBlue : AppTheme.neutralGray200, width: 1.5),
+                border: Border.all(
+                    color: value
+                        ? AppTheme.primaryBlue
+                        : AppTheme.neutralGray200,
+                    width: 1.5),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: value
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                  ? const Icon(Icons.check_rounded,
+                      color: Colors.white, size: 14)
                   : null,
             ),
             const SizedBox(width: 10),
-            Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -1448,28 +2458,39 @@ class _NavRow extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback? onNext;
   final String nextLabel;
-  const _NavRow({required this.onBack, required this.onNext, required this.nextLabel});
+  const _NavRow(
+      {required this.onBack,
+      required this.onNext,
+      required this.nextLabel});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        OutlinedButton(
-          onPressed: onBack,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppTheme.neutralGray200),
-            foregroundColor: AppTheme.neutralGray600,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        GestureDetector(
+          onTap: onBack,
+          child: Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppTheme.neutralGray200),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                '→ السابق',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.neutralGray600,
+                ),
+              ),
+            ),
           ),
-          child: const Text('→ السابق'),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _PrimaryButton(
-            label: nextLabel,
-            onPressed: onNext,
-          ),
+          child: _PrimaryButton(label: nextLabel, onPressed: onNext),
         ),
       ],
     );
@@ -1480,7 +2501,8 @@ class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
-  const _PrimaryButton({required this.label, required this.onPressed, this.icon});
+  const _PrimaryButton(
+      {required this.label, required this.onPressed, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -1492,19 +2514,28 @@ class _PrimaryButton extends StatelessWidget {
         height: 50,
         decoration: BoxDecoration(
           gradient: enabled
-              ? const LinearGradient(colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight])
+              ? const LinearGradient(
+                  colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight])
               : null,
           color: enabled ? null : AppTheme.neutralGray200,
           borderRadius: BorderRadius.circular(12),
           boxShadow: enabled
-              ? [BoxShadow(color: AppTheme.primaryBlue.withValues(alpha: .25), blurRadius: 8, offset: const Offset(0, 3))]
+              ? [
+                  BoxShadow(
+                      color: AppTheme.primaryBlue.withValues(alpha: .25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3))
+                ]
               : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, color: enabled ? Colors.white : AppTheme.neutralGray500, size: 18),
+              Icon(icon,
+                  color:
+                      enabled ? Colors.white : AppTheme.neutralGray500,
+                  size: 18),
               const SizedBox(width: 8),
             ],
             Text(
@@ -1522,6 +2553,92 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
+// ── Error dialog ──────────────────────────────────────────────────────────────
+
+class _ErrorDialog extends StatelessWidget {
+  final String message;
+  final Map<String, String> errors;
+  const _ErrorDialog({required this.message, required this.errors});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      title: Row(
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.error_outline_rounded,
+                color: Colors.red.shade600, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'تعذّر نشر الإعلان',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              textDirection: TextDirection.rtl,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            message,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(fontSize: 14, height: 1.5),
+          ),
+          if (errors.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ...errors.values.map((err) => Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Text(
+                      err,
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.red.shade700,
+                          height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Icon(Icons.circle,
+                        size: 6, color: Colors.red.shade500),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            'حسناً',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 InputDecoration _inputDecoration({
   String? hint,
   String? error,
@@ -1530,12 +2647,14 @@ InputDecoration _inputDecoration({
   return InputDecoration(
     hintText: hint,
     hintTextDirection: TextDirection.rtl,
-    hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
+    hintStyle:
+        const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
     errorText: error,
     prefix: prefix,
     filled: true,
     fillColor: Colors.white,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    contentPadding:
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: AppTheme.neutralGray200),
@@ -1546,7 +2665,8 @@ InputDecoration _inputDecoration({
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+      borderSide:
+          const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),

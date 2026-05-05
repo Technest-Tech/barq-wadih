@@ -34,6 +34,7 @@ class CommissionPreviewModel {
 
 class AdsFilter {
   final int? categoryId;
+  final List<int>? categoryIds;
   final int? cityId;
   final List<int>? cityIds;
   final int? regionId;
@@ -45,6 +46,7 @@ class AdsFilter {
 
   const AdsFilter({
     this.categoryId,
+    this.categoryIds,
     this.cityId,
     this.cityIds,
     this.regionId,
@@ -57,6 +59,7 @@ class AdsFilter {
 
   AdsFilter copyWith({
     int? categoryId,
+    List<int>? categoryIds,
     int? cityId,
     List<int>? cityIds,
     int? regionId,
@@ -66,26 +69,30 @@ class AdsFilter {
     String? sort,
     int? page,
     bool clearCategory = false,
+    bool clearCategoryIds = false,
     bool clearCity = false,
     bool clearCityIds = false,
     bool clearRegion = false,
   }) {
     return AdsFilter(
-      categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
-      cityId:     clearCity     ? null : (cityId     ?? this.cityId),
-      cityIds:    clearCityIds  ? null : (cityIds    ?? this.cityIds),
-      regionId:   clearRegion   ? null : (regionId   ?? this.regionId),
-      priceMin:   priceMin  ?? this.priceMin,
-      priceMax:   priceMax  ?? this.priceMax,
-      q:          q         ?? this.q,
-      sort:       sort      ?? this.sort,
-      page:       page      ?? this.page,
+      categoryId:  clearCategory    ? null : (categoryId  ?? this.categoryId),
+      categoryIds: clearCategoryIds ? null : (categoryIds ?? this.categoryIds),
+      cityId:      clearCity        ? null : (cityId      ?? this.cityId),
+      cityIds:     clearCityIds     ? null : (cityIds     ?? this.cityIds),
+      regionId:    clearRegion      ? null : (regionId    ?? this.regionId),
+      priceMin:    priceMin  ?? this.priceMin,
+      priceMax:    priceMax  ?? this.priceMax,
+      q:           q         ?? this.q,
+      sort:        sort      ?? this.sort,
+      page:        page      ?? this.page,
     );
   }
 
   Map<String, dynamic> toQueryParams() {
     return {
       if (categoryId != null) 'category_id': categoryId,
+      if (categoryIds != null && categoryIds!.isNotEmpty)
+        'category_ids': categoryIds!.join(','),
       if (cityId != null)     'city_id':     cityId,
       if (cityIds != null && cityIds!.isNotEmpty) 'city_ids': cityIds!.join(','),
       if (regionId != null)   'region_id':   regionId,
@@ -168,7 +175,8 @@ class AdRepository {
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );
-      final data = response.data!['data'] as Map<String, dynamic>;
+      final wrapper = response.data!['data'] as Map<String, dynamic>;
+      final data = (wrapper['ad'] as Map<String, dynamic>?) ?? wrapper;
       return AdDetailModel.fromJson(data);
     } on DioException catch (e) {
       throw ApiException(
@@ -439,3 +447,18 @@ final searchProvider =
     FutureProvider.family<({List<AdListModel> ads, bool hasMore, int total}), AdsFilter>((ref, filter) {
   return ref.read(adRepositoryProvider).searchAds(filter);
 });
+
+/// Navigation bridge: categories screen writes here, feed screen reads & clears.
+/// Holds (categoryId, subcategoryId) — subcategoryId is the leaf to filter by.
+typedef CategoryNav = ({int categoryId, int? subcategoryId});
+
+final categoryNavProvider =
+    NotifierProvider<CategoryNavNotifier, CategoryNav?>(CategoryNavNotifier.new);
+
+class CategoryNavNotifier extends Notifier<CategoryNav?> {
+  @override
+  CategoryNav? build() => null;
+
+  void set(CategoryNav nav) => state = nav;
+  void clear() => state = null;
+}

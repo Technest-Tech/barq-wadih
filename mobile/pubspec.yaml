@@ -26,16 +26,24 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_secure_storage: ^10.0.0
 
-  # Firebase (phone OTP auth + Firestore chat + Storage)
+  # Firebase (phone OTP auth + Firestore chat + Storage + Push)
   firebase_core: ^3.13.0
   firebase_auth: ^5.5.2
   cloud_firestore: ^5.6.5
   firebase_storage: ^12.4.4
+  firebase_messaging: ^15.2.5
+
+  # Push notifications (foreground display + local notification taps)
+  flutter_local_notifications: ^18.0.1
 
   # UI / Images
   cached_network_image: ^3.4.1
   image_picker: ^1.1.2
   url_launcher: ^6.3.1
+
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.0
 
   # i18n
   intl: ^0.20.2
@@ -89,10 +97,4 @@ flutter:
   assets:
     - assets/images/
 
-  # Fonts
-  # fonts:
-  #   - family: IBMPlexSansArabic
-  #     fonts:
-  #       - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
-  #       - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
-  #         weight: 700
+  # Fonts — Arabic: Tajawal (loaded via google_fonts package)

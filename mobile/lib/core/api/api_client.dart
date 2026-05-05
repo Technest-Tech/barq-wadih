@@ -60,7 +60,7 @@ class ApiClient {
     // For physical devices, use the machine's LAN IP
     const envUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.1.45:8080/api/v1',
+      defaultValue: 'http://10.108.215.218:8080/api/v1',
     );
     return envUrl;
   }

@@ -5,7 +5,6 @@ use App\Http\Controllers\Api\V1\AdPaymentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DistrictController;
 use App\Http\Controllers\Api\V1\BannerController;
-use App\Http\Controllers\Api\V1\BoostController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CategoryFollowController;
 use App\Http\Controllers\Api\V1\ChatController;
@@ -48,6 +47,7 @@ Route::post('payment/webhook/moyasar', [AdPaymentController::class, 'webhook'])-
 // ── Sprint 5: Ads — public read ───────────────────────────────────────────────
 Route::get('ads',                      [AdController::class, 'index'])->name('ads.index');
 Route::get('ads/commission-preview',   [AdController::class, 'commissionPreview'])->name('ads.commission-preview');
+Route::get('ads/mine',                 [AdController::class, 'myAds'])->middleware('auth:sanctum')->name('ads.mine');
 Route::get('ads/{ad}',                 [AdController::class, 'show'])->name('ads.show');
 Route::get('categories/{category}/fields', [AdController::class, 'categoryFields'])->name('categories.fields');
 
@@ -57,9 +57,6 @@ Route::get('search',                   [SearchController::class, 'index'])->name
 // ── Sprint 12: Banners — public, no auth required ──────────────────────────
 Route::get('banners',                   [BannerController::class, 'index'])->name('banners.index');
 Route::post('banners/{banner}/click',   [BannerController::class, 'click'])->name('banners.click');
-
-// ── Sprint 13: Boost config — public, no auth required ─────────────────────
-Route::get('boost-config',               [BoostController::class, 'config'])->name('boost.config');
 
 // ── Questions — public read ───────────────────────────────────────────────────
 Route::get('ads/{ad}/questions',             [QuestionController::class, 'index'])->name('questions.index');
@@ -92,7 +89,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Sprint 5: Ads — authenticated write
-    Route::get('ads/mine',         [AdController::class, 'myAds'])->name('ads.mine');
     Route::post('ads',             [AdController::class, 'store'])->name('ads.store');
     Route::post('ads/{ad}/sold',   [AdController::class, 'markSold'])->name('ads.sold');
     Route::patch('ads/{ad}',       [AdController::class, 'update'])->name('ads.update');
@@ -101,11 +97,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Publish-fee payment lifecycle (mocked driver in dev, Moyasar later)
     Route::post('ads/{ad}/payment/init',    [AdPaymentController::class, 'init'])->name('ads.payment.init');
     Route::post('ads/{ad}/payment/confirm', [AdPaymentController::class, 'confirm'])->name('ads.payment.confirm');
-
-    // Sprint 13: Boost & Refresh
-    Route::post('ads/{ad}/boost',         [BoostController::class, 'boost'])->name('ads.boost');
-    Route::post('ads/{ad}/refresh',       [BoostController::class, 'refresh'])->name('ads.refresh');
-    Route::get('ads/{ad}/boost-history',  [BoostController::class, 'history'])->name('ads.boost.history');
 
     // Sprint 9: Ratings
     Route::post('ads/{ad}/ratings',          [RatingController::class, 'store'])->name('ratings.store');

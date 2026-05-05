@@ -202,7 +202,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       password: _passwordCtrl.text,
     );
     if (!mounted) return;
-    if (ref.read(authProvider) is AuthAuthenticated) context.go('/');
+    final authState = ref.read(authProvider);
+    if (authState is AuthAuthenticated) {
+      context.go('/');
+    } else if (authState is AuthError) {
+      _showError(authState.message);
+      ref.read(authProvider.notifier).clearError();
+    }
   }
 
   // ── Error snackbar ─────────────────────────────────────────────────────────
@@ -225,14 +231,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Listen for API-level errors from authProvider
-    ref.listen(authProvider, (_, next) {
-      if (next is AuthError) {
-        _showError(next.message);
-        ref.read(authProvider.notifier).clearError();
-      }
-    });
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -302,15 +300,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 const SizedBox(height: 28),
 
                 // ── Tab content ──────────────────────────────────────────────
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 250),
-                  child: SizedBox(
-                    height: _otpSent ? 280 : 220,
-                    child: TabBarView(
-                      controller: _tab,
-                      children: [
-                        // ── Phone OTP tab ─────────────────────────────────
-                        _PhoneOtpTab(
+                ListenableBuilder(
+                  listenable: _tab,
+                  builder: (context, _) => _tab.index == 0
+                      ? _PhoneOtpTab(
+                          key:             const ValueKey('phone'),
                           phoneCtrl:       _phoneCtrl,
                           otpCtrl:         _otpCtrl,
                           otpSent:         _otpSent,
@@ -325,21 +319,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             _otpCtrl.clear();
                             _resendTimer?.cancel();
                           }),
-                        ),
-
-                        // ── Email tab ─────────────────────────────────────
-                        _EmailTab(
-                          formKey:     _formKey,
-                          emailCtrl:   _emailCtrl,
-                          passwordCtrl: _passwordCtrl,
-                          obscure:     _obscure,
-                          loading:     ref.watch(authProvider) is AuthLoading,
+                        )
+                      : _EmailTab(
+                          key:             const ValueKey('email'),
+                          formKey:         _formKey,
+                          emailCtrl:       _emailCtrl,
+                          passwordCtrl:    _passwordCtrl,
+                          obscure:         _obscure,
+                          loading:         ref.watch(authProvider) is AuthLoading,
                           onToggleObscure: () => setState(() => _obscure = !_obscure),
-                          onLogin:     _loginEmail,
+                          onLogin:         _loginEmail,
                         ),
-                      ],
-                    ),
-                  ),
                 ),
 
                 const SizedBox(height: 24),
@@ -385,6 +375,7 @@ class _PhoneOtpTab extends StatelessWidget {
   final VoidCallback onSendOtp, onVerifyOtp, onResend, onChangePhone;
 
   const _PhoneOtpTab({
+    super.key,
     required this.phoneCtrl, required this.otpCtrl,
     required this.otpSent, required this.phoneBusy, required this.otpBusy,
     required this.resendCountdown,
@@ -513,6 +504,7 @@ class _EmailTab extends StatelessWidget {
   final VoidCallback onToggleObscure, onLogin;
 
   const _EmailTab({
+    super.key,
     required this.formKey, required this.emailCtrl, required this.passwordCtrl,
     required this.obscure, required this.loading,
     required this.onToggleObscure, required this.onLogin,

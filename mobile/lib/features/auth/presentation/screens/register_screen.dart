@@ -6,6 +6,41 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
+// ── Country definition ─────────────────────────────────────────────────────────
+
+class _Country {
+  final String name;
+  final String flag;
+  final String dialCode;
+  final String hint;
+  final int maxLength;
+
+  const _Country({
+    required this.name,
+    required this.flag,
+    required this.dialCode,
+    required this.hint,
+    required this.maxLength,
+  });
+}
+
+const _kCountries = [
+  _Country(
+    name: 'المملكة العربية السعودية',
+    flag: '🇸🇦',
+    dialCode: '+966',
+    hint: '05XXXXXXXX',
+    maxLength: 10,
+  ),
+  _Country(
+    name: 'مصر',
+    flag: '🇪🇬',
+    dialCode: '+20',
+    hint: '01XXXXXXXXX',
+    maxLength: 11,
+  ),
+];
+
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -18,9 +53,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   int _step = 1;
 
   // ── Step 1 ─────────────────────────────────────────────────────────────────
-  final _phoneCtrl   = TextEditingController();
-  String? _phoneError;
-  String  _verifiedPhone = '';
+  final _phoneCtrl    = TextEditingController();
+  String?  _phoneError;
+  String   _verifiedPhone = '';
+  _Country _selectedCountry = _kCountries[0];
 
   // ── Step 2 ─────────────────────────────────────────────────────────────────
   final _formKey      = GlobalKey<FormState>();
@@ -40,34 +76,100 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // ── Phone helpers ──────────────────────────────────────────────────────────
 
-  String _normalizePhone(String raw) {
-    final t = raw.trim();
-    if (t.startsWith('+966')) return t;
-    if (t.startsWith('966'))  return '+$t';
-    if (t.startsWith('05'))   return '+966${t.substring(1)}';
-    if (t.startsWith('5') && t.length == 9) return '+966$t';
-    if (t.startsWith('+20'))  return t;
-    if (t.startsWith('010') || t.startsWith('011') ||
-        t.startsWith('012') || t.startsWith('015')) { return '+2$t'; }
-    return t;
+  String get _normalizedPhone {
+    final t = _phoneCtrl.text.trim();
+    if (_selectedCountry.dialCode == '+966') {
+      final local = t.startsWith('0') ? t.substring(1) : t;
+      return '+966$local';
+    }
+    // Egypt: user enters full local number (01XXXXXXXXX)
+    return '+20$t';
   }
 
-  bool _isValidPhone(String phone) {
-    final n = _normalizePhone(phone);
-    return RegExp(r'^\+9665[0-9]{8}$').hasMatch(n) ||
-           RegExp(r'^\+20(10|11|12|15)[0-9]{8}$').hasMatch(n);
+  bool get _isPhoneValid {
+    final n = _normalizedPhone;
+    if (_selectedCountry.dialCode == '+966') {
+      return RegExp(r'^\+9665[0-9]{8}$').hasMatch(n);
+    }
+    return RegExp(r'^\+20(10|11|12|15)[0-9]{8}$').hasMatch(n);
+  }
+
+  String get _phoneErrorHint {
+    if (_selectedCountry.dialCode == '+966') {
+      return 'أدخل رقم سعودي صحيح (مثال: 0512345678)';
+    }
+    return 'أدخل رقم مصري صحيح (مثال: 01012345678)';
   }
 
   void _handlePhoneNext() {
-    if (!_isValidPhone(_phoneCtrl.text)) {
-      setState(() => _phoneError = 'أدخل رقم جوال صحيح (مثال: 0501234567 أو 01012345678)');
+    if (!_isPhoneValid) {
+      setState(() => _phoneError = _phoneErrorHint);
       return;
     }
     setState(() {
       _phoneError    = null;
-      _verifiedPhone = _normalizePhone(_phoneCtrl.text);
+      _verifiedPhone = _normalizedPhone;
       _step          = 2;
     });
+  }
+
+  void _showCountryPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.neutralGray200,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'اختر رمز الدولة',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                for (final c in _kCountries)
+                  ListTile(
+                    leading: Text(c.flag, style: const TextStyle(fontSize: 26)),
+                    title: Text(c.name,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    trailing: Text(c.dialCode,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primaryBlue)),
+                    selected: c.dialCode == _selectedCountry.dialCode,
+                    selectedTileColor: AppTheme.primaryBlue.withValues(alpha: .06),
+                    onTap: () {
+                      setState(() {
+                        _selectedCountry = c;
+                        _phoneCtrl.clear();
+                        _phoneError = null;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
@@ -170,10 +272,54 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           controller: _phoneCtrl,
           textDirection: TextDirection.ltr,
           keyboardType: TextInputType.phone,
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+]'))],
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(_selectedCountry.maxLength),
+          ],
           onFieldSubmitted: (_) => _handlePhoneNext(),
-          decoration: _dec(hint: '05xxxxxxxx أو 010xxxxxxxx', icon: Icons.phone_outlined).copyWith(
+          decoration: InputDecoration(
+            hintText: _selectedCountry.hint,
+            hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
             errorText: _phoneError,
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.neutralGray200)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.neutralGray200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red)),
+            // Country picker as prefix
+            prefixIcon: GestureDetector(
+              onTap: _showCountryPicker,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: AppTheme.neutralGray200),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_selectedCountry.flag,
+                        style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 4),
+                    Text(_selectedCountry.dialCode,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.neutralGray800,
+                        )),
+                    const Icon(Icons.arrow_drop_down,
+                        size: 18, color: AppTheme.neutralGray500),
+                  ],
+                ),
+              ),
+            ),
           ),
           onChanged: (_) { if (_phoneError != null) setState(() => _phoneError = null); },
         ),

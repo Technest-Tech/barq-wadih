@@ -8,7 +8,6 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Region;
 use App\Models\User;
-use App\Services\BoostService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -119,13 +118,6 @@ class AdResource extends JsonResource
 
             'views_count'      => $ad->views_count,
             'favorites_count'  => $ad->favorites_count,
-            'is_boosted'       => $ad->is_boosted,
-            'boosted_until'    => $ad->boosted_until,
-
-            // Sprint 13: Boost eligibility (owner-only)
-            'can_boost'        => $isOwner && $request->user() ? app(BoostService::class)->canBoost($ad, $request->user())[0] : null,
-            'can_refresh'      => $isOwner && $request->user() ? app(BoostService::class)->canRefresh($ad, $request->user())[0] : null,
-            'next_refresh_at'  => $isOwner && $request->user() ? (app(BoostService::class)->canRefresh($ad, $request->user())[2] ?? null) : null,
 
             'commission_amount'=> $isOwner ? $ad->commission_amount : null,
             'payment_status'   => $ad->payment_status,

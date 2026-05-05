@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/widgets/auth_bottom_sheet.dart';
 import '../../features/messages/data/chat_providers.dart';
-import '../../features/notifications/data/notification_providers.dart';
 import '../theme/app_theme.dart';
 
 /// Main app shell — matches the Haraj/target screenshot exactly:
@@ -26,9 +25,9 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   static const _routes = [
     '/',
-    '/messages',
+    '/favorites',
     '/post-ad',
-    '/notifications',
+    '/messages',
     '/profile',
   ];
 
@@ -63,9 +62,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     final location = GoRouterState.of(context).matchedLocation;
 
     int activeIndex = 0;
-    if (location.startsWith('/messages'))          { activeIndex = 1; }
-    else if (location.startsWith('/notifications')) { activeIndex = 3; }
-    else if (location.startsWith('/profile'))       { activeIndex = 4; }
+    if (location.startsWith('/favorites'))  { activeIndex = 1; }
+    else if (location.startsWith('/messages')) { activeIndex = 3; }
+    else if (location.startsWith('/profile'))  { activeIndex = 4; }
 
     // Real-time unread count for messages tab badge
     final user = ref.watch(currentUserProvider);
@@ -73,19 +72,10 @@ class _MainShellState extends ConsumerState<MainShell> {
         ? ref.watch(totalUnreadProvider(user.id.toString()))
         : 0;
 
-    // Unread notification count for notifications tab badge
-    final notifCountAsync = user != null
-        ? ref.watch(unreadNotificationCountProvider)
-        : const AsyncValue<int>.data(0);
-    final notifUnread = notifCountAsync.when(
-      data: (c) => c,
-      loading: () => 0,
-      error: (_, __) => 0,
-    );
-
     return Scaffold(
       // extendBody MUST be false so the notch cutout shows the white scaffold BG
       extendBody: false,
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       body: widget.child,
 
@@ -94,11 +84,11 @@ class _MainShellState extends ConsumerState<MainShell> {
       floatingActionButton: _PostFab(onTap: () => _onTap(2)),
 
       // ── Bottom Bar ─────────────────────────────────────────────────────────
-      bottomNavigationBar: _buildBottomBar(context, activeIndex, unread, notifUnread),
+      bottomNavigationBar: _buildBottomBar(context, activeIndex, unread),
     );
   }
 
-  Widget _buildBottomBar(BuildContext context, int activeIndex, int unread, int notifUnread) {
+  Widget _buildBottomBar(BuildContext context, int activeIndex, int unread) {
     return Container(
       // Soft shadow above the bar (no hard border)
       decoration: const BoxDecoration(
@@ -122,7 +112,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // RTL order: الرئيسية | الرسائل | [notch gap] | الإشعارات | حسابي
+            // RTL order: الرئيسية | المفضلة | [notch gap] | الرسائل | حسابي
             _NavItem(
               icon: Icons.home_outlined,
               activeIcon: Icons.home_rounded,
@@ -130,25 +120,24 @@ class _MainShellState extends ConsumerState<MainShell> {
               isActive: activeIndex == 0,
               onTap: () => _onTap(0),
             ),
-            _NavItemBadge(
-              icon: Icons.chat_bubble_outline_rounded,
-              activeIcon: Icons.chat_bubble_rounded,
-              label: 'الرسائل',
+            _NavItem(
+              icon: Icons.favorite_border_rounded,
+              activeIcon: Icons.favorite_rounded,
+              label: 'المفضلة',
               isActive: activeIndex == 1,
               onTap: () => _onTap(1),
-              badgeCount: unread,
             ),
 
             // Gap for the FAB notch
             const SizedBox(width: 72),
 
             _NavItemBadge(
-              icon: Icons.notifications_none_rounded,
-              activeIcon: Icons.notifications_rounded,
-              label: 'الإشعارات',
+              icon: Icons.chat_bubble_outline_rounded,
+              activeIcon: Icons.chat_bubble_rounded,
+              label: 'الرسائل',
               isActive: activeIndex == 3,
               onTap: () => _onTap(3),
-              badgeCount: notifUnread,
+              badgeCount: unread,
             ),
             _NavItem(
               icon: Icons.person_outline_rounded,

@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/fcm_service.dart';
+import '../../../notifications/data/notification_providers.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/auth_user.dart';
 
@@ -49,6 +51,8 @@ class AuthNotifier extends Notifier<AuthState> {
       state = const AuthLoading();
       final user = await _repo.me();
       state = AuthAuthenticated(user);
+      // Re-register FCM token on each app start when already authenticated.
+      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
     } catch (_) {
       await _storage.delete(key: 'auth_token');
       state = const AuthUnauthenticated();
@@ -70,6 +74,7 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       await _storage.write(key: 'auth_token', value: result.token);
       state = AuthAuthenticated(result.user);
+      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
     } on ApiException catch (e) {
       state = AuthError(e.message);
     }
@@ -83,8 +88,11 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await _repo.login(email: email, password: password);
       await _storage.write(key: 'auth_token', value: result.token);
       state = AuthAuthenticated(result.user);
+      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
     } on ApiException catch (e) {
       state = AuthError(e.message);
+    } catch (_) {
+      state = const AuthError('بيانات الدخول غير صحيحة');
     }
   }
 
@@ -96,6 +104,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await _repo.loginWithFirebase(idToken: idToken, name: name);
       await _storage.write(key: 'auth_token', value: result.token);
       state = AuthAuthenticated(result.user);
+      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
     } on ApiException catch (e) {
       state = AuthError(e.message);
     }
@@ -104,6 +113,7 @@ class AuthNotifier extends Notifier<AuthState> {
   // ── Logout ────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
+    await FCMService.instance.deregisterToken(ref.read(notificationRepositoryProvider));
     await _repo.logout();
     state = const AuthUnauthenticated();
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 abstract class AppTheme {
   AppTheme._();
@@ -80,7 +81,7 @@ abstract class AppTheme {
         error: colorError,
       ),
       scaffoldBackgroundColor: neutralGray50,
-      fontFamily: 'IBMPlexSansArabic',
+      fontFamily: GoogleFonts.tajawal().fontFamily,
 
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
@@ -89,7 +90,7 @@ abstract class AppTheme {
         },
       ),
 
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: neutralWhite,
         foregroundColor: neutralGray900,
         elevation: 0,
@@ -99,7 +100,7 @@ abstract class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: neutralGray900,
-          fontFamily: 'IBMPlexSansArabic',
+          fontFamily: GoogleFonts.tajawal().fontFamily,
         ),
       ),
 
@@ -110,10 +111,10 @@ abstract class AppTheme {
           minimumSize: const Size(double.infinity, 52),
           shape: const StadiumBorder(),
           elevation: 0,
-          textStyle: const TextStyle(
+          textStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            fontFamily: 'IBMPlexSansArabic',
+            fontFamily: GoogleFonts.tajawal().fontFamily,
           ),
         ),
       ),
@@ -124,7 +125,7 @@ abstract class AppTheme {
           side: const BorderSide(color: primaryBlue, width: 1.5),
           minimumSize: const Size(double.infinity, 52),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'IBMPlexSansArabic'),
+          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: GoogleFonts.tajawal().fontFamily),
         ),
       ),
 
@@ -204,7 +205,7 @@ abstract class AppTheme {
         surfaceContainerHighest: darkElevated,
       ),
       scaffoldBackgroundColor: darkSurface,
-      fontFamily: 'IBMPlexSansArabic',
+      fontFamily: GoogleFonts.tajawal().fontFamily,
 
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
@@ -213,17 +214,17 @@ abstract class AppTheme {
         },
       ),
 
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: darkCard,
-        foregroundColor: Color(0xFFE0E0E0),
+        foregroundColor: const Color(0xFFE0E0E0),
         elevation: 0,
         scrolledUnderElevation: 0.5,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: Color(0xFFE0E0E0),
-          fontFamily: 'IBMPlexSansArabic',
+          color: const Color(0xFFE0E0E0),
+          fontFamily: GoogleFonts.tajawal().fontFamily,
         ),
       ),
 
@@ -234,7 +235,7 @@ abstract class AppTheme {
           minimumSize: const Size(double.infinity, 52),
           shape: const StadiumBorder(),
           elevation: 0,
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'IBMPlexSansArabic'),
+          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: GoogleFonts.tajawal().fontFamily),
         ),
       ),
 

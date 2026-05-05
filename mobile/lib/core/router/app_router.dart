@@ -13,10 +13,17 @@ import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/screens/edit_profile_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/categories/presentation/categories_screen.dart';
+import '../../features/favorites/presentation/screens/favorites_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/messages/presentation/screens/messages_screen.dart';
 import '../../features/messages/presentation/screens/conversation_screen.dart';
 import '../../features/seller_profile/presentation/seller_profile_screen.dart';
+import '../../features/settings/presentation/screens/payments_screen.dart';
+import '../../features/settings/presentation/screens/features_services_screen.dart';
+import '../../features/settings/presentation/screens/contact_us_screen.dart';
+import '../../features/settings/presentation/screens/privacy_policy_screen.dart';
+import '../../features/settings/presentation/screens/safety_center_screen.dart';
+import '../../features/settings/presentation/screens/trusted_purchase_screen.dart';
 import '../shell/main_shell.dart';
 
 // ── Route paths ───────────────────────────────────────────────────────────────
@@ -33,9 +40,16 @@ abstract class AppRoutes {
   static const sellerProfile = '/users/:id';
   static const postAd        = '/post-ad';
   static const myAds         = '/my-ads';
+  static const favorites      = '/favorites';
   static const notifications = '/notifications';
   static const messages      = '/messages';
-  static const conversation  = '/messages/:conversationId';
+  static const conversation     = '/messages/:conversationId';
+  static const payments         = '/payments';
+  static const featuresServices = '/features-services';
+  static const contactUs        = '/contact-us';
+  static const privacyPolicy    = '/privacy-policy';
+  static const safetyCenter     = '/safety-center';
+  static const trustedPurchase  = '/trusted-purchase';
 
   /// Helper to build ad detail path with actual id
   static String adDetailPath(int id) => '/ads/$id';
@@ -99,6 +113,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: AppRoutes.favorites,
+            pageBuilder: (context, state) => _noTransitionPage(
+              key: state.pageKey,
+              child: const FavoritesScreen(),
+            ),
+          ),
+          GoRoute(
             path: AppRoutes.notifications,
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
@@ -110,6 +131,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
               child: const MessagesScreen(),
+            ),
+          ),
+          // Profile & edit inside shell so the bottom nav stays visible
+          GoRoute(
+            path: AppRoutes.profile,
+            pageBuilder: (context, state) => _slidePage(
+              key: state.pageKey,
+              child: const ProfileScreen(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.editProfile,
+            pageBuilder: (context, state) => _slidePage(
+              key: state.pageKey,
+              child: const EditProfileScreen(),
             ),
           ),
         ],
@@ -167,20 +203,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: const RegisterScreen(),
         ),
       ),
-      GoRoute(
-        path: AppRoutes.profile,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const ProfileScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.editProfile,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const EditProfileScreen(),
-        ),
-      ),
       // Sprint 8: Individual conversation
       GoRoute(
         path: AppRoutes.conversation,
@@ -191,6 +213,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: ConversationScreen(conversationId: id),
           );
         },
+      ),
+
+      // ── Sidebar screens ────────────────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.payments,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const PaymentsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.featuresServices,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const FeaturesServicesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.contactUs,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const ContactUsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.privacyPolicy,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const PrivacyPolicyScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.safetyCenter,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const SafetyCenterScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.trustedPurchase,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const TrustedPurchaseScreen(),
+        ),
       ),
     ],
 

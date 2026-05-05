@@ -54,9 +54,12 @@ class AdController extends BaseController
         // Sort override
         $sort = $request->input('sort', 'newest');
         if ($sort === 'price_asc') {
-            $query->reorder()->orderBy('price');
+            $query->reorder()->orderBy('price')->orderByDesc('created_at');
         } elseif ($sort === 'price_desc') {
-            $query->reorder()->orderByDesc('price');
+            $query->reorder()->orderByDesc('price')->orderByDesc('created_at');
+        } else {
+            // newest (default)
+            $query->reorder()->orderByDesc('published_at')->orderByDesc('created_at');
         }
 
         $ads = $query->paginate(20);

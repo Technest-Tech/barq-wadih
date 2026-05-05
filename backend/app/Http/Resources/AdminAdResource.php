@@ -43,10 +43,6 @@ class AdminAdResource extends JsonResource
             'chats_count'       => $this->chats_count ?? 0,
             'reports_count'     => $this->whenCounted('reports'),
 
-            // ── Boost ───────────────────────────────────────────────────
-            'is_boosted'        => $this->is_boosted,
-            'boosted_until'     => $this->boosted_until?->toISOString(),
-
             // ── Relations ───────────────────────────────────────────────
             'user' => $this->whenLoaded('user', fn () => [
                 'id'          => $this->user->id,

@@ -46,7 +46,7 @@ class ProfileScreen extends ConsumerWidget {
               // In RTL context, leading appears on the right (correct for Arabic back)
               leading: IconButton(
                 icon: const Icon(Icons.arrow_forward_ios),
-                onPressed: () => context.pop(),
+                onPressed: () => context.canPop() ? context.pop() : context.go('/'),
               ),
               actions: [
                 IconButton(
@@ -149,11 +149,12 @@ class ProfileScreen extends ConsumerWidget {
                     _InfoCard(
                       title: 'الحساب',
                       children: [
-                        _ActionRow(
-                          icon: Icons.article_outlined,
-                          label: 'إعلاناتي',
-                          onTap: () => context.push('/my-ads'),
-                        ),
+                        // TODO: re-enable when my-ads screen is ready
+                        // _ActionRow(
+                        //   icon: Icons.article_outlined,
+                        //   label: 'إعلاناتي',
+                        //   onTap: () => context.push('/my-ads'),
+                        // ),
                         _ActionRow(
                           icon: Icons.edit_outlined,
                           label: 'تعديل الملف الشخصي',

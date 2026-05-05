@@ -1,16 +1,13 @@
 // lib/features/categories/presentation/categories_screen.dart
-//
-// Haraj-style categories browser:
-// Right sidebar with main category list (vertical scroll).
-// Left side with subcategory grid (images + labels).
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-
+import '../../ads/data/ad_api.dart';
 import '../data/category_api.dart';
 import '../domain/category_model.dart';
 
@@ -22,254 +19,174 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
-  int? _selectedCategoryIndex;
+  int _selectedIdx = 0;
 
-  // Mock subcategories for layout demonstration
-  static const _mockSubs = <_MockSubCategory>[
-    _MockSubCategory('سيارات', '🚗'),
-    _MockSubCategory('دبابات', '🏍️'),
-    _MockSubCategory('لوحات', '🔢'),
-    _MockSubCategory('سيارات مصدومة', '🔧'),
-    _MockSubCategory('سطحة', '🚛'),
-    _MockSubCategory('تعليم قيادة', '🎓'),
-    _MockSubCategory('جوالات', '📱'),
-    _MockSubCategory('لابتوب', '💻'),
-    _MockSubCategory('أرقام مميزة', '💳'),
-    _MockSubCategory('شاشات', '🖥'),
-    _MockSubCategory('طابعات', '🖨'),
-    _MockSubCategory('ألعاب', '🎮'),
-  ];
+  void _navigate(BuildContext context, CategoryModel parent, CategoryModel? sub) {
+    ref.read(categoryNavProvider.notifier).set((
+      categoryId:    parent.id,
+      subcategoryId: sub?.id,
+    ));
+    context.go(AppRoutes.home);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cats = ref.watch(categoriesProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = Theme.of(context).colorScheme.surface;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cats    = ref.watch(categoriesProvider);
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
+    final surface = Theme.of(context).colorScheme.surface;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppTheme.primaryBlue,
-        foregroundColor: Colors.white,
-        title: const Text('الأقسام', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: cats.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text('تعذّر تحميل الأقسام'),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => ref.refresh(categoriesProvider),
-                child: const Text('إعادة المحاولة'),
-              ),
-            ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor:
+            isDark ? Theme.of(context).scaffoldBackgroundColor : AppTheme.neutralGray50,
+        appBar: AppBar(
+          backgroundColor: AppTheme.primaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: const Text(
+            'الأقسام',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            onPressed: () => context.pop(),
           ),
         ),
-        data: (catList) {
-          final selectedIdx = _selectedCategoryIndex ?? 0;
-          final selectedCat = catList.isNotEmpty ? catList[selectedIdx] : null;
+        body: cats.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error:   (e, _) => _ErrorView(onRetry: () => ref.refresh(categoriesProvider)),
+          data:    (catList) {
+            if (catList.isEmpty) {
+              return const Center(child: Text('لا توجد أقسام'));
+            }
+            final selectedIdx = _selectedIdx.clamp(0, catList.length - 1);
+            final selectedCat = catList[selectedIdx];
 
-          return Row(
-            children: [
-              // ── Left: Subcategories Grid ────────────────────────────────────
-              Expanded(
-                flex: 3,
-                child: Container(
-                  color: isDark ? Theme.of(context).scaffoldBackgroundColor : AppTheme.neutralGray50,
-                  child: selectedCat != null
-                      ? _buildSubcategoryGrid(context, selectedCat, isDark, surfaceColor, onSurface)
-                      : const Center(child: Text('اختر قسم')),
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Right sidebar: main categories ───────────────────────────
+                _MainCategoryList(
+                  categories:  catList,
+                  selectedIdx: selectedIdx,
+                  isDark:      isDark,
+                  surface:     surface,
+                  onTap: (i) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedIdx = i);
+                  },
                 ),
-              ),
 
-              // ── Right: Main Category List ──────────────────────────────────
-              SizedBox(
-                width: 110,
-                child: Container(
-                  color: surfaceColor,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: catList.length,
-                    itemBuilder: (context, i) {
-                      final cat = catList[i];
-                      final isSelected = i == selectedIdx;
-                      return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _selectedCategoryIndex = i);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppTheme.primaryBlue.withValues(alpha: isDark ? .3 : .08)
-                                : Colors.transparent,
-                            border: Border(
-                              right: BorderSide(
-                                color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
-                                width: 3,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            cat.nameAr,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected
-                                  ? AppTheme.primaryBlue
-                                  : onSurface.withValues(alpha: .7),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                // ── Left area: subcategories grid ────────────────────────────
+                Expanded(
+                  child: _SubcategoryGrid(
+                    parent: selectedCat,
+                    isDark: isDark,
+                    onTap:  (sub) => _navigate(context, selectedCat, sub),
+                    onParentTap: () => _navigate(context, selectedCat, null),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildSubcategoryGrid(
-    BuildContext context,
-    CategoryModel category,
-    bool isDark,
-    Color surfaceColor,
-    Color onSurface,
-  ) {
-    // Use real children if available, otherwise mock
-    final hasChildren = category.children.isNotEmpty;
-    final itemCount = hasChildren ? category.children.length : _mockSubs.length;
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: itemCount,
-      itemBuilder: (context, i) {
-        final label = hasChildren ? category.children[i].nameAr : _mockSubs[i].name;
-        final icon = hasChildren
-            ? (category.children[i].icon ?? '📦')
-            : _mockSubs[i].emoji;
-
-        return _SubCategoryCard(
-          label: label,
-          icon: icon,
-          isDark: isDark,
-          surfaceColor: surfaceColor,
-          onSurface: onSurface,
-          onTap: () {
-            if (hasChildren) {
-              context.go('/', extra: {'categoryId': category.children[i].id});
-            } else {
-              context.go('/', extra: {'categoryId': category.id});
-            }
+              ],
+            );
           },
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-class _SubCategoryCard extends StatefulWidget {
-  final String label;
-  final String icon;
-  final bool isDark;
-  final Color surfaceColor;
-  final Color onSurface;
-  final VoidCallback onTap;
+// ── Main category sidebar ─────────────────────────────────────────────────────
 
-  const _SubCategoryCard({
-    required this.label,
-    required this.icon,
+class _MainCategoryList extends StatelessWidget {
+  final List<CategoryModel> categories;
+  final int selectedIdx;
+  final bool isDark;
+  final Color surface;
+  final void Function(int) onTap;
+
+  const _MainCategoryList({
+    required this.categories,
+    required this.selectedIdx,
     required this.isDark,
-    required this.surfaceColor,
-    required this.onSurface,
+    required this.surface,
     required this.onTap,
   });
 
   @override
-  State<_SubCategoryCard> createState() => _SubCategoryCardState();
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 108,
+      child: Container(
+        decoration: BoxDecoration(
+          color: surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? .25 : .07),
+              blurRadius: 8,
+              offset: const Offset(-2, 0),
+            ),
+          ],
+        ),
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          itemCount: categories.length,
+          itemBuilder: (_, i) {
+            final isSelected = i == selectedIdx;
+            return _SidebarItem(
+              label:      categories[i].nameAr,
+              isSelected: isSelected,
+              isDark:     isDark,
+              onTap:      () => onTap(i),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _SubCategoryCardState extends State<_SubCategoryCard> {
-  bool _pressed = false;
+class _SidebarItem extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _SidebarItem({
+    required this.label,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: widget.isDark ? Colors.white12 : AppTheme.neutralGray200,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryBlue.withValues(alpha: isDark ? .25 : .09)
+              : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
+              width: 3,
             ),
-            boxShadow: widget.isDark ? null : [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .04),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: widget.isDark ? .2 : .06),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: Text(widget.icon, style: const TextStyle(fontSize: 26)),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: widget.onSurface,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? AppTheme.primaryBlue
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: .65),
           ),
         ),
       ),
@@ -277,8 +194,237 @@ class _SubCategoryCardState extends State<_SubCategoryCard> {
   }
 }
 
-class _MockSubCategory {
-  final String name;
-  final String emoji;
-  const _MockSubCategory(this.name, this.emoji);
+// ── Subcategory grid ──────────────────────────────────────────────────────────
+
+class _SubcategoryGrid extends StatelessWidget {
+  final CategoryModel parent;
+  final bool isDark;
+  final void Function(CategoryModel sub) onTap;
+  final VoidCallback onParentTap;
+
+  const _SubcategoryGrid({
+    required this.parent,
+    required this.isDark,
+    required this.onTap,
+    required this.onParentTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subs = parent.children;
+
+    if (subs.isEmpty) {
+      // No children → the category itself is the leaf
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionHeader(title: parent.nameAr),
+            const SizedBox(height: 12),
+            _BadgeTile(
+              label:  parent.nameAr,
+              index:  0,
+              isDark: isDark,
+              onTap:  onParentTap,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+            child: _SectionHeader(title: parent.nameAr),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount:   3,
+              mainAxisSpacing:  10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.05,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _BadgeTile(
+                label:  subs[i].nameAr,
+                index:  i,
+                isDark: isDark,
+                onTap:  () => onTap(subs[i]),
+              ),
+              childCount: subs.length,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 16,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryBlue,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .8),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Badge tile ────────────────────────────────────────────────────────────────
+
+class _BadgeTile extends StatefulWidget {
+  final String label;
+  final int index;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _BadgeTile({
+    required this.label,
+    required this.index,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  State<_BadgeTile> createState() => _BadgeTileState();
+}
+
+class _BadgeTileState extends State<_BadgeTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  // 8-colour palette: (gradient start, gradient end, text)
+  static const _palette = [
+    (Color(0xFF1565C0), Color(0xFF1E88E5), Colors.white),
+    (Color(0xFF2E7D32), Color(0xFF43A047), Colors.white),
+    (Color(0xFFE65100), Color(0xFFEF6C00), Colors.white),
+    (Color(0xFF6A1B9A), Color(0xFF8E24AA), Colors.white),
+    (Color(0xFFC62828), Color(0xFFE53935), Colors.white),
+    (Color(0xFF00695C), Color(0xFF00897B), Colors.white),
+    (Color(0xFFAD1457), Color(0xFFD81B60), Colors.white),
+    (Color(0xFF37474F), Color(0xFF546E7A), Colors.white),
+  ];
+
+  (Color, Color, Color) get _colors =>
+      _palette[widget.index % _palette.length];
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (from, to, textColor) = _colors;
+    final darkFrom = from.withValues(alpha: .55);
+    final darkTo   = to.withValues(alpha: .45);
+
+    return GestureDetector(
+      onTapDown:   (_) => _ctrl.forward(),
+      onTapUp:     (_) { _ctrl.reverse(); widget.onTap(); },
+      onTapCancel: ()  => _ctrl.reverse(),
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: widget.isDark
+                  ? [darkFrom, darkTo]
+                  : [from, to],
+              begin: Alignment.topRight,
+              end:   Alignment.bottomLeft,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: (widget.isDark ? darkFrom : from).withValues(alpha: .35),
+                blurRadius:    8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Center(
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                fontSize:   12,
+                fontWeight: FontWeight.w700,
+                color:      textColor,
+                height:     1.3,
+              ),
+              textAlign: TextAlign.center,
+              maxLines:  3,
+              overflow:  TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error view ────────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _ErrorView({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Text('تعذّر تحميل الأقسام'),
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+        ],
+      ),
+    );
+  }
 }

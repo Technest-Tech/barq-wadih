@@ -16,8 +16,28 @@ class ChatRepository {
   // ── Firebase custom token ────────────────────────────────────────────────────
 
   /// Mints a Firebase custom token via Laravel and signs into Firebase.
-  Future<void> ensureFirebaseSignedIn() async {
-    if (FirebaseAuth.instance.currentUser != null) return;
+  /// Forces a token refresh when a session already exists so expired custom
+  /// tokens (1-hour TTL) don't silently cause PERMISSION_DENIED on Firestore.
+  ///
+  /// Pass [expectedUid] (the backend MySQL user-id string) to detect stale or
+  /// mismatched Firebase sessions (e.g. a leftover phone-OTP session whose UID
+  /// isn't in participantUids). When the UIDs don't match the old session is
+  /// signed out and a fresh custom token is minted.
+  Future<void> ensureFirebaseSignedIn({String? expectedUid}) async {
+    final current = FirebaseAuth.instance.currentUser;
+    if (current != null) {
+      final uidMatches = expectedUid == null || current.uid == expectedUid;
+      if (uidMatches) {
+        try {
+          await current.getIdToken(true); // throws if token can't be refreshed
+          return;
+        } catch (_) {
+          // fall through to re-mint below
+        }
+      }
+      // Wrong UID or stale token — sign out before re-minting.
+      await FirebaseAuth.instance.signOut();
+    }
     final res = await _dio.get('/chat/token');
     final token = res.data['data']['firebase_token'] as String;
     await FirebaseAuth.instance.signInWithCustomToken(token);
@@ -35,6 +55,11 @@ class ChatRepository {
 
   /// Seed the conversation doc the first time a participant writes to it.
   /// Idempotent — on subsequent calls it merges in the latest metadata.
+  ///
+  /// Avoids a get() before set() because Firestore rules deny reads on
+  /// non-existent documents (resource is null), which would prevent the
+  /// initial document creation. Instead we set only the structural fields
+  /// using mergeFields so existing message history is never overwritten.
   Future<void> _seedConversation({
     required String conversationId,
     required List<String> participantIds,
@@ -47,30 +72,18 @@ class ChatRepository {
     Map<String, String?> peerAvatars = const {},
   }) async {
     final convRef = _fs.collection('conversations').doc(conversationId);
-    final existing = await convRef.get();
-    if (existing.exists) return;
-
-    final now = FieldValue.serverTimestamp();
-    final unread = <String, int>{};
-    for (final pid in participantIds) {
-      unread[pid] = 0;
-    }
-
     await convRef.set({
-      'participantIds':       participantIds,
-      'participantUids':      participantUids,
-      'adId':                 adId,
-      'adTitle':              adTitle,
-      'adImage':              adImage,
-      'peerNames':            peerNames,
-      'peerAvatars':          peerAvatars,
-      'lastMessage':          null,
-      'lastMessageAt':        now,
-      'lastMessageSenderId':  null,
-      'unreadCount':          unread,
-      'createdAt':            now,
-      'updatedAt':            now,
-    }, SetOptions(merge: true));
+      'participantIds':  participantIds,
+      'participantUids': participantUids,
+      'adId':            adId,
+      'adTitle':         adTitle,
+      'adImage':         adImage,
+      'peerNames':       peerNames,
+      'peerAvatars':     peerAvatars,
+    }, SetOptions(mergeFields: [
+      'participantIds', 'participantUids', 'adId', 'adTitle',
+      'adImage', 'peerNames', 'peerAvatars',
+    ]));
   }
 
   /// Create a conversation and post the buyer's opening message in one shot.
@@ -78,10 +91,13 @@ class ChatRepository {
   Future<String> startConversation({
     required int adId,
     required String myId,
-    required String myUid,
     required String initialMessage,
   }) async {
-    await ensureFirebaseSignedIn();
+    // myId is both the Laravel user-id and the Firebase UID we minted with.
+    // Pass it so ensureFirebaseSignedIn can detect stale/wrong sessions.
+    await ensureFirebaseSignedIn(expectedUid: myId);
+    // Derive the real Firebase UID *after* sign-in completes, not before.
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
     final meta = await createConversation(adId);
 
     final conversationId  = meta['conversation_id'] as String;
@@ -91,8 +107,9 @@ class ChatRepository {
     final seller          = Map<String, dynamic>.from(meta['seller'] as Map);
     final buyer           = Map<String, dynamic>.from(meta['buyer']  as Map);
 
-    final sellerId = seller['id'].toString();
-    final buyerId  = buyer['id'].toString();
+    final sellerId    = seller['id'].toString();
+    final buyerId     = buyer['id'].toString();
+    final sellerIdInt = (seller['id'] as num?)?.toInt();
 
     await _seedConversation(
       conversationId:  conversationId,
@@ -119,11 +136,10 @@ class ChatRepository {
       text:           initialMessage,
     );
 
-    final sellerId = (seller['id'] as num?)?.toInt();
-    if (sellerId != null) {
+    if (sellerIdInt != null) {
       notifyNewMessage(
         conversationId: conversationId,
-        receiverId:     sellerId,
+        receiverId:     sellerIdInt,
         messagePreview: initialMessage,
       );
     }
@@ -132,10 +148,11 @@ class ChatRepository {
   }
 
   /// Real-time stream of all conversations for the current user.
-  Stream<List<ConversationModel>> conversationsStream(String myId) {
+  /// [myUid] must be the Firebase UID (not the backend integer ID).
+  Stream<List<ConversationModel>> conversationsStream(String myUid) {
     return _fs
         .collection('conversations')
-        .where('participantIds', arrayContains: myId)
+        .where('participantUids', arrayContains: myUid)
         .orderBy('lastMessageAt', descending: true)
         .snapshots()
         .map((snap) => snap.docs
