@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Api\V1\BaseController;
 use App\Models\Category;
 use App\Models\CategoryField;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class AdminCategoryController extends BaseController
 {
+    public function __construct(private readonly ImageService $imageService) {}
+
     /**
      * GET /api/v1/admin/categories
      *
@@ -36,20 +39,30 @@ class AdminCategoryController extends BaseController
             'name_ar'             => 'required|string|max:100',
             'name_en'             => 'required|string|max:100',
             'icon'                => 'nullable|string|max:50',
-            'image'               => 'nullable|string|max:255',
+            'image'               => 'nullable|string|max:500',
+            'image_file'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'parent_id'           => 'nullable|exists:categories,id',
             'description_ar'      => 'nullable|string|max:500',
             'description_en'      => 'nullable|string|max:500',
-            'commission_rate'                 => 'nullable|numeric|min:0|max:100',
-            'publish_fee_individual'          => 'nullable|numeric|min:0|max:99999.99',
-            'publish_fee_dealer'              => 'nullable|numeric|min:0|max:99999.99',
-            'fee_deductible_from_commission'  => 'boolean',
+            'commission_rate'                  => 'nullable|numeric|min:0|max:100',
+            'publish_fee_individual'           => 'nullable|numeric|min:0|max:99999.99',
+            'publish_fee_dealer'               => 'nullable|numeric|min:0|max:99999.99',
+            'fee_deductible_from_commission'   => 'boolean',
+            'deferred_commission_individual'   => 'nullable|numeric|min:0|max:99999.99',
+            'deferred_commission_dealer'       => 'nullable|numeric|min:0|max:99999.99',
+            'commission_trigger'               => 'nullable|in:after_sale,after_90_days',
             'is_free'                         => 'boolean',
             'is_active'                       => 'boolean',
             'sort_order'                      => 'integer|min:0',
             'meta_keywords'                   => 'nullable|string|max:500',
             'prohibited_keywords'             => 'nullable|array',
         ]);
+
+        if ($request->hasFile('image_file')) {
+            $path = $this->imageService->store($request->file('image_file'), 'categories/images');
+            $data['image'] = $this->imageService->url($path);
+        }
+        unset($data['image_file']);
 
         $category = Category::create($data);
         Cache::forget('categories:tree');
@@ -66,14 +79,18 @@ class AdminCategoryController extends BaseController
             'name_ar'             => 'sometimes|string|max:100',
             'name_en'             => 'sometimes|string|max:100',
             'icon'                => 'nullable|string|max:50',
-            'image'               => 'nullable|string|max:255',
+            'image'               => 'nullable|string|max:500',
+            'image_file'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'parent_id'           => 'nullable|exists:categories,id',
             'description_ar'      => 'nullable|string|max:500',
             'description_en'      => 'nullable|string|max:500',
-            'commission_rate'                 => 'nullable|numeric|min:0|max:100',
-            'publish_fee_individual'          => 'nullable|numeric|min:0|max:99999.99',
-            'publish_fee_dealer'              => 'nullable|numeric|min:0|max:99999.99',
-            'fee_deductible_from_commission'  => 'boolean',
+            'commission_rate'                  => 'nullable|numeric|min:0|max:100',
+            'publish_fee_individual'           => 'nullable|numeric|min:0|max:99999.99',
+            'publish_fee_dealer'               => 'nullable|numeric|min:0|max:99999.99',
+            'fee_deductible_from_commission'   => 'boolean',
+            'deferred_commission_individual'   => 'nullable|numeric|min:0|max:99999.99',
+            'deferred_commission_dealer'       => 'nullable|numeric|min:0|max:99999.99',
+            'commission_trigger'               => 'nullable|in:after_sale,after_90_days',
             'is_free'                         => 'boolean',
             'is_active'                       => 'boolean',
             'sort_order'                      => 'integer|min:0',
@@ -85,6 +102,15 @@ class AdminCategoryController extends BaseController
         if (isset($data['parent_id']) && $data['parent_id'] == $category->id) {
             return $this->errorResponse('لا يمكن تعيين التصنيف كأب لنفسه.', 422);
         }
+
+        if ($request->hasFile('image_file')) {
+            if ($category->image) {
+                $this->imageService->delete($category->image);
+            }
+            $path = $this->imageService->store($request->file('image_file'), 'categories/images');
+            $data['image'] = $this->imageService->url($path);
+        }
+        unset($data['image_file']);
 
         $category->update($data);
         Cache::forget('categories:tree');

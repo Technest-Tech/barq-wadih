@@ -109,7 +109,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ),
         title: const Text(
           'تعديل الملف الشخصي',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
         ),
         actions: [
           Padding(

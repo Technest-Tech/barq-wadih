@@ -29,7 +29,7 @@ class _SearchNotifier extends Notifier<_SearchState> {
   );
 }
 
-final _searchNotifier = NotifierProvider<_SearchNotifier, _SearchState>(_SearchNotifier.new);
+final _searchNotifier = NotifierProvider.autoDispose<_SearchNotifier, _SearchState>(_SearchNotifier.new);
 
 // ── Recent Searches ───────────────────────────────────────────────────────────
 

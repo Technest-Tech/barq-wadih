@@ -34,7 +34,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
         foregroundColor: AppTheme.neutralGray900,
         title: const Text(
           'تحديد الموقع على الخريطة',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Colors.white),
         ),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),

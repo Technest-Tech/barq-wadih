@@ -4,15 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import pm from '@/styles/premium.module.css';
 import styles from '../../post-ad.module.css';
 import { fetchCategories, type Category, type CategoryChild } from '@/lib/api/categories';
-import { useAuthStore } from '@/store/auth.store';
 import { usePostAdWizard } from '@/store/postAdWizard.store';
 import { DealerFeeBadge } from '../shared/DealerFeeBadge';
 import { WizardFooter } from '../WizardFooter';
 
 export function CategoryStep() {
-  const user = useAuthStore(s => s.user);
-  const isDealer = !!user?.is_dealer;
-
   const w = usePostAdWizard();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +22,7 @@ export function CategoryStep() {
   useEffect(() => { setSearch(''); }, [w.parentCategory]);
 
   const feeFor = (c: CategoryChild | Category): number | null => {
-    const tier = isDealer ? 'publish_fee_dealer' : 'publish_fee_individual';
+    const tier = w.sellerType === 'dealer' ? 'publish_fee_dealer' : 'publish_fee_individual';
     const v = (c as unknown as Record<string, number | string | null | undefined>)[tier];
     return v === null || v === undefined ? null : Number(v);
   };
@@ -199,6 +195,41 @@ export function CategoryStep() {
             </ul>
           )}
         </>
+      )}
+
+      {/* Seller type selector — shown once a category is picked */}
+      {w.category && (
+        <div style={{ marginTop: 20, padding: '16px', background: 'rgba(99,102,241,0.06)', borderRadius: 12, border: '1px solid rgba(99,102,241,0.2)' }}>
+          <div style={{ fontSize: '.85rem', fontWeight: 700, color: '#c7d2fe', marginBottom: 10, textAlign: 'right' }}>
+            أنت تبيع بصفتك...
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => w.setSellerType('individual')}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 10, border: `2px solid ${w.sellerType === 'individual' ? '#6366f1' : '#334155'}`,
+                background: w.sellerType === 'individual' ? 'rgba(99,102,241,0.18)' : 'transparent',
+                color: w.sellerType === 'individual' ? '#a5b4fc' : '#94a3b8',
+                fontWeight: 700, fontSize: '.9rem', cursor: 'pointer', transition: 'all .15s',
+              }}
+            >
+              👤 فرد
+            </button>
+            <button
+              type="button"
+              onClick={() => w.setSellerType('dealer')}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 10, border: `2px solid ${w.sellerType === 'dealer' ? '#6366f1' : '#334155'}`,
+                background: w.sellerType === 'dealer' ? 'rgba(99,102,241,0.18)' : 'transparent',
+                color: w.sellerType === 'dealer' ? '#a5b4fc' : '#94a3b8',
+                fontWeight: 700, fontSize: '.9rem', cursor: 'pointer', transition: 'all .15s',
+              }}
+            >
+              🏢 معرض / تاجر
+            </button>
+          </div>
+        </div>
       )}
 
       <WizardFooter />

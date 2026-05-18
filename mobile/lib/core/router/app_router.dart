@@ -24,6 +24,7 @@ import '../../features/settings/presentation/screens/contact_us_screen.dart';
 import '../../features/settings/presentation/screens/privacy_policy_screen.dart';
 import '../../features/settings/presentation/screens/safety_center_screen.dart';
 import '../../features/settings/presentation/screens/trusted_purchase_screen.dart';
+import '../../features/settings/presentation/screens/terms_of_service_screen.dart';
 import '../shell/main_shell.dart';
 
 // ── Route paths ───────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ abstract class AppRoutes {
   static const privacyPolicy    = '/privacy-policy';
   static const safetyCenter     = '/safety-center';
   static const trustedPurchase  = '/trusted-purchase';
+  static const termsOfService   = '/terms-of-service';
 
   /// Helper to build ad detail path with actual id
   static String adDetailPath(int id) => '/ads/$id';
@@ -256,6 +258,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _slidePage(
           key: state.pageKey,
           child: const TrustedPurchaseScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.termsOfService,
+        pageBuilder: (context, state) => _slidePage(
+          key: state.pageKey,
+          child: const TermsOfServiceScreen(),
         ),
       ),
     ],

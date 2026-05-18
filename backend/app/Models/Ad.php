@@ -17,7 +17,7 @@ class Ad extends Model
     use HasFactory, SoftDeletes, Searchable;
 
     protected $fillable = [
-        'user_id', 'category_id', 'city_id', 'region_id', 'district_id', 'district_name_free',
+        'user_id', 'seller_type', 'category_id', 'city_id', 'region_id', 'district_id', 'district_name_free',
         'latitude', 'longitude',
         'title', 'description', 'price', 'price_hidden',
         'is_negotiable', 'is_free',

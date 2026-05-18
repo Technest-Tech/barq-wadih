@@ -139,6 +139,8 @@ class AdListModel {
   final DateTime? publishedAt;
   final DateTime createdAt;
   final DateTime? expiresAt;
+  final bool? canRefresh;
+  final DateTime? nextRefreshAt;
 
   const AdListModel({
     required this.id,
@@ -160,6 +162,8 @@ class AdListModel {
     this.publishedAt,
     required this.createdAt,
     this.expiresAt,
+    this.canRefresh,
+    this.nextRefreshAt,
   });
 
   factory AdListModel.fromJson(Map<String, dynamic> json) {
@@ -203,6 +207,8 @@ class AdListModel {
       publishedAt: json['published_at'] != null ? DateTime.tryParse(json['published_at'] as String) : null,
       createdAt:   DateTime.parse(json['created_at'] as String),
       expiresAt:   json['expires_at'] != null ? DateTime.tryParse(json['expires_at'] as String) : null,
+      canRefresh:  json['can_refresh'] as bool?,
+      nextRefreshAt: json['next_refresh_at'] != null ? DateTime.tryParse(json['next_refresh_at'] as String) : null,
     );
   }
 
@@ -239,8 +245,6 @@ class AdDetailModel extends AdListModel {
   final int viewsCount;
   final int favoritesCount;
   final bool? canBoost;
-  final bool? canRefresh;
-  final DateTime? nextRefreshAt;
 
   const AdDetailModel({
     required super.id,
@@ -261,6 +265,8 @@ class AdDetailModel extends AdListModel {
     super.publishedAt,
     required super.createdAt,
     super.expiresAt,
+    super.canRefresh,
+    super.nextRefreshAt,
     required this.description,
     required this.images,
     required this.fieldValues,
@@ -272,8 +278,6 @@ class AdDetailModel extends AdListModel {
     required this.viewsCount,
     required this.favoritesCount,
     this.canBoost,
-    this.canRefresh,
-    this.nextRefreshAt,
   });
 
   factory AdDetailModel.fromJson(Map<String, dynamic> json) {
@@ -299,6 +303,8 @@ class AdDetailModel extends AdListModel {
       publishedAt:       base.publishedAt,
       createdAt:         base.createdAt,
       expiresAt:         base.expiresAt,
+      canRefresh:        base.canRefresh,
+      nextRefreshAt:     base.nextRefreshAt,
       description:       json['description'] as String? ?? '',
       images:            (json['images'] as List<dynamic>? ?? [])
           .map((e) => AdImageModel.fromJson(e as Map<String, dynamic>))
@@ -333,10 +339,6 @@ class AdDetailModel extends AdListModel {
       viewsCount:        json['views_count'] as int? ?? 0,
       favoritesCount:    json['favorites_count'] as int? ?? 0,
       canBoost:          json['can_boost'] as bool?,
-      canRefresh:        json['can_refresh'] as bool?,
-      nextRefreshAt:     json['next_refresh_at'] != null
-          ? DateTime.tryParse(json['next_refresh_at'] as String)
-          : null,
     );
   }
 }

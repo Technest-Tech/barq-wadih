@@ -226,6 +226,21 @@
 }
 .editorContent:focus { background: rgba(0,0,0,0.02); }
 
+/* ── Textarea ─────────────────────────────────────────────────────────────── */
+.textarea {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--admin-border);
+  border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;
+  color: var(--admin-text); background: var(--admin-surface);
+  transition: border-color 0.2s; direction: rtl;
+}
+.textarea:focus { outline: none; border-color: var(--admin-accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+/* ── Status badge ─────────────────────────────────────────────────────────── */
+.statusBadge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .filterRow { flex-direction: column; }

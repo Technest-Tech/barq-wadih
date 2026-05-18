@@ -35,14 +35,17 @@ class AdService
             $cityId   = (int) $data['city_id'];
             $regionId = \App\Models\City::find($cityId)?->region_id;
 
-            $commission = $this->calculateCommission((float) ($data['price'] ?? 0), (bool) ($data['is_free'] ?? false));
+            $sellerType = $data['seller_type'] ?? 'individual';
+            $categoryId = (int) $data['category_id'];
+            $commission = $this->calculateCommission($categoryId, (float) ($data['price'] ?? 0), false, $sellerType);
 
-            // Resolve publish fee from category × dealer/individual tier.
-            $publishFee = $this->resolvePublishFee((int) $data['category_id'], $user);
+            // Resolve publish fee from category × seller tier.
+            $publishFee = $this->resolvePublishFee($categoryId, $sellerType);
             $hasFee     = $publishFee > 0;
 
             /** @var Ad $ad */
             $ad = $user->ads()->create([
+                'seller_type'         => $sellerType,
                 'category_id'         => $data['category_id'],
                 'city_id'             => $cityId,
                 'region_id'           => $regionId,
@@ -52,10 +55,10 @@ class AdService
                 'longitude'           => $data['longitude'] ?? null,
                 'title'               => $data['title'],
                 'description'         => $data['description'],
-                'price'               => ($data['is_free'] ?? false) ? null : ($data['price'] ?? null),
-                'price_hidden'        => $data['price_hidden'] ?? false,
+                'price'               => $data['price'] ?? null,
+                'price_hidden'        => false,
                 'is_negotiable'       => $data['is_negotiable'] ?? false,
-                'is_free'             => $data['is_free'] ?? false,
+                'is_free'             => false,
                 'contact_phone'       => $data['contact_phone'] ?? null,
                 'contact_whatsapp'    => $data['contact_whatsapp'] ?? null,
                 'show_phone_publicly' => $data['show_phone_publicly'] ?? true,
@@ -108,17 +111,17 @@ class AdService
     }
 
     /**
-     * Pick the publish fee for this category × seller tier. Falls back to 0
-     * when columns are null so older seeded categories stay free.
+     * Pick the upfront publish fee for this category × seller tier.
+     * Falls back to 0 when columns are null so older seeded categories stay free.
      */
-    public function resolvePublishFee(int $categoryId, User $user): float
+    public function resolvePublishFee(int $categoryId, string $sellerType = 'individual'): float
     {
         $cat = Category::find($categoryId);
         if (! $cat) {
             return 0.0;
         }
 
-        $fee = $user->is_dealer
+        $fee = $sellerType === 'dealer'
             ? (float) ($cat->publish_fee_dealer ?? 0)
             : (float) ($cat->publish_fee_individual ?? 0);
 
@@ -138,8 +141,8 @@ class AdService
     {
         return DB::transaction(function () use ($ad, $data, $newImages, $removeImageIds) {
             $fillable = array_intersect_key($data, array_flip([
-                'title', 'description', 'price', 'price_hidden',
-                'is_negotiable', 'is_free',
+                'title', 'description', 'price',
+                'is_negotiable',
                 'city_id', 'district_id', 'district_name_free',
                 'latitude', 'longitude',
                 'contact_phone', 'contact_whatsapp', 'show_phone_publicly',
@@ -196,15 +199,46 @@ class AdService
     // ── Commission ────────────────────────────────────────────────────────────
 
     /**
-     * Commission = max(90 SAR, 0.5% of price). Free ads have no commission.
+     * Deferred commission = fixed SAR amount from category config.
+     * Falls back to max(90 SAR, 0.5% of price) for unconfigured categories.
      */
-    public function calculateCommission(float $price, bool $isFree = false): float
+    public function calculateCommission(int $categoryId, float $price, bool $isFree = false, string $sellerType = 'individual'): float
     {
         if ($isFree || $price <= 0) {
             return 0.0;
         }
 
+        $cat = Category::find($categoryId);
+        if ($cat) {
+            $fixed = $sellerType === 'dealer'
+                ? (float) ($cat->deferred_commission_dealer ?? 0)
+                : (float) ($cat->deferred_commission_individual ?? 0);
+
+            if ($fixed > 0) {
+                return $fixed;
+            }
+        }
+
+        // Legacy fallback for categories without explicit deferred amounts
         return max(90.0, $price * 0.005);
+    }
+
+    /**
+     * Returns true when the category has an explicit fixed deferred commission,
+     * meaning the commission icon should show an exact amount (no ~ approximation).
+     */
+    public function isFlatFeeCategory(int $categoryId, string $sellerType = 'individual'): bool
+    {
+        $cat = Category::find($categoryId);
+        if (! $cat) {
+            return false;
+        }
+
+        $fixed = $sellerType === 'dealer'
+            ? (float) ($cat->deferred_commission_dealer ?? 0)
+            : (float) ($cat->deferred_commission_individual ?? 0);
+
+        return $fixed > 0;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

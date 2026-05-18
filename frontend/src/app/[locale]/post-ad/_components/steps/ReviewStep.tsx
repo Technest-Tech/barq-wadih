@@ -55,6 +55,7 @@ export function ReviewStep() {
 
     try {
       const fd = new FormData();
+      fd.append('seller_type', w.sellerType ?? 'individual');
       fd.append('category_id', String(w.category.id));
       fd.append('city_id', String(w.city.id));
       fd.append('pledge_accepted', '1');
@@ -101,7 +102,7 @@ export function ReviewStep() {
     }
   };
 
-  const tier: 'publish_fee_dealer' | 'publish_fee_individual' = user?.is_dealer
+  const tier: 'publish_fee_dealer' | 'publish_fee_individual' = w.sellerType === 'dealer'
     ? 'publish_fee_dealer' : 'publish_fee_individual';
   const fee = (() => {
     const v = (w.category as unknown as Record<string, number | string | null | undefined>)?.[tier];
@@ -205,7 +206,7 @@ export function ReviewStep() {
           رسوم النشر
         </div>
         <div className={styles.feeRow}>
-          <span>التسعيرة ({user?.is_dealer ? 'معرض/تاجر' : 'فرد'})</span>
+          <span>التسعيرة ({w.sellerType === 'dealer' ? 'معرض/تاجر' : 'فرد'})</span>
           <span>{fee.toLocaleString('ar-SA')} ر.س</span>
         </div>
         <div className={styles.feeTotal}>

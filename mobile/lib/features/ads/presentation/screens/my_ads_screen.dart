@@ -48,7 +48,7 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
       backgroundColor: AppTheme.neutralGray50,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text('إعلاناتي', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('إعلاناتي', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
@@ -154,7 +154,7 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/post-ad'),
         icon: const Icon(Icons.add_rounded, size: 22),
-        label: const Text('إعلان جديد', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+        label: const Text('إعلان جديد', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white)),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         elevation: 3,
@@ -406,7 +406,7 @@ class _AdListTile extends ConsumerWidget {
                           ad.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
                           textDirection: TextDirection.rtl,
                         ),
                         const SizedBox(height: 4),
@@ -449,13 +449,24 @@ class _AdListTile extends ConsumerWidget {
                           ),
                         ],
                         const SizedBox(height: 6),
-                        // Refresh button
-                        _ActionButton(
-                          label: 'تحديث',
-                          icon: Icons.refresh_rounded,
-                          color: const Color(0xFF10B981),
-                          onTap: handleRefresh,
-                        ),
+                        // Refresh button — only if 24h cooldown has passed
+                        if (ad.canRefresh == true)
+                          _ActionButton(
+                            label: 'تحديث',
+                            icon: Icons.refresh_rounded,
+                            color: const Color(0xFF10B981),
+                            onTap: handleRefresh,
+                          )
+                        else if (ad.nextRefreshAt != null)
+                          Column(
+                            children: [
+                              Icon(Icons.refresh_rounded, size: 20, color: AppTheme.neutralGray400),
+                              Text(
+                                _formatHoursLeft(ad.nextRefreshAt!),
+                                style: const TextStyle(fontSize: 8, color: AppTheme.neutralGray400),
+                              ),
+                            ],
+                          ),
                         const SizedBox(height: 6),
                         _ActionButton(label: 'مُباع', icon: Icons.sell_outlined, color: Colors.blue, onTap: handleMarkSold),
                         const SizedBox(height: 6),
@@ -597,7 +608,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               isAll ? 'لا توجد إعلانات بعد' : 'لا توجد إعلانات بحالة "$tabLabel"',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
               textAlign: TextAlign.center,
             ),
             if (isAll) ...[

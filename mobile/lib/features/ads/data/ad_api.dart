@@ -10,26 +10,34 @@ import '../domain/ad_model.dart';
 
 class CommissionPreviewModel {
   final double commissionAmount;
-  final String commissionRate;
-  final double minimumCommission;
+  final String? commissionRate;   // null for flat-fee categories
+  final double? minimumCommission;
   final String note;
+  final bool isFlatFee;
 
   const CommissionPreviewModel({
     required this.commissionAmount,
     required this.commissionRate,
     required this.minimumCommission,
     required this.note,
+    required this.isFlatFee,
   });
 
   factory CommissionPreviewModel.fromJson(Map<String, dynamic> json) {
     return CommissionPreviewModel(
       commissionAmount:  (json['commission_amount'] as num).toDouble(),
-      commissionRate:     json['commission_rate'] as String? ?? '',
-      minimumCommission: (json['minimum_commission'] as num).toDouble(),
-      note:              json['note'] as String? ?? '',
+      commissionRate:    json['commission_rate'] as String?,
+      minimumCommission: json['minimum_commission'] != null
+          ? (json['minimum_commission'] as num).toDouble()
+          : null,
+      note:             json['note'] as String? ?? '',
+      isFlatFee:        json['is_flat_fee'] as bool? ?? false,
     );
   }
 }
+
+/// Key type for the commission preview provider.
+typedef CommissionPreviewKey = ({double price, int categoryId, String sellerType});
 
 
 class AdsFilter {
@@ -245,11 +253,19 @@ class AdRepository {
   }
 
   /// GET /ads/commission-preview — calculate commission before posting
-  Future<CommissionPreviewModel> commissionPreview(double price) async {
+  Future<CommissionPreviewModel> commissionPreview(
+    double price, {
+    int categoryId = 0,
+    String sellerType = 'individual',
+  }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/ads/commission-preview',
-        queryParameters: {'price': price, 'is_free': '0'},
+        queryParameters: {
+          'price':       price,
+          'category_id': categoryId,
+          'seller_type': sellerType,
+        },
       );
       final data = response.data!['data'] as Map<String, dynamic>;
       return CommissionPreviewModel.fromJson(data);
@@ -436,10 +452,15 @@ final categoryFieldsProvider =
   return ref.read(adRepositoryProvider).getCategoryFields(categoryId);
 });
 
-/// Commission preview — FutureProvider.family keyed by price
+/// Commission preview — FutureProvider.family keyed by (price, categoryId, sellerType)
 final commissionPreviewProvider =
-    FutureProvider.family<CommissionPreviewModel, double>((ref, price) {
-  return ref.read(adRepositoryProvider).commissionPreview(price);
+    FutureProvider.family<CommissionPreviewModel, CommissionPreviewKey>(
+        (ref, key) {
+  return ref.read(adRepositoryProvider).commissionPreview(
+        key.price,
+        categoryId: key.categoryId,
+        sellerType: key.sellerType,
+      );
 });
 
 /// Dedicated search — FutureProvider.family keyed by filter

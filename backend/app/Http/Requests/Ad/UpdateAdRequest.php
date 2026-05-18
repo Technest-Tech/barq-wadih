@@ -16,10 +16,8 @@ class UpdateAdRequest extends FormRequest
         return [
             'title'           => ['sometimes', 'string', 'min:3', 'max:100'],
             'description'     => ['sometimes', 'string', 'min:10', 'max:5000'],
-            'price'           => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999'],
-            'price_hidden'    => ['sometimes', 'boolean'],
+            'price'           => ['sometimes', 'numeric', 'min:1', 'max:9999999'],
             'is_negotiable'   => ['sometimes', 'boolean'],
-            'is_free'         => ['sometimes', 'boolean'],
             'city_id'         => ['sometimes', 'integer', 'exists:cities,id'],
             'district_id'     => ['sometimes', 'nullable', 'integer', 'exists:districts,id'],
             'district_name_free' => ['sometimes', 'nullable', 'string', 'max:120'],

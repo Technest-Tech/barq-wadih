@@ -45,14 +45,13 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   CategoryModel? _selectedCategory;
 
   // Step 2 — Details
+  String _sellerType = 'individual'; // 'individual' | 'dealer'
   final _titleCtrl    = TextEditingController();
   final _descCtrl     = TextEditingController();
   final _priceCtrl    = TextEditingController();
   final _phoneCtrl    = TextEditingController();
   final _whatsappCtrl = TextEditingController();
-  bool _isFree           = false;
   bool _isNegotiable     = false;
-  bool _priceHidden      = false;
   bool _showPhonePublicly = true;
 
   // Dynamic category field controllers
@@ -79,7 +78,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       _titleCtrl.text.trim().isNotEmpty &&
       _descCtrl.text.trim().isNotEmpty &&
       (!_showPhonePublicly || _phoneCtrl.text.trim().isNotEmpty) &&
-      (_isFree || _priceHidden || _priceCtrl.text.trim().isNotEmpty);
+      _priceCtrl.text.trim().isNotEmpty;
 
   @override
   void initState() {
@@ -135,9 +134,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         _priceCtrl.text    = ad.price?.toStringAsFixed(0) ?? '';
         _phoneCtrl.text    = ad.contactPhone;
         _whatsappCtrl.text = ad.contactWhatsapp ?? '';
-        _isFree             = ad.isFree;
         _isNegotiable       = ad.isNegotiable;
-        _priceHidden        = ad.priceHidden;
         _showPhonePublicly  = ad.showPhonePublicly;
 
         for (final fv in ad.fieldValues) {
@@ -285,6 +282,37 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     }
   }
 
+  // ── Payment confirmation before submit ────────────────────────────────────
+
+  Future<void> _handleSubmit() async {
+    final publishFee = _selectedCategory?.publishFee(_sellerType) ?? 0.0;
+    final categoryIsFree = _selectedCategory?.isFree ?? false;
+
+    if (categoryIsFree || publishFee <= 0) {
+      // Free category or no publish fee — submit directly
+      await _submit();
+      return;
+    }
+
+    // Show payment confirmation sheet first
+    if (!mounted) return;
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PublishPaymentSheet(
+        fee: publishFee,
+        categoryName: _selectedCategory?.nameAr ?? '',
+        sellerType: _sellerType,
+        onConfirm: () => Navigator.pop(context, true),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _submit();
+    }
+  }
+
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
@@ -301,14 +329,15 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       final regionId = _selectedCity?.region?.id ?? _selectedRegion?.id;
 
       final formFields = <String, dynamic>{
+        'seller_type':          _sellerType,
         'city_id':              _selectedCity!.id.toString(),
         if (regionId != null) 'region_id': regionId.toString(),
         'title':                _titleCtrl.text.trim(),
         'description':          _descCtrl.text.trim(),
-        'price':                (_isFree || _priceHidden) ? '0' : _priceCtrl.text.trim(),
-        'is_free':              _isFree ? '1' : '0',
+        'price':                _priceCtrl.text.trim(),
+        'is_free':              '0',
         'is_negotiable':        _isNegotiable ? '1' : '0',
-        'price_hidden':         _priceHidden ? '1' : '0',
+        'price_hidden':         '0',
         'show_phone_publicly':  _showPhonePublicly ? '1' : '0',
         'contact_phone':        _phoneCtrl.text.trim(),
         if (_whatsappCtrl.text.isNotEmpty)
@@ -449,16 +478,14 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   priceCtrl:         _priceCtrl,
                   phoneCtrl:         _phoneCtrl,
                   whatsappCtrl:      _whatsappCtrl,
-                  isFree:            _isFree,
+                  sellerType:        _sellerType,
                   isNegotiable:      _isNegotiable,
-                  priceHidden:       _priceHidden,
                   showPhonePublicly: _showPhonePublicly,
                   categoryId:        _selectedCategory?.id,
                   fieldValues:       _fieldValues,
                   errors:            _fieldErrors,
-                  onFreeChanged:        (v) => setState(() { _isFree = v; if (v) { _priceHidden = false; } }),
+                  onSellerTypeChanged:  (v) => setState(() => _sellerType = v),
                   onNegotiableChanged:  (v) => setState(() => _isNegotiable = v),
-                  onPriceHiddenChanged: (v) => setState(() { _priceHidden = v; if (v) { _isNegotiable = false; } }),
                   onShowPhoneChanged:   (v) => setState(() => _showPhonePublicly = v),
                   onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
                   dynCtrl:   _dynCtrl,
@@ -487,8 +514,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   longitude:        _longitude,
                   submitting:       _submitting,
                   isEditMode:       _isEditMode,
-                  priceText:        _isFree ? null : _priceCtrl.text.trim(),
+                  priceText:        _priceCtrl.text.trim(),
                   categoryId:       _selectedCategory?.id,
+                  sellerType:       _sellerType,
                   onSelectLocation: (r, c) {
                     setState(() {
                       _selectedRegion   = r;
@@ -520,7 +548,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                     }
                   },
                   onBack:   _prev,
-                  onSubmit: _submit,
+                  onSubmit: _handleSubmit,
                 ),
               ],
             ),
@@ -665,9 +693,9 @@ class _Step0Pledge extends StatelessWidget {
 
   static const _pledgeBody =
       'بسم الله الرحمن الرحيم.\n\n'
-      'أتعهد وأقسم بالله العظيم أنا المعلن المسجّل في موقع برق وادي ما يلي:\n\n'
+      'أتعهد وأقسم بالله العظيم أنا المعلن المسجّل في موقع برق واضح ما يلي:\n\n'
       '١. أن جميع المعلومات والصور المنشورة في إعلاني صحيحة ودقيقة، وتعبّر عن السلعة أو الخدمة كما هي بدون غش أو تدليس.\n\n'
-      '٢. أن أدفع للموقع رسوم العمولة المستحقة وقدرها 1% من قيمة البيع الفعلية، خلال مدة لا تتجاوز 10 أيام من استلامي لكامل مبلغ المبايعة من المشتري.\n\n'
+      '٢. أن أدفع للموقع رسوم العمولة المستحقة المحددة حسب القسم المختار، خلال مدة لا تتجاوز 10 أيام من استلامي لكامل مبلغ المبايعة من المشتري.\n\n'
       '٣. أن رسوم النشر المدفوعة عند إنشاء الإعلان غير مستردة، وذلك مقابل خدمة عرض الإعلان والوصول إلى المهتمين.\n\n'
       '٤. أن أتحمل كامل المسؤولية القانونية والشرعية عن صحة الإعلان ومحتواه، وأن للموقع الحق في حذفه أو إيقاف حسابي عند مخالفة الشروط.\n\n'
       '٥. ألتزم بعدم نشر إعلانات تحتوي على ما يخالف الأنظمة المعمول بها في المملكة العربية السعودية.\n\n'
@@ -1217,13 +1245,13 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
 class _Step2Details extends ConsumerStatefulWidget {
   final TextEditingController titleCtrl, descCtrl, priceCtrl, phoneCtrl,
       whatsappCtrl;
-  final bool isFree, isNegotiable, priceHidden, showPhonePublicly, isValid;
+  final String sellerType;
+  final bool isNegotiable, showPhonePublicly, isValid;
   final int? categoryId;
   final Map<String, String> fieldValues;
   final Map<String, String> errors;
-  final void Function(bool) onFreeChanged;
+  final void Function(String) onSellerTypeChanged;
   final void Function(bool) onNegotiableChanged;
-  final void Function(bool) onPriceHiddenChanged;
   final void Function(bool) onShowPhoneChanged;
   final void Function(String, String) onFieldChanged;
   final TextEditingController Function(String) dynCtrl;
@@ -1235,17 +1263,15 @@ class _Step2Details extends ConsumerStatefulWidget {
     required this.priceCtrl,
     required this.phoneCtrl,
     required this.whatsappCtrl,
-    required this.isFree,
+    required this.sellerType,
     required this.isNegotiable,
-    required this.priceHidden,
     required this.showPhonePublicly,
     required this.isValid,
     required this.categoryId,
     required this.fieldValues,
     required this.errors,
-    required this.onFreeChanged,
+    required this.onSellerTypeChanged,
     required this.onNegotiableChanged,
-    required this.onPriceHiddenChanged,
     required this.onShowPhoneChanged,
     required this.onFieldChanged,
     required this.dynCtrl,
@@ -1269,6 +1295,88 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Seller type ─────────────────────────────────────────────────
+          _SectionHeader(title: 'أنت تبيع بصفتك', icon: Icons.person_outline_rounded),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => widget.onSellerTypeChanged('individual'),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: widget.sellerType == 'individual'
+                          ? const Color(0xFF6366F1).withOpacity(0.15)
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: widget.sellerType == 'individual'
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFF334155),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('👤', style: TextStyle(fontSize: 22)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'فرد',
+                          style: TextStyle(
+                            color: widget.sellerType == 'individual'
+                                ? const Color(0xFFA5B4FC)
+                                : const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => widget.onSellerTypeChanged('dealer'),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: widget.sellerType == 'dealer'
+                          ? const Color(0xFF6366F1).withOpacity(0.15)
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: widget.sellerType == 'dealer'
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFF334155),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('🏢', style: TextStyle(fontSize: 22)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'معرض / تاجر',
+                          style: TextStyle(
+                            color: widget.sellerType == 'dealer'
+                                ? const Color(0xFFA5B4FC)
+                                : const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
           // ── Basic info ───────────────────────────────────────────────────
           _SectionHeader(
               title: 'معلومات الإعلان', icon: Icons.edit_note_rounded),
@@ -1310,57 +1418,37 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           const SizedBox(height: 12),
 
           _ToggleRow(
-            label: 'مجاني',
-            value: widget.isFree,
+            label: 'قابل للتفاوض',
+            value: widget.isNegotiable,
             onChanged: (v) {
-              widget.onFreeChanged(v);
+              widget.onNegotiableChanged(v);
               setState(() {});
             },
           ),
-          if (!widget.isFree) ...[
-            _ToggleRow(
-              label: 'اتصل للسعر',
-              value: widget.priceHidden,
-              onChanged: (v) {
-                widget.onPriceHiddenChanged(v);
-                setState(() {});
-              },
+          const SizedBox(height: 8),
+          _FormField(
+            label: 'السعر',
+            required: true,
+            child: TextField(
+              controller: widget.priceCtrl,
+              textDirection: TextDirection.rtl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(
+                  color: AppTheme.neutralGray900,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700),
+              decoration: _inputDecoration(
+                hint: '0',
+                error: widget.errors['price'],
+                prefix: const Text('ر.س  ',
+                    style: TextStyle(
+                        color: AppTheme.primaryBlue,
+                        fontWeight: FontWeight.w700)),
+              ),
             ),
-            if (!widget.priceHidden) ...[
-              _ToggleRow(
-                label: 'قابل للتفاوض',
-                value: widget.isNegotiable,
-                onChanged: (v) {
-                  widget.onNegotiableChanged(v);
-                  setState(() {});
-                },
-              ),
-              const SizedBox(height: 8),
-              _FormField(
-                label: 'السعر',
-                required: true,
-                child: TextField(
-                  controller: widget.priceCtrl,
-                  textDirection: TextDirection.rtl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (_) => setState(() {}),
-                  style: const TextStyle(
-                      color: AppTheme.neutralGray900,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700),
-                  decoration: _inputDecoration(
-                    hint: '0',
-                    error: widget.errors['price'],
-                    prefix: const Text('ر.س  ',
-                        style: TextStyle(
-                            color: AppTheme.primaryBlue,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
           const SizedBox(height: 4),
 
           // ── Dynamic category fields ───────────────────────────────────────
@@ -1762,6 +1850,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
   final bool submitting, isEditMode;
   final String? priceText;
   final int? categoryId;
+  final String sellerType;
   final void Function(RegionModel, CityModel?) onSelectLocation;
   final VoidCallback onPickDistrict;
   final VoidCallback onClearDistrict;
@@ -1781,6 +1870,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
     required this.isEditMode,
     required this.priceText,
     required this.categoryId,
+    required this.sellerType,
     required this.onSelectLocation,
     required this.onPickDistrict,
     required this.onClearDistrict,
@@ -1793,8 +1883,12 @@ class _Step4LocationSubmit extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canSubmit = selectedCity != null && !submitting;
     final price = double.tryParse(priceText ?? '');
-    final commissionState = (price != null && price > 0)
-        ? ref.watch(commissionPreviewProvider(price))
+    final commissionState = (price != null && price > 0 && categoryId != null)
+        ? ref.watch(commissionPreviewProvider((
+            price: price,
+            categoryId: categoryId!,
+            sellerType: sellerType,
+          )))
         : null;
 
     final hasDistrictsLoaded =
@@ -2079,13 +2173,25 @@ class _Step4LocationSubmit extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'عمولة متوقعة: ${preview.commissionAmount.toStringAsFixed(0)} ر.س',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.amber.shade900,
-                            ),
+                          Row(
+                            children: [
+                              if (!preview.isFlatFee)
+                                Text('~',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.amber.shade900,
+                                    )),
+                              Text(
+                                '${preview.commissionAmount.toStringAsFixed(0)} ر.س'
+                                '${preview.isFlatFee ? '' : ' عمولة متوقعة'}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -2677,4 +2783,170 @@ InputDecoration _inputDecoration({
       borderSide: const BorderSide(color: Colors.red, width: 1.5),
     ),
   );
+}
+
+// ── Publish Payment Confirmation Sheet ────────────────────────────────────────
+
+class _PublishPaymentSheet extends StatelessWidget {
+  final double fee;
+  final String categoryName;
+  final String sellerType;
+  final VoidCallback onConfirm;
+
+  const _PublishPaymentSheet({
+    required this.fee,
+    required this.categoryName,
+    required this.sellerType,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: AppTheme.neutralGray200,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          const Text('💳', style: TextStyle(fontSize: 36)),
+          const SizedBox(height: 12),
+          const Text('رسوم نشر الإعلان',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.neutralGray900)),
+          const SizedBox(height: 6),
+          Text('قسم: $categoryName',
+              style: const TextStyle(
+                  fontSize: 13, color: AppTheme.neutralGray500)),
+          const SizedBox(height: 20),
+
+          // Fee display
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withValues(alpha: .06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: AppTheme.primaryBlue.withValues(alpha: .2)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('رسوم النشر',
+                    style: TextStyle(
+                        fontSize: 14, color: AppTheme.neutralGray700)),
+                Text('${fee.toStringAsFixed(0)} ر.س',
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.primaryBlue)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Payment methods
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _pmBadge(Icons.credit_card_rounded, 'مدى', const Color(0xFF006B3F)),
+              const SizedBox(width: 12),
+              _pmBadge(Icons.apple, 'Apple Pay', Colors.black87),
+              const SizedBox(width: 12),
+              _pmBadge(Icons.phone_android_rounded, 'STC Pay', const Color(0xFF7B1FA2)),
+              const SizedBox(width: 12),
+              _pmBadge(Icons.account_balance_rounded, 'بنكي', const Color(0xFF1565C0)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Non-refundable notice
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    color: Colors.orange.shade700, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'الرسوم غير مستردة وتُخصم من العمولة عند إتمام البيع.',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade800,
+                        height: 1.4),
+                    textDirection: TextDirection.rtl,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Confirm button
+          ElevatedButton(
+            onPressed: onConfirm,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 52),
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            child: Text('تأكيد الدفع ونشر الإعلان (${fee.toStringAsFixed(0)} ر.س)'),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء',
+                style: TextStyle(color: AppTheme.neutralGray500)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pmBadge(IconData icon, String label, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        const SizedBox(height: 4),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.neutralGray600)),
+      ],
+    );
+  }
 }

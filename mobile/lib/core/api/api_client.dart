@@ -18,10 +18,7 @@ class ApiClient {
   ApiClient._internal() {
     dio = Dio(
       BaseOptions(
-        // Android emulator → host: 10.0.2.2
-        // iOS simulator → host: localhost
-        // Physical device → use machine's LAN IP
-        baseUrl: _resolveBaseUrl(),
+          baseUrl: _resolveBaseUrl(),
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {
@@ -56,11 +53,9 @@ class ApiClient {
   }
 
   static String _resolveBaseUrl() {
-    // In debug mode on Android emulator, use 10.0.2.2
-    // For physical devices, use the machine's LAN IP
     const envUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://10.108.215.218:8080/api/v1',
+      defaultValue: 'https://api.barqwadih.com/api/v1',
     );
     return envUrl;
   }

@@ -181,6 +181,10 @@ const ENDPOINTS = {
   ADMIN_CITY_TOGGLE:     (id: number) => `/v1/admin/cities/${id}/toggle`,
   ADMIN_CITY_UPDATE:     (id: number) => `/v1/admin/cities/${id}`,
 
+  // ── Public Static Pages ────────────────────────────────────────────────
+  /** Fetch a published page by slug — GET /v1/pages/{slug} */
+  STATIC_PAGE:           (slug: string) => `/v1/pages/${slug}`,
+
   // ── Sprint 15: Admin Static Pages ──────────────────────────────────────
   ADMIN_PAGES:           '/v1/admin/pages',
   ADMIN_PAGE_DETAIL:     (id: number) => `/v1/admin/pages/${id}`,
@@ -215,6 +219,13 @@ const ENDPOINTS = {
   ADMIN_SETTINGS:             '/v1/admin/settings',
   ADMIN_SETTINGS_BULK:        '/v1/admin/settings/bulk',
   ADMIN_SETTING_DETAIL:       (key: string) => `/v1/admin/settings/${key}`,
+
+  // ── Contact Us ────────────────────────────────────────────────────────
+  CONTACT_CATEGORIES:   '/v1/contact/categories',
+  CONTACT_SUBMIT:       '/v1/contact',
+  ADMIN_CONTACT:        '/v1/admin/contact',
+  ADMIN_CONTACT_DETAIL: (id: number) => `/v1/admin/contact/${id}`,
+  ADMIN_CONTACT_STATUS: (id: number) => `/v1/admin/contact/${id}/status`,
 } as const;
 
 export default ENDPOINTS;

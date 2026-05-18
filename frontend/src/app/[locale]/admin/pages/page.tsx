@@ -3,6 +3,16 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchAdminPages, createPage, updatePage, deletePage, type AdminStaticPage } from '@/lib/api/admin';
 import s from '../admin-shared.module.css';
 
+// Known pages with quick-access links
+const KNOWN_PAGES = [
+  { slug: 'terms',        labelAr: 'الشروط والأحكام',   path: '/ar/terms' },
+  { slug: 'privacy',      labelAr: 'سياسة الخصوصية',    path: '/ar/privacy' },
+  { slug: 'fees',         labelAr: 'الرسوم والأسعار',   path: '/ar/fees' },
+  { slug: 'how-we-buy',   labelAr: 'كيف نشتري',          path: '/ar/how-we-buy' },
+  { slug: 'how-we-sell',  labelAr: 'كيف نبيع',           path: '/ar/how-we-sell' },
+  { slug: 'contact-info', labelAr: 'معلومات التواصل',    path: '/ar/contact' },
+];
+
 interface PageForm {
   title_ar: string; title_en: string; slug: string;
   content_ar: string; content_en: string;
@@ -137,27 +147,67 @@ export default function AdminPagesPage() {
         <button className={`${s.btn} ${s.primary}`} onClick={openCreate}>➕ صفحة جديدة</button>
       </div>
 
+      {/* ── Quick-access shortcuts for known pages ── */}
+      <div className={s.card} style={{ marginBottom: 16 }}>
+        <div className={s.cardTitle}>⚡ الصفحات الرئيسية للموقع</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {KNOWN_PAGES.map(kp => {
+            const existing = pages.find(p => p.slug === kp.slug);
+            return (
+              <div key={kp.slug} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--admin-border)', borderRadius: 8, padding: '6px 12px' }}>
+                <span style={{ fontSize: 13, color: 'var(--admin-text)' }}>{kp.labelAr}</span>
+                {existing ? (
+                  <>
+                    <span className={`${s.badge} ${existing.is_published ? s.green : s.gray}`} style={{ fontSize: 10 }}>
+                      {existing.is_published ? '✓' : 'مسودة'}
+                    </span>
+                    <button className={`${s.btn} ${s.sm}`} style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => openEdit(existing)}>تعديل</button>
+                    <a href={kp.path} target="_blank" rel="noopener noreferrer" className={s.btn} style={{ padding: '2px 8px', fontSize: 11, textDecoration: 'none' }}>عرض ↗</a>
+                  </>
+                ) : (
+                  <button className={`${s.btn} ${s.primary} ${s.sm}`} style={{ padding: '2px 8px', fontSize: 11 }}
+                    onClick={() => {
+                      setForm({ ...emptyForm, slug: kp.slug, title_ar: kp.labelAr });
+                      setEditId(null);
+                      setEditorMode('create');
+                      setActiveTab('ar');
+                    }}>
+                    ➕ إنشاء
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {loading ? (
         <div className={s.loading}><div className={s.spinner} /></div>
       ) : pages.length === 0 ? (
-        <div className={s.empty}><h3>لا توجد صفحات ثابتة</h3><p>أنشئ صفحة &quot;من نحن&quot; أو &quot;الشروط والأحكام&quot;</p></div>
+        <div className={s.empty}><h3>لا توجد صفحات ثابتة</h3><p>استخدم الاختصارات أعلاه أو أنشئ صفحة جديدة</p></div>
       ) : (
         <div className={s.card} style={{ padding: 0, overflow: 'hidden' }}>
-          {pages.map(p => (
-            <div key={p.id} className={s.treeItem}>
-              <div className={s.treeInfo}>
-                <div className={s.treeName}>{p.title_ar}</div>
-                <div className={s.treeSub}>/{p.slug} · {p.title_en} · آخر تحديث: {fmtDate(p.updated_at)}</div>
+          {pages.map(p => {
+            const knownPage = KNOWN_PAGES.find(kp => kp.slug === p.slug);
+            return (
+              <div key={p.id} className={s.treeItem}>
+                <div className={s.treeInfo}>
+                  <div className={s.treeName}>{p.title_ar}</div>
+                  <div className={s.treeSub}>/{p.slug} · {p.title_en} · آخر تحديث: {fmtDate(p.updated_at)}</div>
+                </div>
+                <div className={s.treeActions}>
+                  <span className={`${s.badge} ${p.is_published ? s.green : s.gray}`}>
+                    {p.is_published ? 'منشورة' : 'مسودة'}
+                  </span>
+                  {knownPage && (
+                    <a href={knownPage.path} target="_blank" rel="noopener noreferrer" className={s.btn} style={{ textDecoration: 'none', fontSize: 12 }}>↗ عرض</a>
+                  )}
+                  <button className={`${s.btn} ${s.sm}`} onClick={() => openEdit(p)}>✏️ تعديل</button>
+                  <button className={`${s.btn} ${s.danger} ${s.sm}`} onClick={() => setDeleteModal(p)}>🗑️</button>
+                </div>
               </div>
-              <div className={s.treeActions}>
-                <span className={`${s.badge} ${p.is_published ? s.green : s.gray}`}>
-                  {p.is_published ? 'منشورة' : 'مسودة'}
-                </span>
-                <button className={`${s.btn} ${s.sm}`} onClick={() => openEdit(p)}>✏️ تعديل</button>
-                <button className={`${s.btn} ${s.danger} ${s.sm}`} onClick={() => setDeleteModal(p)}>🗑️</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -52,9 +52,10 @@ export type WizardDetails = {
 
 export type WizardState = {
   step: WizardStep;
-  // Step 1 — Category
+  // Step 1 — Category + seller type
   parentCategory: Category | null;
   category: CategoryChild | Category | null;
+  sellerType: 'individual' | 'dealer' | null;
   // Step 2 — Pledge
   pledgeAccepted: boolean;
   // Steps 3–6 — Location
@@ -76,6 +77,7 @@ export type WizardState = {
   goBack: () => void;
   setParentCategory: (c: Category | null) => void;
   setCategory: (c: CategoryChild | Category | null) => void;
+  setSellerType: (t: 'individual' | 'dealer') => void;
   setPledgeAccepted: (v: boolean) => void;
   setRegion: (r: Region | null) => void;
   setCity: (c: City | null) => void;
@@ -108,6 +110,7 @@ const INITIAL_STATE = {
   step: 'category' as WizardStep,
   parentCategory: null,
   category: null,
+  sellerType: null as 'individual' | 'dealer' | null,
   pledgeAccepted: false,
   region: null,
   city: null,
@@ -136,6 +139,7 @@ export const usePostAdWizard = create<WizardState>()(
 
       setParentCategory: (parentCategory) => set({ parentCategory, category: null }),
       setCategory: (category) => set({ category }),
+      setSellerType: (sellerType) => set({ sellerType }),
       setPledgeAccepted: (pledgeAccepted) => set({ pledgeAccepted }),
 
       setRegion: (region) => set({ region, city: null, district: null, districtFreeText: '', latLng: null }),
@@ -185,6 +189,7 @@ export const usePostAdWizard = create<WizardState>()(
       partialize: (s) => ({
         parentCategory: s.parentCategory,
         category: s.category,
+        sellerType: s.sellerType,
         pledgeAccepted: s.pledgeAccepted,
         region: s.region,
         city: s.city,
@@ -244,7 +249,7 @@ export function isValidSaudiPhone(raw: string): boolean {
 
 export function canAdvance(state: WizardState, step: WizardStep): boolean {
   switch (step) {
-    case 'category':  return !!state.category;
+    case 'category':  return !!state.category && !!state.sellerType;
     case 'pledge':    return state.pledgeAccepted;
     case 'region':    return !!state.region;
     case 'city':      return !!state.city;

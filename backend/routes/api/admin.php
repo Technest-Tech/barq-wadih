@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Api\V1\Admin\AdminBannerController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCommissionController;
+use App\Http\Controllers\Api\V1\Admin\AdminContactController;
 use App\Http\Controllers\Api\V1\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\V1\Admin\AdminRegionController;
 use App\Http\Controllers\Api\V1\Admin\AdminReportController;
@@ -114,6 +115,12 @@ Route::prefix('v1/admin')
         Route::get('banners/{banner}/analytics', [AdminBannerController::class, 'analytics'])->name('banners.analytics');
 
         // ── Sprint 17: System Settings ───────────────────────────────────
+        // ── Contact Submissions ──────────────────────────────────────────────────
+        Route::get('contact',                                [AdminContactController::class, 'index'])->name('contact.index');
+        Route::get('contact/{contactSubmission}',            [AdminContactController::class, 'show'])->name('contact.show');
+        Route::patch('contact/{contactSubmission}/status',   [AdminContactController::class, 'updateStatus'])->name('contact.status');
+
+        // ── System Settings ──────────────────────────────────────────────────────
         Route::get('settings',              [AdminSettingsController::class, 'index'])->name('settings.index');
         Route::put('settings/bulk',         [AdminSettingsController::class, 'bulkUpdate'])->name('settings.bulk');
         Route::get('settings/{key}',        [AdminSettingsController::class, 'show'])->name('settings.show');

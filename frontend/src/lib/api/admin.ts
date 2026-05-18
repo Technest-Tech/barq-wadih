@@ -257,6 +257,7 @@ export interface AdminCategory {
   name_en: string;
   slug: string;
   icon: string | null;
+  image: string | null;
   parent_id: number | null;
   description_ar: string | null;
   description_en: string | null;
@@ -264,6 +265,9 @@ export interface AdminCategory {
   publish_fee_individual: string | null;
   publish_fee_dealer: string | null;
   fee_deductible_from_commission: boolean;
+  deferred_commission_individual: string | null;
+  deferred_commission_dealer: string | null;
+  commission_trigger: 'after_sale' | 'after_90_days';
   is_free: boolean;
   is_active: boolean;
   sort_order: number;
@@ -385,11 +389,18 @@ export async function fetchAdminCategories(): Promise<AdminCategory[]> {
   return res.data;
 }
 
-export async function createCategory(data: Record<string, unknown>) {
+export async function createCategory(data: FormData | Record<string, unknown>) {
+  if (data instanceof FormData) {
+    return apiClient.postFormData<AdminCategory>(ENDPOINTS.ADMIN_CATEGORIES, data);
+  }
   return apiClient.post<AdminCategory>(ENDPOINTS.ADMIN_CATEGORIES, data);
 }
 
-export async function updateCategory(id: number, data: Record<string, unknown>) {
+export async function updateCategory(id: number, data: FormData | Record<string, unknown>) {
+  if (data instanceof FormData) {
+    data.append('_method', 'PUT');
+    return apiClient.postFormData<AdminCategory>(ENDPOINTS.ADMIN_CATEGORY_DETAIL(id), data);
+  }
   return apiClient.put<AdminCategory>(ENDPOINTS.ADMIN_CATEGORY_DETAIL(id), data);
 }
 

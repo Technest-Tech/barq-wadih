@@ -20,14 +20,13 @@ class StoreAdRequest extends FormRequest
 
         return [
             // Core
+            'seller_type'    => ['required', 'in:individual,dealer'],
             'category_id'    => ['required', 'integer', Rule::exists('categories', 'id')->where('is_active', true)],
             'city_id'        => ['required', 'integer', 'exists:cities,id'],
             'title'          => ['required', 'string', 'min:3', 'max:100'],
             'description'    => ['required', 'string', 'min:10', 'max:5000'],
-            'price'          => ['required_if:is_free,false', 'nullable', 'numeric', 'min:0', 'max:9999999'],
-            'price_hidden'   => ['sometimes', 'boolean'],
+            'price'          => ['required', 'numeric', 'min:1', 'max:9999999'],
             'is_negotiable'  => ['sometimes', 'boolean'],
-            'is_free'        => ['sometimes', 'boolean'],
             'contact_phone'  => ['nullable', 'required_if:show_phone_publicly,1', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
             'contact_whatsapp' => ['nullable', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
             'show_phone_publicly' => ['sometimes', 'boolean'],
@@ -112,8 +111,9 @@ class StoreAdRequest extends FormRequest
             'title.max'               => 'لا يمكن أن يتجاوز العنوان 100 حرف.',
             'description.required'    => 'وصف الإعلان مطلوب.',
             'description.min'         => 'يجب أن يكون الوصف 10 أحرف على الأقل.',
-            'price.required_if'       => 'السعر مطلوب للإعلانات المدفوعة.',
+            'price.required'          => 'السعر مطلوب ويجب أن يكون رقماً واضحاً.',
             'price.numeric'           => 'السعر يجب أن يكون رقماً.',
+            'price.min'               => 'يجب أن يكون السعر أكبر من صفر.',
             'contact_phone.required'  => 'رقم التواصل مطلوب.',
             'contact_phone.regex'     => 'رقم الهاتف يجب أن يكون سعودياً صحيحاً (05xxxxxxxx).',
             'pledge_accepted.accepted'=> 'يجب الموافقة على شروط الاستخدام.',

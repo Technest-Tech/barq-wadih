@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -14,7 +13,7 @@ class SafetyCenterScreen extends StatelessWidget {
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         title: const Text('مركز الأمان',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         elevation: 0,
         centerTitle: true,
       ),
@@ -39,7 +38,7 @@ class SafetyCenterScreen extends StatelessWidget {
               tips: _buyerTips,
             ),
             const SizedBox(height: 20),
-            _buildReportCard(context),
+            _buildReportCard(),
             const SizedBox(height: 32),
           ],
         ),
@@ -160,7 +159,7 @@ class SafetyCenterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReportCard(BuildContext context) {
+  Widget _buildReportCard() {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -183,25 +182,12 @@ class SafetyCenterScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'أبلغنا فوراً وسيقوم فريقنا بالتحقيق وإجراء اللازم لحمايتك.',
+            'في حال التعرض للاحتيال، يُرجى التواصل مع الجهات الأمنية المختصة (الشرطة أو نظام أبشر).',
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontSize: 12,
                 color: AppTheme.neutralGray600,
                 height: 1.5),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () => context.push('/contact-us'),
-            icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
-            label: const Text('تواصل مع الدعم'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.colorError,
-              minimumSize: const Size(double.infinity, 44),
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600),
-            ),
           ),
         ],
       ),

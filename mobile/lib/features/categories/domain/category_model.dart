@@ -15,6 +15,8 @@ class CategoryModel {
   final bool isFree;
   final int adsCount;
   final int fieldsCount;
+  final double publishFeeIndividual;
+  final double publishFeeDealer;
   final List<CategoryModel> children;
 
   const CategoryModel({
@@ -31,8 +33,13 @@ class CategoryModel {
     required this.isFree,
     required this.adsCount,
     required this.fieldsCount,
+    this.publishFeeIndividual = 0.0,
+    this.publishFeeDealer = 0.0,
     this.children = const [],
   });
+
+  double publishFee(String sellerType) =>
+      sellerType == 'dealer' ? publishFeeDealer : publishFeeIndividual;
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
@@ -49,6 +56,8 @@ class CategoryModel {
       isFree:        json['is_free'] as bool? ?? false,
       adsCount:      json['ads_count'] as int? ?? 0,
       fieldsCount:   json['fields_count'] as int? ?? 0,
+      publishFeeIndividual: (json['publish_fee_individual'] as num?)?.toDouble() ?? 0.0,
+      publishFeeDealer:     (json['publish_fee_dealer'] as num?)?.toDouble() ?? 0.0,
       children: (json['children'] as List<dynamic>?)
               ?.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
               .toList() ??

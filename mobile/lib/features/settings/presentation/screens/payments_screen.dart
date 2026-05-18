@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 
 // ── Local models ──────────────────────────────────────────────────────────────
@@ -125,53 +126,17 @@ class PaymentsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(paymentsProvider);
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF4F6FA),
-        appBar: AppBar(
-          backgroundColor: AppTheme.primaryBlue,
-          foregroundColor: Colors.white,
-          title: const Text('الدفع والاشتراكات',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          elevation: 0,
-          centerTitle: true,
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            tabs: [
-              Tab(text: 'الاشتراكات'),
-              Tab(text: 'رسوم المنصة'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            state.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: AppTheme.colorError),
-                    const SizedBox(height: 12),
-                    const Text('تعذّر تحميل بيانات الاشتراك'),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(paymentsProvider),
-                      child: const Text('إعادة المحاولة'),
-                    ),
-                  ],
-                ),
-              ),
-              data: (data) => _PaymentsBody(data: data),
-            ),
-            const _FeeCalculatorBody(),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA),
+      appBar: AppBar(
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
+        title: const Text('المدفوعات والرسوم',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        elevation: 0,
+        centerTitle: true,
       ),
+      body: const _FeeCalculatorBody(),
     );
   }
 }
@@ -327,7 +292,7 @@ class _PaymentsBody extends StatelessWidget {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       title: Text(record.planName,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
       subtitle: Text(
         '${record.date.day}/${record.date.month}/${record.date.year}',
         style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500),
@@ -338,7 +303,7 @@ class _PaymentsBody extends StatelessWidget {
         children: [
           Text('${record.amount.toStringAsFixed(0)} ر.س',
               style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700)),
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 3),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -470,7 +435,7 @@ class _PlanCard extends StatelessWidget {
                       minimumSize: const Size(double.infinity, 44),
                       shape: const StadiumBorder(),
                       textStyle: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700),
+                          fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
                     ),
                     child: Text('اشترك في الباقة ${plan.nameAr}'),
                   ),
@@ -663,7 +628,7 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
                               color: AppTheme.primaryBlue)),
                       const SizedBox(height: 4),
                       Text(
-                        'يتم احتساب 5% من قيمة المنتج كرسوم منصة تُضاف على إجمالي الدفع.',
+                        'رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان، وتُخصم من العمولة عند البيع. الرسوم غير مستردة.',
                         style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.primaryBlue
@@ -771,6 +736,53 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
           ] else
             const SizedBox(height: 4),
 
+          // Payment methods section
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: AppTheme.cardShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('طرق الدفع المتاحة',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.neutralGray800)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _PaymentMethodBadge(
+                      icon: Icons.credit_card_rounded,
+                      label: 'مدى',
+                      color: const Color(0xFF006B3F),
+                    ),
+                    _PaymentMethodBadge(
+                      icon: Icons.apple,
+                      label: 'Apple Pay',
+                      color: Colors.black87,
+                    ),
+                    _PaymentMethodBadge(
+                      icon: Icons.phone_android_rounded,
+                      label: 'STC Pay',
+                      color: const Color(0xFF7B1FA2),
+                    ),
+                    _PaymentMethodBadge(
+                      icon: Icons.account_balance_rounded,
+                      label: 'تحويل بنكي',
+                      color: const Color(0xFF1565C0),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // Apple Pay button
           ElevatedButton.icon(
             onPressed: _itemPrice > 0 ? _showApplePaySheet : null,
@@ -784,8 +796,70 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
               minimumSize: const Size(double.infinity, 54),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
+                  fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
               elevation: 0,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Non-refundable notice
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    color: Colors.orange.shade700, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'رسوم النشر المدفوعة مقدماً غير مستردة، وتُخصم من إجمالي العمولة عند إتمام البيع.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange.shade800,
+                      height: 1.5,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // App branding footer
+          Center(
+            child: Column(
+              children: [
+                Image.asset('assets/images/logo_nobg.png',
+                    height: 48,
+                    errorBuilder: (_, __, ___) => const Icon(
+                        Icons.bolt_rounded,
+                        size: 48,
+                        color: AppTheme.primaryBlue)),
+                const SizedBox(height: 8),
+                const Text(AppConstants.appNameEn,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: AppTheme.primaryBlue,
+                    )),
+                const SizedBox(height: 2),
+                const Text(AppConstants.appName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: AppTheme.primaryBlue,
+                    )),
+                const SizedBox(height: 4),
+                Text('منصة الإعلانات الأولى في المملكة',
+                    style: TextStyle(
+                        fontSize: 12, color: AppTheme.neutralGray500)),
+              ],
             ),
           ),
           const SizedBox(height: 32),
@@ -855,7 +929,7 @@ class _ApplePaySheet extends StatelessWidget {
               style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5)),
+                  letterSpacing: -0.5, color: Colors.white)),
           const SizedBox(height: 24),
 
           // Payment details card
@@ -892,7 +966,7 @@ class _ApplePaySheet extends StatelessWidget {
               minimumSize: const Size(double.infinity, 54),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
+                  fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
               elevation: 0,
             ),
             child: const Row(
@@ -932,6 +1006,48 @@ class _ApplePaySheet extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: Colors.black)),
+      ],
+    );
+  }
+}
+
+// ── Payment Method Badge ──────────────────────────────────────────────────────
+
+class _PaymentMethodBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _PaymentMethodBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Icon(icon, color: color, size: 26),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.neutralGray700,
+          ),
+        ),
       ],
     );
   }

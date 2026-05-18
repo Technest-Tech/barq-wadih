@@ -13,7 +13,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         title: const Text('سياسة الخصوصية',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         elevation: 0,
         centerTitle: true,
       ),

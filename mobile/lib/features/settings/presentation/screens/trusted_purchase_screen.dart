@@ -14,7 +14,7 @@ class TrustedPurchaseScreen extends StatelessWidget {
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         title: const Text('الشراء الموثوق',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         elevation: 0,
         centerTitle: true,
       ),
@@ -220,7 +220,7 @@ class TrustedPurchaseScreen extends StatelessWidget {
                 (cat) => Chip(
                   label: Text(cat,
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600)),
+                          fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                   backgroundColor: AppTheme.primaryBlue.withValues(alpha: .08),
                   side: BorderSide(
                       color: AppTheme.primaryBlue.withValues(alpha: .2)),
@@ -280,7 +280,7 @@ class TrustedPurchaseScreen extends StatelessWidget {
               minimumSize: const Size(double.infinity, 46),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700),
+                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
             ),
           ),
         ],

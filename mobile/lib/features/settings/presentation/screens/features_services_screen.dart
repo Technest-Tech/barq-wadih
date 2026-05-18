@@ -14,7 +14,7 @@ class FeaturesServicesScreen extends StatelessWidget {
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         title: const Text('مميزات وخدمات',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         elevation: 0,
         centerTitle: true,
       ),
@@ -29,12 +29,12 @@ class FeaturesServicesScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _buildFeaturesGrid(),
             const SizedBox(height: 20),
-            _buildSectionTitle('مقارنة الباقات'),
-            const SizedBox(height: 10),
-            _buildPlanComparisonTable(),
-            const SizedBox(height: 20),
-            _buildUpgradeCta(context),
+            _buildComingSoonBanner(),
             const SizedBox(height: 32),
+            // باقات الاشتراك مؤجلة لما بعد الإطلاق ودراسة السوق
+            // _buildSectionTitle('مقارنة الباقات'),
+            // _buildPlanComparisonTable(),
+            // _buildUpgradeCta(context),
           ],
         ),
       ),
@@ -66,6 +66,41 @@ class FeaturesServicesScreen extends StatelessWidget {
           const Text(
             'اكتشف كل ما يجعل تجربتك أفضل',
             style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComingSoonBanner() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F4FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBFCFFF)),
+      ),
+      child: const Column(
+        children: [
+          Text('🚀', style: TextStyle(fontSize: 32)),
+          SizedBox(height: 8),
+          Text(
+            'باقات الاشتراك — قريباً',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1E3A8A),
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'نعمل على إطلاق باقات مميزة لتعزيز إعلاناتك وزيادة وصولها.\nسيتم الإعلان قريباً بعد دراسة السوق.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF3B5BDB),
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -261,7 +296,7 @@ class FeaturesServicesScreen extends StatelessWidget {
               minimumSize: const Size(double.infinity, 46),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700),
+                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
             ),
             child: const Text('ترقية الحساب'),
           ),

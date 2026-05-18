@@ -55,7 +55,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
             icon: const Icon(Icons.arrow_forward, color: Colors.white, textDirection: TextDirection.ltr),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: const Text('ملف البائع', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          title: const Text('ملف البائع', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
           actions: [
             IconButton(
               icon: const Icon(Icons.share, color: Colors.white),
@@ -122,7 +122,7 @@ class _ProfileBody extends ConsumerWidget {
               unselectedLabelColor: AppTheme.neutralGray500,
               indicatorColor: const Color(0xFF0075C4),
               indicatorWeight: 3,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.white),
               tabs: [
                 Tab(text: 'الإعلانات (${profile.activeAdsCount})'),
                 Tab(text: 'التقييمات (${profile.ratingCount})'),

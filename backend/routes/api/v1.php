@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\UserFollowController;
 use App\Http\Controllers\Api\V1\UserProfileController;
+use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\StaticPageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -57,6 +59,13 @@ Route::get('search',                   [SearchController::class, 'index'])->name
 // ── Sprint 12: Banners — public, no auth required ──────────────────────────
 Route::get('banners',                   [BannerController::class, 'index'])->name('banners.index');
 Route::post('banners/{banner}/click',   [BannerController::class, 'click'])->name('banners.click');
+
+// ── Contact Us — public categories read, optional-auth submit ─────────────────
+Route::get('contact/categories',  [ContactController::class, 'categories'])->name('contact.categories');
+Route::post('contact',            [ContactController::class, 'store'])->name('contact.store');
+
+// ── Static Pages — public CMS content ─────────────────────────────────────────
+Route::get('pages/{slug}',        [StaticPageController::class, 'show'])->name('pages.show');
 
 // ── Questions — public read ───────────────────────────────────────────────────
 Route::get('ads/{ad}/questions',             [QuestionController::class, 'index'])->name('questions.index');

@@ -52,6 +52,37 @@ export async function fetchAdServer(id: string | number): Promise<AdServerData |
 /**
  * Fetch all active ad IDs for sitemap generation.
  */
+export interface StaticPageData {
+  id: number;
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  content_ar: string;
+  content_en: string;
+  meta_description_ar: string | null;
+  meta_description_en: string | null;
+  is_published: boolean;
+  updated_at: string;
+}
+
+/**
+ * Fetch a published static page by slug for SSR.
+ * Returns null when the page is not found or not published.
+ */
+export async function fetchStaticPage(slug: string): Promise<StaticPageData | null> {
+  try {
+    const res = await fetch(`${API_BASE}/v1/pages/${slug}`, {
+      next: { revalidate: 300 }, // 5-minute ISR cache
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const json: ApiResponse<StaticPageData> = await res.json();
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchAdIdsForSitemap(): Promise<number[]> {
   try {
     const res = await fetch(`${API_BASE}/v1/ads?per_page=1000&fields=id`, {

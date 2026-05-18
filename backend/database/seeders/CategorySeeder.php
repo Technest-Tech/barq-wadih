@@ -9,10 +9,14 @@ class CategorySeeder extends Seeder
 {
     public function run(): void
     {
-        // Default publish fees (SAR) per the client's pricing rules.
-        // Cars get a special tier (individuals 20 / dealers 10); everything else is a flat 3.
+        // Publish fees (SAR): upfront cost when posting an ad.
         $carsFees   = ['publish_fee_individual' => 20.00, 'publish_fee_dealer' => 10.00];
         $otherFees  = ['publish_fee_individual' => 3.00,  'publish_fee_dealer' => 3.00];
+
+        // Deferred commissions (SAR): collected after the sale.
+        // Cars dealers: 80 SAR fixed. Phones: 10 SAR fixed. Others: 0 (falls back to 0.5% formula).
+        $carsDeferred   = ['deferred_commission_individual' => 0.00, 'deferred_commission_dealer' => 80.00];
+        $phonesDeferred = ['deferred_commission_individual' => 10.00, 'deferred_commission_dealer' => 10.00];
 
         $categories = [
             // ── 1. السيارات ────────────────────────────────────────────────────
@@ -25,6 +29,7 @@ class CategorySeeder extends Seeder
                 'sort_order' => 1,
                 'is_free'    => false,
                 'fees'       => $carsFees,
+                'deferred'   => $carsDeferred,
                 'children'   => [
                     ['name_ar' => 'سيارات للبيع',          'name_en' => 'Cars for Sale',          'slug' => 'cars-for-sale',       'icon' => '🛒', 'sort_order' => 1],
                     ['name_ar' => 'سيارات للإيجار',         'name_en' => 'Cars for Rent',          'slug' => 'cars-for-rent',       'icon' => '🔑', 'sort_order' => 2],
@@ -36,7 +41,7 @@ class CategorySeeder extends Seeder
                 ],
             ],
 
-            // ── 2. العقار ──────────────────────────────────────────────────────
+            // ── 2. العقار (مخفي - محذوف بقرار العميل) ───────────────────────
             [
                 'name_ar'    => 'عقارات',
                 'name_en'    => 'Real Estate',
@@ -45,6 +50,7 @@ class CategorySeeder extends Seeder
                 'image'      => 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80',
                 'sort_order' => 2,
                 'is_free'    => false,
+                'is_active'  => false,
                 'children'   => [
                     ['name_ar' => 'شقق للبيع',         'name_en' => 'Apartments for Sale',  'slug' => 'apartments-for-sale',  'icon' => '🏢', 'sort_order' => 1],
                     ['name_ar' => 'شقق للإيجار',       'name_en' => 'Apartments for Rent',  'slug' => 'apartments-for-rent',  'icon' => '🏡', 'sort_order' => 2],
@@ -76,7 +82,7 @@ class CategorySeeder extends Seeder
                 'sort_order' => 3,
                 'is_free'    => false,
                 'children'   => [
-                    ['name_ar' => 'جوالات وأجهزة لوحية', 'name_en' => 'Phones & Tablets',      'slug' => 'phones-tablets',       'icon' => '📱', 'sort_order' => 1],
+                    ['name_ar' => 'جوالات وأجهزة لوحية', 'name_en' => 'Phones & Tablets',      'slug' => 'phones-tablets',       'icon' => '📱', 'sort_order' => 1, 'deferred' => $phonesDeferred],
                     ['name_ar' => 'حاسبات ولابتوبات',    'name_en' => 'Computers & Laptops',   'slug' => 'computers',            'icon' => '💻', 'sort_order' => 2],
                     ['name_ar' => 'أجهزة منزلية',        'name_en' => 'Home Appliances',       'slug' => 'home-appliances',      'icon' => '🫙', 'sort_order' => 3],
                     ['name_ar' => 'ألعاب إلكترونية',     'name_en' => 'Gaming',                'slug' => 'gaming',               'icon' => '🎮', 'sort_order' => 4],
@@ -99,19 +105,21 @@ class CategorySeeder extends Seeder
                 'sort_order' => 4,
                 'is_free'    => false,
                 'children'   => [
-                    ['name_ar' => 'غنم',              'name_en' => 'Sheep',           'slug' => 'sheep',          'icon' => '🐑', 'sort_order' => 1],
-                    ['name_ar' => 'ماعز',             'name_en' => 'Goats',           'slug' => 'goats',          'icon' => '🐐', 'sort_order' => 2],
-                    ['name_ar' => 'إبل',              'name_en' => 'Camels',          'slug' => 'camels',         'icon' => '🐪', 'sort_order' => 3],
-                    ['name_ar' => 'خيل',              'name_en' => 'Horses',          'slug' => 'horses',         'icon' => '🐎', 'sort_order' => 4],
-                    ['name_ar' => 'دجاج وطيور داجنة', 'name_en' => 'Poultry',         'slug' => 'poultry',        'icon' => '🐔', 'sort_order' => 5],
-                    ['name_ar' => 'طيور زينة وببغاء', 'name_en' => 'Birds & Parrots', 'slug' => 'birds',          'icon' => '🦜', 'sort_order' => 6],
-                    ['name_ar' => 'حمام',             'name_en' => 'Pigeons',         'slug' => 'pigeons',        'icon' => '🕊️', 'sort_order' => 7],
-                    ['name_ar' => 'كلاب',             'name_en' => 'Dogs',            'slug' => 'dogs',           'icon' => '🐕', 'sort_order' => 8],
-                    ['name_ar' => 'قطط',              'name_en' => 'Cats',            'slug' => 'cats',           'icon' => '🐈', 'sort_order' => 9],
-                    ['name_ar' => 'بقر',              'name_en' => 'Cattle',          'slug' => 'cattle',         'icon' => '🐮', 'sort_order' => 10],
-                    ['name_ar' => 'أسماك وسلاحف',     'name_en' => 'Fish & Turtles',  'slug' => 'fish-turtles',   'icon' => '🐟', 'sort_order' => 11],
-                    ['name_ar' => 'أرانب وقوارض',     'name_en' => 'Rabbits & Rodents','slug' => 'rabbits',       'icon' => '🐇', 'sort_order' => 12],
-                    ['name_ar' => 'مستلزمات حيوانات', 'name_en' => 'Pet Supplies',    'slug' => 'pet-supplies',   'icon' => '🦴', 'sort_order' => 13],
+                    // الأقسام المفعّلة (4 فقط حسب طلب العميل)
+                    ['name_ar' => 'إبل',  'name_en' => 'Camels', 'slug' => 'camels', 'icon' => '🐪', 'sort_order' => 1],
+                    ['name_ar' => 'غنم',  'name_en' => 'Sheep',  'slug' => 'sheep',  'icon' => '🐑', 'sort_order' => 2],
+                    ['name_ar' => 'ماعز', 'name_en' => 'Goats',  'slug' => 'goats',  'icon' => '🐐', 'sort_order' => 3],
+                    ['name_ar' => 'طيور', 'name_en' => 'Birds',  'slug' => 'birds',  'icon' => '🦜', 'sort_order' => 4],
+                    // الأقسام المخفية
+                    ['name_ar' => 'خيل',              'name_en' => 'Horses',           'slug' => 'horses',      'icon' => '🐎', 'sort_order' => 5,  'is_active' => false],
+                    ['name_ar' => 'دجاج وطيور داجنة', 'name_en' => 'Poultry',          'slug' => 'poultry',     'icon' => '🐔', 'sort_order' => 6,  'is_active' => false],
+                    ['name_ar' => 'حمام',             'name_en' => 'Pigeons',          'slug' => 'pigeons',     'icon' => '🕊️', 'sort_order' => 7,  'is_active' => false],
+                    ['name_ar' => 'كلاب',             'name_en' => 'Dogs',             'slug' => 'dogs',        'icon' => '🐕', 'sort_order' => 8,  'is_active' => false],
+                    ['name_ar' => 'قطط',              'name_en' => 'Cats',             'slug' => 'cats',        'icon' => '🐈', 'sort_order' => 9,  'is_active' => false],
+                    ['name_ar' => 'بقر',              'name_en' => 'Cattle',           'slug' => 'cattle',      'icon' => '🐮', 'sort_order' => 10, 'is_active' => false],
+                    ['name_ar' => 'أسماك وسلاحف',     'name_en' => 'Fish & Turtles',   'slug' => 'fish-turtles','icon' => '🐟', 'sort_order' => 11, 'is_active' => false],
+                    ['name_ar' => 'أرانب وقوارض',     'name_en' => 'Rabbits & Rodents','slug' => 'rabbits',     'icon' => '🐇', 'sort_order' => 12, 'is_active' => false],
+                    ['name_ar' => 'مستلزمات حيوانات', 'name_en' => 'Pet Supplies',     'slug' => 'pet-supplies','icon' => '🦴', 'sort_order' => 13, 'is_active' => false],
                 ],
             ],
 
@@ -400,34 +408,41 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($categories as $data) {
-            $children = $data['children'] ?? [];
-            $fees     = $data['fees'] ?? $otherFees;
-            unset($data['children'], $data['fees']);
+            $children  = $data['children'] ?? [];
+            $fees      = $data['fees']     ?? $otherFees;
+            $deferred  = $data['deferred'] ?? [];
+            unset($data['children'], $data['fees'], $data['deferred']);
 
             $attrs = array_merge($data, [
                 'parent_id'                       => null,
-                'is_active'                       => true,
+                'is_active'                       => $data['is_active'] ?? true,
                 'image'                           => $data['image'] ?? null,
                 'prohibited_keywords'             => $data['prohibited_keywords'] ?? null,
                 'commission_rate'                 => $data['commission_rate'] ?? null,
                 'publish_fee_individual'          => $fees['publish_fee_individual'],
                 'publish_fee_dealer'              => $fees['publish_fee_dealer'],
                 'fee_deductible_from_commission'  => true,
+                'deferred_commission_individual'  => $deferred['deferred_commission_individual'] ?? 0,
+                'deferred_commission_dealer'      => $deferred['deferred_commission_dealer'] ?? 0,
             ]);
 
             $category = Category::updateOrCreate(['slug' => $data['slug']], $attrs);
 
             foreach ($children as $child) {
+                $childDeferred = $child['deferred'] ?? $deferred;
+                unset($child['deferred']);
                 Category::updateOrCreate(
                     ['slug' => $child['slug']],
                     array_merge($child, [
                         'parent_id'                       => $category->id,
-                        'is_active'                       => true,
+                        'is_active'                       => $child['is_active'] ?? true,
                         'is_free'                         => $data['is_free'],
                         'image'                           => null,
                         'publish_fee_individual'          => $fees['publish_fee_individual'],
                         'publish_fee_dealer'              => $fees['publish_fee_dealer'],
                         'fee_deductible_from_commission'  => true,
+                        'deferred_commission_individual'  => $childDeferred['deferred_commission_individual'] ?? 0,
+                        'deferred_commission_dealer'      => $childDeferred['deferred_commission_dealer'] ?? 0,
                     ])
                 );
             }

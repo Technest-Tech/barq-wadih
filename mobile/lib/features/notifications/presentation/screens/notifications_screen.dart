@@ -23,7 +23,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        title: const Text('الإشعارات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        title: const Text('الإشعارات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
         actions: [
           TextButton(
             onPressed: _markAllRead,

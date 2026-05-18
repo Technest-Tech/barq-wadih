@@ -180,20 +180,24 @@ class AdController extends BaseController
 
     public function commissionPreview(Request $request): JsonResponse
     {
-        $price  = (float) $request->input('price', 0);
-        $isFree = (bool) $request->input('is_free', false);
+        $price      = (float) $request->input('price', 0);
+        $categoryId = (int)   $request->input('category_id', 0);
+        $sellerType = (string) $request->input('seller_type', 'individual');
 
-        $amount = $this->adService->calculateCommission($price, $isFree);
+        $amount    = $this->adService->calculateCommission($categoryId, $price, false, $sellerType);
+        $isFlatFee = $this->adService->isFlatFeeCategory($categoryId, $sellerType);
 
         return $this->successResponse([
-            'price'             => $price,
-            'is_free'           => $isFree,
-            'commission_amount' => $amount,
-            'commission_rate'   => '0.5%',
-            'minimum_commission'=> 90.0,
-            'note'              => $isFree || $price <= 0
-                ? 'لا توجد عمولة للإعلانات المجانية'
-                : 'العمولة = الأعلى بين 90 ر.س أو 0.5% من السعر',
+            'price'              => $price,
+            'commission_amount'  => $amount,
+            'commission_rate'    => $isFlatFee ? null : '0.5%',
+            'is_flat_fee'        => $isFlatFee,
+            'minimum_commission' => $isFlatFee ? null : 90.0,
+            'note'               => $price <= 0
+                ? 'أدخل السعر لحساب العمولة'
+                : ($isFlatFee
+                    ? "العمولة المستحقة ثابتة: {$amount} ر.س"
+                    : 'العمولة = الأعلى بين 90 ر.س أو 0.5% من السعر'),
         ]);
     }
 }

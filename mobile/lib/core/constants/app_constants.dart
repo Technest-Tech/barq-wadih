@@ -11,7 +11,7 @@ abstract class AppConstants {
   // Emulator:        use 10.0.2.2 instead
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.108.215.218:8080/api', // Mac LAN IP for physical device
+    defaultValue: 'https://api.barqwadih.com/api',
   );
   static const String apiVersion = 'v1';
 

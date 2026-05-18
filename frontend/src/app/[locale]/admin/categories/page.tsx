@@ -26,17 +26,21 @@ const CAT_COLORS = [
 // ── Form types ────────────────────────────────────────────────────────────────
 
 interface CategoryForm {
-  name_ar: string; name_en: string; icon: string; parent_id: number | null;
+  name_ar: string; name_en: string; icon: string; image: string; parent_id: number | null;
   description_ar: string; description_en: string; commission_rate: string;
   publish_fee_individual: string; publish_fee_dealer: string;
   fee_deductible_from_commission: boolean;
+  deferred_commission_individual: string; deferred_commission_dealer: string;
+  commission_trigger: 'after_sale' | 'after_90_days';
   is_free: boolean; is_active: boolean;
 }
 const emptyForm: CategoryForm = {
-  name_ar: '', name_en: '', icon: '', parent_id: null,
+  name_ar: '', name_en: '', icon: '', image: '', parent_id: null,
   description_ar: '', description_en: '', commission_rate: '',
   publish_fee_individual: '', publish_fee_dealer: '',
   fee_deductible_from_commission: true,
+  deferred_commission_individual: '', deferred_commission_dealer: '',
+  commission_trigger: 'after_sale',
   is_free: false, is_active: true,
 };
 
@@ -62,6 +66,8 @@ export default function AdminCategoriesPage() {
   const [fields, setFields] = useState<AdminCategoryField[]>([]);
   const [fieldForm, setFieldForm] = useState<FieldForm>(emptyFieldForm);
   const [editFieldId, setEditFieldId] = useState<number | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -121,20 +127,42 @@ export default function AdminCategoriesPage() {
     if (!form.name_ar || !form.name_en) return;
     setBusy(true);
     try {
-      const data = {
-        ...form,
-        commission_rate: form.commission_rate ? parseFloat(form.commission_rate) : null,
-        publish_fee_individual: form.publish_fee_individual ? parseFloat(form.publish_fee_individual) : null,
-        publish_fee_dealer: form.publish_fee_dealer ? parseFloat(form.publish_fee_dealer) : null,
-      };
+      let payload: FormData | Record<string, unknown>;
+      if (imageFile) {
+        const fd = new FormData();
+        fd.append('name_ar', form.name_ar);
+        fd.append('name_en', form.name_en);
+        if (form.icon) fd.append('icon', form.icon);
+        if (form.parent_id != null) fd.append('parent_id', String(form.parent_id));
+        if (form.description_ar) fd.append('description_ar', form.description_ar);
+        if (form.description_en) fd.append('description_en', form.description_en);
+        if (form.commission_rate) fd.append('commission_rate', form.commission_rate);
+        if (form.publish_fee_individual) fd.append('publish_fee_individual', form.publish_fee_individual);
+        if (form.publish_fee_dealer) fd.append('publish_fee_dealer', form.publish_fee_dealer);
+        fd.append('fee_deductible_from_commission', form.fee_deductible_from_commission ? '1' : '0');
+        if (form.deferred_commission_individual) fd.append('deferred_commission_individual', form.deferred_commission_individual);
+        if (form.deferred_commission_dealer) fd.append('deferred_commission_dealer', form.deferred_commission_dealer);
+        fd.append('commission_trigger', form.commission_trigger);
+        fd.append('is_free', form.is_free ? '1' : '0');
+        fd.append('is_active', form.is_active ? '1' : '0');
+        fd.append('image_file', imageFile);
+        payload = fd;
+      } else {
+        payload = {
+          ...form,
+          commission_rate: form.commission_rate ? parseFloat(form.commission_rate) : null,
+          publish_fee_individual: form.publish_fee_individual ? parseFloat(form.publish_fee_individual) : null,
+          publish_fee_dealer: form.publish_fee_dealer ? parseFloat(form.publish_fee_dealer) : null,
+        };
+      }
       if (catModal?.mode === 'edit' && catModal.cat) {
-        await updateCategory(catModal.cat.id, data);
+        await updateCategory(catModal.cat.id, payload);
         showToast('تم تحديث التصنيف', 'success');
       } else {
-        await createCategory(data);
+        await createCategory(payload);
         showToast('تم إنشاء التصنيف', 'success');
       }
-      setCatModal(null); setForm(emptyForm); load();
+      setCatModal(null); setForm(emptyForm); setImageFile(null); setImagePreview(null); load();
     } catch (e) { showToast(e instanceof Error ? e.message : 'خطأ', 'error'); }
     finally { setBusy(false); }
   };
@@ -149,13 +177,19 @@ export default function AdminCategoriesPage() {
 
   const openEdit = (cat: AdminCategory) => {
     setCatModal({ mode: 'edit', cat });
+    setImageFile(null);
+    setImagePreview(null);
     setForm({
       name_ar: cat.name_ar, name_en: cat.name_en, icon: cat.icon || '',
+      image: cat.image || '',
       parent_id: cat.parent_id, description_ar: cat.description_ar || '',
       description_en: cat.description_en || '', commission_rate: cat.commission_rate || '',
       publish_fee_individual: cat.publish_fee_individual || '',
       publish_fee_dealer: cat.publish_fee_dealer || '',
       fee_deductible_from_commission: cat.fee_deductible_from_commission,
+      deferred_commission_individual: cat.deferred_commission_individual || '',
+      deferred_commission_dealer: cat.deferred_commission_dealer || '',
+      commission_trigger: cat.commission_trigger ?? 'after_sale',
       is_free: cat.is_free, is_active: cat.is_active,
     });
   };
@@ -413,7 +447,7 @@ export default function AdminCategoriesPage() {
 
       {/* ── Category Create/Edit Modal ────────────────────────────────────── */}
       {catModal && (
-        <div className={s.modalOverlay} onClick={() => { setCatModal(null); setForm(emptyForm); }}>
+        <div className={s.modalOverlay} onClick={() => { setCatModal(null); setForm(emptyForm); setImageFile(null); setImagePreview(null); }}>
           <div className={cs.pmModal} onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className={cs.pmHeader}>
@@ -432,7 +466,7 @@ export default function AdminCategoriesPage() {
                     : 'املأ التفاصيل أدناه لإنشاء التصنيف'}
                 </div>
               </div>
-              <button className={cs.pmHeaderClose} onClick={() => { setCatModal(null); setForm(emptyForm); }} title="إغلاق">✕</button>
+              <button className={cs.pmHeaderClose} onClick={() => { setCatModal(null); setForm(emptyForm); setImageFile(null); setImagePreview(null); }} title="إغلاق">✕</button>
             </div>
 
             {/* Body */}
@@ -460,6 +494,39 @@ export default function AdminCategoriesPage() {
                       <div className={cs.pmIconPreview}>{form.icon ? renderIcon(form.icon, 22) : '📂'}</div>
                       <input className={cs.pmInput} value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} placeholder="🚗" />
                     </div>
+                  </div>
+                  <div className={cs.pmField}>
+                    <label className={cs.pmLabel}>صورة التصنيف</label>
+                    <div
+                      style={{ border: '1.5px dashed #334155', borderRadius: 8, padding: '10px', cursor: 'pointer', textAlign: 'center', background: '#0f172a' }}
+                      onClick={() => document.getElementById('cat-image-upload')?.click()}
+                    >
+                      <input
+                        id="cat-image-upload"
+                        type="file"
+                        accept="image/jpg,image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); }
+                        }}
+                      />
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="preview" style={{ maxHeight: 80, borderRadius: 6, objectFit: 'contain' }} />
+                      ) : form.image ? (
+                        <img src={form.image} alt="current" style={{ maxHeight: 80, borderRadius: 6, objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ color: '#64748b', fontSize: '.85rem' }}>📁 اضغط لرفع صورة (JPG/PNG/WebP، حد 5MB)</span>
+                      )}
+                    </div>
+                    {(imagePreview || form.image) && (
+                      <button
+                        style={{ marginTop: 4, fontSize: '.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        onClick={() => { setImageFile(null); setImagePreview(null); setForm(f => ({ ...f, image: '' })); }}
+                      >
+                        ✕ إزالة الصورة
+                      </button>
+                    )}
                   </div>
                   <div className={cs.pmField}>
                     <label className={cs.pmLabel}>التصنيف الأب</label>
@@ -524,6 +591,34 @@ export default function AdminCategoriesPage() {
                   </div>
                 </div>
 
+                {/* Deferred commission (بالذمة) */}
+                <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(99,102,241,0.07)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.18)' }}>
+                  <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#a5b4fc', marginBottom: 8 }}>💰 العمولة المؤجلة (بالذمة)</div>
+                  <div className={cs.pmGrid}>
+                    <div className={cs.pmField}>
+                      <label className={cs.pmLabel}>👤 مبلغ الفرد (بالذمة)</label>
+                      <div className={cs.pmInputAffix}>
+                        <input className={cs.pmInput} type="number" step="0.01" min="0" value={form.deferred_commission_individual} onChange={e => setForm({ ...form, deferred_commission_individual: e.target.value })} placeholder="0.00" />
+                        <span className={cs.pmAffix}>ر.س</span>
+                      </div>
+                    </div>
+                    <div className={cs.pmField}>
+                      <label className={cs.pmLabel}>🏢 مبلغ المعرض (بالذمة)</label>
+                      <div className={cs.pmInputAffix}>
+                        <input className={cs.pmInput} type="number" step="0.01" min="0" value={form.deferred_commission_dealer} onChange={e => setForm({ ...form, deferred_commission_dealer: e.target.value })} placeholder="0.00" />
+                        <span className={cs.pmAffix}>ر.س</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={cs.pmField} style={{ marginTop: 8 }}>
+                    <label className={cs.pmLabel}>⏰ موعد الاستحقاق</label>
+                    <select className={cs.pmInput} value={form.commission_trigger} onChange={e => setForm({ ...form, commission_trigger: e.target.value as 'after_sale' | 'after_90_days' })}>
+                      <option value="after_sale">بعد إعلان البيع</option>
+                      <option value="after_90_days">بعد 90 يوماً</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className={cs.pmToggleRow} style={{ marginTop: 12 }}>
                   <div
                     className={`${cs.pmToggleCard} ${form.fee_deductible_from_commission ? cs.pmToggleOn : ''}`}
@@ -571,7 +666,7 @@ export default function AdminCategoriesPage() {
 
             {/* Footer */}
             <div className={cs.pmFooter}>
-              <button className={`${cs.pmBtn} ${cs.pmBtnGhost}`} onClick={() => { setCatModal(null); setForm(emptyForm); }}>إلغاء</button>
+              <button className={`${cs.pmBtn} ${cs.pmBtnGhost}`} onClick={() => { setCatModal(null); setForm(emptyForm); setImageFile(null); setImagePreview(null); }}>إلغاء</button>
               <button
                 className={`${cs.pmBtn} ${cs.pmBtnPrimary}`}
                 onClick={handleSave}

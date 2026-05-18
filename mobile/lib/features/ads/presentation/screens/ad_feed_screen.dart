@@ -255,12 +255,13 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, _) => [
-          SliverToBoxAdapter(
-            child: Container(
-              color: Colors.white,
-              child: const StoriesRow(),
-            ),
-          ),
+          // الحالات (Stories) مؤجلة لما بعد الإطلاق
+          // SliverToBoxAdapter(
+          //   child: Container(
+          //     color: Colors.white,
+          //     child: const StoriesRow(),
+          //   ),
+          // ),
 
           // ── Main Categories (pinned) ────────────────────────────────────
           SliverPersistentHeader(
@@ -822,16 +823,22 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
               ),
               const _Divider(),
               _HarajDrawerItem(
+                icon: Icons.gavel_rounded,
+                title: 'شروط الاستخدام',
+                onTap: () => _closeAndNavigate('/terms-of-service'),
+              ),
+              const _Divider(),
+              _HarajDrawerItem(
                 icon: Icons.security_outlined,
                 title: 'مركز الأمان',
                 onTap: () => _closeAndNavigate('/safety-center'),
               ),
-              const _Divider(),
-              _HarajDrawerItem(
-                icon: Icons.shopping_cart_outlined,
-                title: 'خدمة الشراء الموثوق',
-                onTap: () => _closeAndNavigate('/trusted-purchase'),
-              ),
+              // خدمة الشراء الموثوق: مؤجلة لما بعد الإطلاق
+              // _HarajDrawerItem(
+              //   icon: Icons.shopping_cart_outlined,
+              //   title: 'خدمة الشراء الموثوق',
+              //   onTap: () => _closeAndNavigate('/trusted-purchase'),
+              // ),
             ],
           ),
         ),

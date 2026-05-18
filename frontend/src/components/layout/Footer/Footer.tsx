@@ -21,13 +21,14 @@ export default function Footer() {
         <div className={styles.links}>
           <div className={styles.col}>
             <h4 className={styles.colTitle}>المنصة</h4>
-            <Link href="/ar/categories" className={styles.link}>الأقسام</Link>
-            <Link href="/ar/ads/create" className={styles.link}>أضف إعلانك</Link>
-            <Link href="/ar/search"     className={styles.link}>البحث المتقدم</Link>
+            <Link href="/ar/search"       className={styles.link}>البحث المتقدم</Link>
+            <Link href="/ar/post-ad"      className={styles.link}>أضف إعلانك</Link>
+            <Link href="/ar/fees"         className={styles.link}>الرسوم والأسعار</Link>
+            <Link href="/ar/how-we-buy"   className={styles.link}>كيف نشتري</Link>
+            <Link href="/ar/how-we-sell"  className={styles.link}>كيف نبيع</Link>
           </div>
           <div className={styles.col}>
-            <h4 className={styles.colTitle}>الدعم</h4>
-            <Link href="/ar/about"   className={styles.link}>من نحن</Link>
+            <h4 className={styles.colTitle}>الدعم والمعلومات</h4>
             <Link href="/ar/contact" className={styles.link}>تواصل معنا</Link>
             <Link href="/ar/terms"   className={styles.link}>الشروط والأحكام</Link>
             <Link href="/ar/privacy" className={styles.link}>سياسة الخصوصية</Link>
