@@ -41,19 +41,12 @@ export interface ContactSubmission {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function fetchContactCategories(): Promise<ContactCategory[]> {
-  const res = await apiClient<{ success: boolean; data: ContactCategory[] }>(
-    'GET',
-    ENDPOINTS.CONTACT_CATEGORIES
-  );
+  const res = await apiClient.get<ContactCategory[]>(ENDPOINTS.CONTACT_CATEGORIES);
   return res.data;
 }
 
 export async function submitContact(payload: ContactSubmitPayload): Promise<void> {
-  await apiClient<{ success: boolean; message: string }>(
-    'POST',
-    ENDPOINTS.CONTACT_SUBMIT,
-    payload
-  );
+  await apiClient.post<{ message: string }>(ENDPOINTS.CONTACT_SUBMIT, payload);
 }
 
 // ── Admin API ─────────────────────────────────────────────────────────────────
@@ -64,26 +57,24 @@ export async function fetchAdminContacts(params?: {
   search?: string;
   page?: number;
   per_page?: number;
-}): Promise<{ data: ContactSubmission[]; meta: { current_page: number; last_page: number; total: number } }> {
+}): Promise<{
+  data: ContactSubmission[];
+  meta: { current_page: number; last_page: number; total: number };
+}> {
   const qs = new URLSearchParams();
-  if (params?.status)   qs.set('status', params.status);
+  if (params?.status) qs.set('status', params.status);
   if (params?.category) qs.set('category', params.category);
-  if (params?.search)   qs.set('search', params.search);
-  if (params?.page)     qs.set('page', String(params.page));
+  if (params?.search) qs.set('search', params.search);
+  if (params?.page) qs.set('page', String(params.page));
   if (params?.per_page) qs.set('per_page', String(params.per_page));
 
   const url = `${ENDPOINTS.ADMIN_CONTACT}${qs.toString() ? '?' + qs.toString() : ''}`;
-  return apiClient<{ success: boolean; data: ContactSubmission[]; meta: { current_page: number; last_page: number; total: number } }>(
-    'GET',
-    url
-  );
+  const res = await apiClient.getPaginated<ContactSubmission>(url);
+  return { data: res.data, meta: res.meta };
 }
 
 export async function fetchAdminContact(id: number): Promise<ContactSubmission> {
-  const res = await apiClient<{ success: boolean; data: ContactSubmission }>(
-    'GET',
-    ENDPOINTS.ADMIN_CONTACT_DETAIL(id)
-  );
+  const res = await apiClient.get<ContactSubmission>(ENDPOINTS.ADMIN_CONTACT_DETAIL(id));
   return res.data;
 }
 
@@ -91,10 +82,6 @@ export async function updateContactStatus(
   id: number,
   payload: { status: 'pending' | 'in_progress' | 'resolved'; admin_note?: string }
 ): Promise<ContactSubmission> {
-  const res = await apiClient<{ success: boolean; data: ContactSubmission }>(
-    'PATCH',
-    ENDPOINTS.ADMIN_CONTACT_STATUS(id),
-    payload
-  );
+  const res = await apiClient.patch<ContactSubmission>(ENDPOINTS.ADMIN_CONTACT_STATUS(id), payload);
   return res.data;
 }

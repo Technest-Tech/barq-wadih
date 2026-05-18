@@ -1,10 +1,10 @@
 {
   "frontend/src/**/*.{ts,tsx}": [
-    "prettier --write",
-    "eslint --fix --no-warn-ignored"
+    "frontend/node_modules/.bin/prettier --write",
+    "bash -c 'cd frontend && node_modules/.bin/eslint --fix --no-warn-ignored \"$@\"' --"
   ],
   "frontend/src/**/*.css": [
-    "prettier --write"
+    "frontend/node_modules/.bin/prettier --write"
   ],
   "backend/**/*.php": [
     "cd backend && ./vendor/bin/pint"
