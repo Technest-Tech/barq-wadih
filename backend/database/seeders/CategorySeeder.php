@@ -41,37 +41,6 @@ class CategorySeeder extends Seeder
                 ],
             ],
 
-            // ── 2. العقار (مخفي - محذوف بقرار العميل) ───────────────────────
-            [
-                'name_ar'    => 'عقارات',
-                'name_en'    => 'Real Estate',
-                'slug'       => 'real-estate',
-                'icon'       => '🏠',
-                'image'      => 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80',
-                'sort_order' => 2,
-                'is_free'    => false,
-                'is_active'  => false,
-                'children'   => [
-                    ['name_ar' => 'شقق للبيع',         'name_en' => 'Apartments for Sale',  'slug' => 'apartments-for-sale',  'icon' => '🏢', 'sort_order' => 1],
-                    ['name_ar' => 'شقق للإيجار',       'name_en' => 'Apartments for Rent',  'slug' => 'apartments-for-rent',  'icon' => '🏡', 'sort_order' => 2],
-                    ['name_ar' => 'فلل للبيع',          'name_en' => 'Villas for Sale',      'slug' => 'villas-for-sale',      'icon' => '🏘️', 'sort_order' => 3],
-                    ['name_ar' => 'فلل للإيجار',        'name_en' => 'Villas for Rent',      'slug' => 'villas-for-rent',      'icon' => '🏠', 'sort_order' => 4],
-                    ['name_ar' => 'بيوت للبيع',         'name_en' => 'Houses for Sale',      'slug' => 'houses-for-sale',      'icon' => '🏚️', 'sort_order' => 5],
-                    ['name_ar' => 'أراضي للبيع',        'name_en' => 'Land for Sale',        'slug' => 'land',                 'icon' => '🗺️', 'sort_order' => 6],
-                    ['name_ar' => 'أراضي تجارية',       'name_en' => 'Commercial Land',      'slug' => 'commercial-land',      'icon' => '🏗️', 'sort_order' => 7],
-                    ['name_ar' => 'عمارات',             'name_en' => 'Buildings',            'slug' => 'buildings',            'icon' => '🏙️', 'sort_order' => 8],
-                    ['name_ar' => 'مكاتب وتجاري',      'name_en' => 'Commercial & Offices', 'slug' => 'commercial',           'icon' => '🏢', 'sort_order' => 9],
-                    ['name_ar' => 'محلات للإيجار',      'name_en' => 'Shops for Rent',       'slug' => 'shops-for-rent',       'icon' => '🏪', 'sort_order' => 10],
-                    ['name_ar' => 'استراحات',           'name_en' => 'Rest Houses',          'slug' => 'rest-houses',          'icon' => '🌴', 'sort_order' => 11],
-                    ['name_ar' => 'شاليهات',            'name_en' => 'Chalets',              'slug' => 'chalets',              'icon' => '🏕️', 'sort_order' => 12],
-                    ['name_ar' => 'مستودعات',           'name_en' => 'Warehouses',           'slug' => 'warehouses',           'icon' => '🏭', 'sort_order' => 13],
-                    ['name_ar' => 'مزارع',              'name_en' => 'Farms',                'slug' => 'farms',                'icon' => '🌾', 'sort_order' => 14],
-                    ['name_ar' => 'غرف للإيجار',        'name_en' => 'Rooms for Rent',       'slug' => 'rooms-for-rent',       'icon' => '🛏️', 'sort_order' => 15],
-                    ['name_ar' => 'قاعات للإيجار',      'name_en' => 'Halls for Rent',       'slug' => 'halls-for-rent',       'icon' => '🎪', 'sort_order' => 16],
-                    ['name_ar' => 'مخيمات للإيجار',     'name_en' => 'Camps for Rent',       'slug' => 'camps-for-rent',       'icon' => '⛺', 'sort_order' => 17],
-                ],
-            ],
-
             // ── 3. الأجهزة والإلكترونيات ────────────────────────────────────
             [
                 'name_ar'    => 'إلكترونيات وأجهزة',

@@ -90,7 +90,6 @@
   "categories": {
     "all": "All Categories",
     "cars": "Cars",
-    "realEstate": "Real Estate",
     "electronics": "Electronics",
     "furniture": "Furniture",
     "jobs": "Jobs",
@@ -118,6 +117,6 @@
   },
   "meta": {
     "homeTitle": "Barq Wadih — Online Marketplace",
-    "homeDescription": "The largest online marketplace in Saudi Arabia. Buy and sell cars, real estate, electronics and more."
+    "homeDescription": "The largest online marketplace in Saudi Arabia. Buy and sell cars, electronics and more."
   }
 }

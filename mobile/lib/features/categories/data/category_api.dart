@@ -20,10 +20,12 @@ class CategoryRepository {
       final data = response.data!['data'] as List<dynamic>;
       return data
           .map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
+          .where((cat) => cat.slug != 'real-estate')
           .toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل الأقسام',
+        message:
+            e.response?.data?['message'] as String? ?? 'فشل في تحميل الأقسام',
         statusCode: e.response?.statusCode,
       );
     }
@@ -39,8 +41,8 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
 /// AsyncNotifier that fetches the full category tree once and caches it.
 final categoriesProvider =
     AsyncNotifierProvider<CategoriesNotifier, List<CategoryModel>>(
-  CategoriesNotifier.new,
-);
+      CategoriesNotifier.new,
+    );
 
 class CategoriesNotifier extends AsyncNotifier<List<CategoryModel>> {
   @override

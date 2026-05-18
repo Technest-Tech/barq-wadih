@@ -72,10 +72,10 @@ class SellersAndRatingsSeeder extends Seeder
             'email'     => 'fahad@barqwadih.sa',
             'name'      => 'فهد الدوسري',
             'phone'     => '+966500000007',
-            'bio'       => 'وكيل عقارات معتمد، تخصصي شقق وفلل شمال الرياض.',
+            'bio'       => 'تاجر سيارات معتمد، أكثر من 10 سنوات خبرة في سوق السيارات.',
             'is_dealer' => true,
             'avatar'    => 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80',
-            'cover'     => 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1600&q=80',
+            'cover'     => 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1600&q=80',
         ],
         [
             'email'     => 'mona@barqwadih.sa',

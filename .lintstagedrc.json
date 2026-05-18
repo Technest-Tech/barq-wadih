@@ -10,6 +10,6 @@
     "cd backend && ./vendor/bin/pint"
   ],
   "mobile/lib/**/*.dart": [
-    "dart format --fix"
+    "dart format"
   ]
 }

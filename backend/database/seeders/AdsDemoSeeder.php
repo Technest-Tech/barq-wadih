@@ -34,29 +34,6 @@ class AdsDemoSeeder extends Seeder
             'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=1200&q=80',
             'https://images.unsplash.com/photo-1597007030739-6d2e7172ee82?w=1200&q=80',
         ],
-        'apartments-for-sale' => [
-            'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&q=80',
-            'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1200&q=80',
-            'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=80',
-        ],
-        'apartments-for-rent' => [
-            'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=80',
-            'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=1200&q=80',
-            'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=1200&q=80',
-        ],
-        'villas-for-sale' => [
-            'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=80',
-            'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80',
-            'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200&q=80',
-        ],
-        'land' => [
-            'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80',
-            'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80',
-        ],
-        'commercial' => [
-            'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
-            'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&q=80',
-        ],
         'phones-tablets' => [
             'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1200&q=80',
             'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&q=80',
@@ -316,34 +293,6 @@ class AdsDemoSeeder extends Seeder
 
             ['_slug' => 'spare-parts', 'title' => 'بطارية فارتا 90 أمبير',
              'description' => "بطارية فارتا 90 أمبير، استخدام شهرين فقط، الضمان قائم. مع كرت الضمان.", 'price' => 320],
-
-            // ── Real Estate ─────────────────────────────────────────────────
-            ['_slug' => 'apartments-for-sale', 'title' => 'شقة فاخرة بحي الياسمين - 4 غرف',
-             'description' => "شقة 240م²، 4 غرف نوم + مجلس + صالة + مطبخ + 4 دورات مياه. الدور الثاني مع مصعد. تشطيب فاخر.", 'price' => 980000],
-
-            ['_slug' => 'apartments-for-sale', 'title' => 'تمليك شقة بحي العقيق - 3 غرف',
-             'description' => "شقة 180م²، 3 غرف، مدخلين، مطبخ راكب، تكييف مركزي. بالقرب من الطريق الدائري الشمالي.", 'price' => 720000],
-
-            ['_slug' => 'apartments-for-rent', 'title' => 'شقة للإيجار حي النخيل - مفروشة',
-             'description' => "شقة مؤثثة بالكامل، 4 غرف + صالة + 3 حمامات. الإيجار شهري شامل خدمات الإنترنت والكهرباء.", 'price' => 3500],
-
-            ['_slug' => 'apartments-for-rent', 'title' => 'استوديو مفروش - حي الملز',
-             'description' => "استوديو 60م² مؤثث بالكامل قريب من جامعة الإمام. إيجار شهري شامل.", 'price' => 2200],
-
-            ['_slug' => 'villas-for-sale', 'title' => 'فيلا دوبلكس بحي الملقا - 5 غرف',
-             'description' => "فيلا دوبلكس مساحة الأرض 400م²، البناء 600م². 5 غرف، 2 مجلس، مسبح، حديقة.", 'price' => 2950000],
-
-            ['_slug' => 'villas-for-sale', 'title' => 'فيلا حديثة - حي العارض',
-             'description' => "فيلا 4 غرف نوم ماستر + ملحق خارجي. تشطيب سوبر لوكس، مطبخ إيطالي.", 'price' => 1850000],
-
-            ['_slug' => 'land', 'title' => 'أرض سكنية 600م² - حي الرمال',
-             'description' => "أرض سكنية، واجهة 20م، الشارع 15م شرقي. صك إلكتروني محدث.", 'price' => 750000],
-
-            ['_slug' => 'land', 'title' => 'أرض تجارية على شارع رئيسي',
-             'description' => "أرض تجارية 800م²، واجهة على شارع رئيسي 30م. مناسبة لمعرض أو مجمع تجاري.", 'price' => 2400000],
-
-            ['_slug' => 'commercial', 'title' => 'محل تجاري للإيجار - طريق الملك فهد',
-             'description' => "محل تجاري 120م² على طريق الملك فهد. واجهة زجاجية، مكيفات مركبة، 3 حمامات.", 'price' => 95000],
 
             // ── Phones & Tablets ────────────────────────────────────────────
             ['_slug' => 'phones-tablets', 'title' => 'آيفون 15 برو ماكس 256 جيجا - تيتانيوم أسود',
