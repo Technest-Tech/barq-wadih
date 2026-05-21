@@ -55,6 +55,8 @@ Route::get('categories/{category}/fields', [AdController::class, 'categoryFields
 
 // ── Sprint 7: Search — public, Meilisearch-powered with Eloquent fallback ─────
 Route::get('search',                   [SearchController::class, 'index'])->name('search.index');
+Route::get('search/suggestions',       [SearchController::class, 'suggestions'])->name('search.suggestions');
+Route::get('search/popular',           [SearchController::class, 'popular'])->name('search.popular');
 
 // ── Sprint 12: Banners — public, no auth required ──────────────────────────
 Route::get('banners',                   [BannerController::class, 'index'])->name('banners.index');

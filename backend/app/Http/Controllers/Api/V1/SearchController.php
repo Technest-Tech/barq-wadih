@@ -181,6 +181,64 @@ class SearchController extends BaseController
         return $query->paginate(20);
     }
 
+    // ── Public: Autocomplete Suggestions ─────────────────────────────────────
+
+    /**
+     * GET /api/v1/search/suggestions?q=
+     *
+     * Returns up to 8 popular query completions sourced from the search-log
+     * history (only queries that produced results, ordered by frequency).
+     * Requires at least 2 characters.
+     */
+    public function suggestions(Request $request): JsonResponse
+    {
+        $q = mb_strtolower(trim((string) $request->input('q', '')));
+
+        if (mb_strlen($q) < 2) {
+            return $this->successResponse([]);
+        }
+
+        $suggestions = SearchLog::query()
+            ->where('results_count', '>', 0)
+            ->where('query', 'like', $q . '%')
+            ->selectRaw('query, COUNT(*) as cnt')
+            ->groupBy('query')
+            ->orderByDesc('cnt')
+            ->limit(8)
+            ->pluck('query')
+            ->values()
+            ->toArray();
+
+        return $this->successResponse($suggestions);
+    }
+
+    // ── Public: Popular / Most-Viewed Ads ─────────────────────────────────────
+
+    /**
+     * GET /api/v1/search/popular?limit=3&category_id=
+     *
+     * Returns the top N most-viewed active ads, optionally scoped to a
+     * category. Used by the search dropdown when a query yields zero results.
+     */
+    public function popular(Request $request): JsonResponse
+    {
+        $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+        $limit      = min((int) $request->input('limit', 3), 10);
+
+        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
+            ->active()
+            ->orderByDesc('views_count')
+            ->orderByDesc('published_at');
+
+        if ($categoryId !== null) {
+            $query->where('category_id', $categoryId);
+        }
+
+        $ads = $query->limit($limit)->get();
+
+        return $this->successResponse(AdListResource::collection($ads));
+    }
+
     // ── Private: Logging ──────────────────────────────────────────────────────
 
     private function logSearch(Request $request, string $q, ?int $categoryId, ?int $cityId, int $total): void
