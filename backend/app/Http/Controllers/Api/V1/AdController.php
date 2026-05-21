@@ -24,25 +24,47 @@ class AdController extends BaseController
         $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
             ->feed(); // scopeFeed: active + approved, boosted first
 
-        // Filters
+        // ── Category ──────────────────────────────────────────────────────────
         if ($request->filled('category_id')) {
             $query->where('category_id', (int) $request->input('category_id'));
+        } elseif ($request->filled('category_ids')) {
+            $ids = array_filter(
+                array_map('intval', explode(',', $request->input('category_ids')))
+            );
+            if (! empty($ids)) {
+                $query->whereIn('category_id', $ids);
+            }
         }
+
+        // ── Location ──────────────────────────────────────────────────────────
         if ($request->filled('city_ids')) {
-            $cityIds = explode(',', $request->input('city_ids'));
-            $query->whereIn('city_id', $cityIds);
+            $cityIds = array_filter(
+                array_map('intval', explode(',', $request->input('city_ids')))
+            );
+            if (! empty($cityIds)) {
+                $query->whereIn('city_id', $cityIds);
+            }
         } elseif ($request->filled('city_id')) {
             $query->where('city_id', (int) $request->input('city_id'));
         }
         if ($request->filled('region_id')) {
             $query->where('region_id', (int) $request->input('region_id'));
         }
+
+        // ── Price ─────────────────────────────────────────────────────────────
         if ($request->filled('price_min')) {
             $query->where('price', '>=', (float) $request->input('price_min'));
         }
         if ($request->filled('price_max')) {
             $query->where('price', '<=', (float) $request->input('price_max'));
         }
+
+        // ── Negotiable (على السوم) ────────────────────────────────────────────
+        if ($request->boolean('negotiable')) {
+            $query->where('is_negotiable', true);
+        }
+
+        // ── Full-text search ──────────────────────────────────────────────────
         if ($request->filled('q')) {
             $search = (string) $request->input('q');
             $query->where(function ($q) use ($search) {
@@ -51,15 +73,29 @@ class AdController extends BaseController
             });
         }
 
-        // Sort override
+        // ── Sort ──────────────────────────────────────────────────────────────
         $sort = $request->input('sort', 'newest');
         if ($sort === 'price_asc') {
-            $query->reorder()->orderBy('price')->orderByDesc('created_at');
+            // Ads with no price (free / negotiable / hidden) come last
+            $query->reorder()
+                ->orderByRaw('CASE WHEN price IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('price')
+                ->orderByDesc('created_at');
         } elseif ($sort === 'price_desc') {
-            $query->reorder()->orderByDesc('price')->orderByDesc('created_at');
+            // Ads with no price come last
+            $query->reorder()
+                ->orderByRaw('CASE WHEN price IS NULL THEN 1 ELSE 0 END')
+                ->orderByDesc('price')
+                ->orderByDesc('created_at');
+        } elseif ($sort === 'oldest') {
+            $query->reorder()
+                ->orderBy('published_at')
+                ->orderBy('created_at');
         } else {
             // newest (default)
-            $query->reorder()->orderByDesc('published_at')->orderByDesc('created_at');
+            $query->reorder()
+                ->orderByDesc('published_at')
+                ->orderByDesc('created_at');
         }
 
         $ads = $query->paginate(20);
