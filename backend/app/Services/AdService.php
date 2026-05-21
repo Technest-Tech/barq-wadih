@@ -190,10 +190,24 @@ class AdService
 
     public function markAsSold(Ad $ad): void
     {
-        $ad->update([
-            'status'           => AdStatus::Sold,
-            'sale_declared_at' => now(),
-        ]);
+        // Bypass Scout sync during update to avoid search-engine connection issues.
+        // The sold ad will be removed from the index asynchronously via the queue.
+        Ad::withoutSyncingToSearch(function () use ($ad) {
+            $ad->update([
+                'status'           => AdStatus::Sold,
+                'sale_declared_at' => now(),
+            ]);
+        });
+
+        // Queue the unsearchable call separately so it doesn't block the request.
+        dispatch(function () use ($ad) {
+            try {
+                $ad->unsearchable();
+            } catch (\Throwable) {
+                // Search index removal is non-critical; log but don't fail.
+                \Illuminate\Support\Facades\Log::warning('unsearchable failed for ad', ['id' => $ad->id]);
+            }
+        })->afterResponse();
     }
 
     // ── Commission ────────────────────────────────────────────────────────────

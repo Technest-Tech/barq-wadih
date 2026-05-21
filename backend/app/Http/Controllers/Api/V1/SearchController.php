@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Resources\AdListResource;
 use App\Models\Ad;
+use App\Models\Category;
 use App\Models\SearchLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -186,19 +187,23 @@ class SearchController extends BaseController
     /**
      * GET /api/v1/search/suggestions?q=
      *
-     * Returns up to 8 popular query completions sourced from the search-log
-     * history (only queries that produced results, ordered by frequency).
+     * Returns up to 8 autocomplete completions for a prefix query.
+     * Sources (in priority order):
+     *   1. Popular past queries from search-log history (results_count > 0)
+     *   2. Matching category names (always available from day one)
+     *   3. Matching ad titles ordered by views (fills any remaining slots)
      * Requires at least 2 characters.
      */
     public function suggestions(Request $request): JsonResponse
     {
-        $q = mb_strtolower(trim((string) $request->input('q', '')));
+        $q = trim((string) $request->input('q', ''));
 
         if (mb_strlen($q) < 2) {
             return $this->successResponse([]);
         }
 
-        $suggestions = SearchLog::query()
+        // 1. Popular historical queries that start with this prefix
+        $fromLog = SearchLog::query()
             ->where('results_count', '>', 0)
             ->where('query', 'like', $q . '%')
             ->selectRaw('query, COUNT(*) as cnt')
@@ -206,10 +211,37 @@ class SearchController extends BaseController
             ->orderByDesc('cnt')
             ->limit(8)
             ->pluck('query')
-            ->values()
             ->toArray();
 
-        return $this->successResponse($suggestions);
+        // 2. Matching category names (fill gaps when history is sparse)
+        if (count($fromLog) < 5) {
+            $needed = 5 - count($fromLog);
+            $fromCats = Category::where('name_ar', 'like', '%' . $q . '%')
+                ->select('name_ar')
+                ->limit($needed + 3)
+                ->pluck('name_ar')
+                ->toArray();
+
+            $fromLog = array_values(array_unique(array_merge($fromLog, $fromCats)));
+        }
+
+        // 3. Ad titles — fills remaining slots, ordered by view-count
+        if (count($fromLog) < 8) {
+            $needed = 8 - count($fromLog);
+            $fromAds = Ad::active()
+                ->where('title', 'like', '%' . $q . '%')
+                ->orderByDesc('views_count')
+                ->limit($needed * 2)
+                ->pluck('title')
+                ->unique()
+                ->values()
+                ->take($needed)
+                ->toArray();
+
+            $fromLog = array_values(array_unique(array_merge($fromLog, $fromAds)));
+        }
+
+        return $this->successResponse(array_slice($fromLog, 0, 8));
     }
 
     // ── Public: Popular / Most-Viewed Ads ─────────────────────────────────────

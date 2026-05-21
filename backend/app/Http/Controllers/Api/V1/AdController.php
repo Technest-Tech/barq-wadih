@@ -196,9 +196,24 @@ class AdController extends BaseController
     public function markSold(Ad $ad): JsonResponse
     {
         $this->authorize('markSold', $ad);
-        $this->adService->markAsSold($ad);
 
-        return $this->successResponse(new AdListResource($ad->fresh()), 'تم تحديد الإعلان كمُباع.');
+        try {
+            $this->adService->markAsSold($ad);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('markAsSold failed', [
+                'ad_id'     => $ad->id,
+                'exception' => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+
+        $fresh = $ad->fresh(['images', 'category', 'city', 'region', 'user']);
+
+        return $this->successResponse(
+            $fresh ? new AdListResource($fresh) : null,
+            'تم تحديد الإعلان كمُباع.',
+        );
     }
 
     // ── Public: Category Fields ───────────────────────────────────────────────
