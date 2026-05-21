@@ -45,8 +45,8 @@ class DistrictSeeder extends Seeder
                 ['الفيحاء',       'Al-Fayha'],
                 ['الروابي',       'Al-Rawabi'],
             ],
-            // ── Jeddah (under both regions; pick the Makkah one) ─────────────
-            'jeddah-makkah' => [
+            // ── Jeddah ──────────────────────────────────────────────────────
+            'jeddah' => [
                 ['الروضة',        'Al-Rawdah'],
                 ['الزهراء',       'Al-Zahra'],
                 ['الصفا',         'Al-Safa'],
@@ -67,17 +67,6 @@ class DistrictSeeder extends Seeder
                 ['النزهة',        'Al-Nuzha'],
                 ['الواحة',        'Al-Wahah'],
                 ['الجامعة',       'Al-Jameah'],
-            ],
-            // Some tenants also use the Riyadh-region jeddah row; mirror minimally.
-            'jeddah' => [
-                ['الروضة',        'Al-Rawdah'],
-                ['الصفا',         'Al-Safa'],
-                ['الشاطئ',        'Al-Shati'],
-                ['الحمراء',       'Al-Hamra'],
-                ['البساتين',      'Al-Basateen'],
-                ['الأندلس',       'Al-Andalus'],
-                ['السلامة',       'Al-Salamah'],
-                ['أبحر الشمالية', 'North Obhur'],
             ],
             // ── Dammam ──────────────────────────────────────────────────────
             'dammam' => [

@@ -26,7 +26,6 @@ import '../../../notifications/data/notification_providers.dart';
 import '../../../settings/providers/locale_provider.dart';
 import '../../data/ad_api.dart';
 import '../widgets/ad_card.dart';
-import '../../../stories/presentation/stories_row.dart';
 
 class AdFeedScreen extends ConsumerStatefulWidget {
   const AdFeedScreen({super.key});
@@ -47,6 +46,12 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   List<CategoryModel> _subcategories = [];
   bool _isGridView = false;
   Timer? _searchDebounce;
+
+  bool get _hasActiveFilters =>
+      _filter.priceMin != null ||
+      _filter.priceMax != null ||
+      (_filter.q?.isNotEmpty ?? false) ||
+      _filter.sort != 'newest';
 
   @override
   void initState() {
@@ -78,17 +83,26 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
     });
     if (categoryId == null) {
       _filter = _filter.copyWith(
-          clearCategory: true, clearCategoryIds: true, page: 1);
+        clearCategory: true,
+        clearCategoryIds: true,
+        page: 1,
+      );
     } else if (children.isNotEmpty) {
       // Parent has subcategories — send all child IDs so the feed shows every
       // ad under this category regardless of which subcategory it belongs to.
       final childIds = children.map((c) => c.id).toList();
       _filter = _filter.copyWith(
-          clearCategory: true, categoryIds: childIds, page: 1);
+        clearCategory: true,
+        categoryIds: childIds,
+        page: 1,
+      );
     } else {
       // Leaf category with no children — send its own ID directly.
       _filter = _filter.copyWith(
-          categoryId: categoryId, clearCategoryIds: true, page: 1);
+        categoryId: categoryId,
+        clearCategoryIds: true,
+        page: 1,
+      );
     }
     ref.read(adsFeedProvider.notifier).applyFilter(_filter);
   }
@@ -100,11 +114,17 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       // "الكل" chip — show all ads under the parent by sending all child IDs.
       final childIds = _subcategories.map((c) => c.id).toList();
       _filter = _filter.copyWith(
-          clearCategory: true, categoryIds: childIds, page: 1);
+        clearCategory: true,
+        categoryIds: childIds,
+        page: 1,
+      );
     } else {
       // Specific subcategory selected — send only its ID.
       _filter = _filter.copyWith(
-          categoryId: subcategoryId, clearCategoryIds: true, page: 1);
+        categoryId: subcategoryId,
+        clearCategoryIds: true,
+        page: 1,
+      );
     }
     ref.read(adsFeedProvider.notifier).applyFilter(_filter);
   }
@@ -139,29 +159,38 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
 
       if (nav.subcategoryId != null) {
         setState(() {
-          _selectedCategoryId    = nav.categoryId;
+          _selectedCategoryId = nav.categoryId;
           _selectedSubcategoryId = nav.subcategoryId;
-          _subcategories         = parentCat?.children ?? [];
+          _subcategories = parentCat?.children ?? [];
         });
         _filter = _filter.copyWith(
-            categoryId: nav.subcategoryId, clearCategoryIds: true, page: 1);
+          categoryId: nav.subcategoryId,
+          clearCategoryIds: true,
+          page: 1,
+        );
       } else if (parentCat != null && parentCat.children.isNotEmpty) {
         final childIds = parentCat.children.map((c) => c.id).toList();
         setState(() {
-          _selectedCategoryId    = nav.categoryId;
+          _selectedCategoryId = nav.categoryId;
           _selectedSubcategoryId = null;
-          _subcategories         = parentCat!.children;
+          _subcategories = parentCat!.children;
         });
         _filter = _filter.copyWith(
-            clearCategory: true, categoryIds: childIds, page: 1);
+          clearCategory: true,
+          categoryIds: childIds,
+          page: 1,
+        );
       } else {
         setState(() {
-          _selectedCategoryId    = nav.categoryId;
+          _selectedCategoryId = nav.categoryId;
           _selectedSubcategoryId = null;
-          _subcategories         = [];
+          _subcategories = [];
         });
         _filter = _filter.copyWith(
-            categoryId: nav.categoryId, clearCategoryIds: true, page: 1);
+          categoryId: nav.categoryId,
+          clearCategoryIds: true,
+          page: 1,
+        );
       }
       ref.read(adsFeedProvider.notifier).applyFilter(_filter);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,7 +200,6 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
 
     final feedState = ref.watch(adsFeedProvider);
     final categories = ref.watch(categoriesProvider);
-
 
     return Scaffold(
       key: _scaffoldKey,
@@ -190,7 +218,11 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
             onPressed: () => _openSidebarOverlay(),
           ),
           actions: [
-            _NotifBell(notifAsync: ref.watch(unreadNotificationCountProvider)),
+            _NotifBell(
+              notifAsync: ref.watch(authProvider) is AuthAuthenticated
+                  ? ref.watch(unreadNotificationCountProvider)
+                  : const AsyncValue<int>.data(0),
+            ),
             IconButton(
               icon: const Icon(Icons.grid_view_rounded, color: Colors.white),
               onPressed: () => context.push('/categories'),
@@ -206,26 +238,32 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                const Icon(Icons.search_rounded,
-                    color: AppTheme.neutralGray400, size: 20),
+                const Icon(
+                  Icons.search_rounded,
+                  color: AppTheme.neutralGray400,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _searchController,
                     textDirection: TextDirection.rtl,
                     style: const TextStyle(
-                        fontSize: 14, color: AppTheme.neutralGray900),
+                      fontSize: 14,
+                      color: AppTheme.neutralGray900,
+                    ),
                     decoration: const InputDecoration(
                       hintText: 'ابحث في برق واضح...',
                       hintTextDirection: TextDirection.rtl,
                       hintStyle: TextStyle(
-                          color: AppTheme.neutralGray400, fontSize: 14),
+                        color: AppTheme.neutralGray400,
+                        fontSize: 14,
+                      ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
                       filled: false,
                     ),
                     onSubmitted: _applySearch,
@@ -241,8 +279,11 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                     },
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(Icons.close_rounded,
-                          size: 18, color: AppTheme.neutralGray400),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppTheme.neutralGray400,
+                      ),
                     ),
                   ),
                 const SizedBox(width: 12),
@@ -273,10 +314,12 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                   data: (cats) => Container(
                     height: 46,
                     decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(
-                        color: AppTheme.neutralGray200,
-                        width: 1,
-                      )),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AppTheme.neutralGray200,
+                          width: 1,
+                        ),
+                      ),
                     ),
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
@@ -364,14 +407,21 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                             });
                             _filter = _filter.copyWith(
                               clearCityIds: result.isEmpty,
-                              cityIds: result.isEmpty ? null : result.map((c) => c.id).toList(),
+                              cityIds: result.isEmpty
+                                  ? null
+                                  : result.map((c) => c.id).toList(),
                               page: 1,
                             );
-                            ref.read(adsFeedProvider.notifier).applyFilter(_filter);
+                            ref
+                                .read(adsFeedProvider.notifier)
+                                .applyFilter(_filter);
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -380,13 +430,18 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.location_on_outlined, size: 13, color: AppTheme.primaryBlue),
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 13,
+                                color: AppTheme.primaryBlue,
+                              ),
                               const SizedBox(width: 3),
                               Text(
-                                _selectedCities != null && _selectedCities!.isNotEmpty
+                                _selectedCities != null &&
+                                        _selectedCities!.isNotEmpty
                                     ? _selectedCities!.length == 1
-                                        ? _selectedCities!.first.nameAr
-                                        : '${_selectedCities!.length} مدن'
+                                          ? _selectedCities!.first.nameAr
+                                          : '${_selectedCities!.length} مدن'
                                     : 'كل المدن',
                                 style: const TextStyle(
                                   fontSize: 12,
@@ -395,20 +450,23 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                                 ),
                               ),
                               const SizedBox(width: 3),
-                              const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: AppTheme.neutralGray500),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 14,
+                                color: AppTheme.neutralGray500,
+                              ),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () => context.push('/search'),
-                        child: const _ThemedFilterChip(label: 'تصفية', icon: Icons.filter_alt_outlined),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => context.push('/search'),
-                        child: const _ThemedFilterChip(label: 'بحث متقدم', icon: Icons.manage_search_rounded),
+                        onTap: _showFilterSheet,
+                        child: _ThemedFilterChip(
+                          label: 'تصفية',
+                          icon: Icons.filter_alt_outlined,
+                          isActive: _hasActiveFilters,
+                        ),
                       ),
                       const Spacer(),
                       GestureDetector(
@@ -420,7 +478,9 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                           padding: const EdgeInsets.all(6),
                           color: Colors.transparent,
                           child: Icon(
-                            _isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                            _isGridView
+                                ? Icons.view_list_rounded
+                                : Icons.grid_view_rounded,
                             color: AppTheme.neutralGray500,
                             size: 20,
                           ),
@@ -431,10 +491,7 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                 ),
 
                 // Divider
-                Container(
-                  height: 6,
-                  color: AppTheme.neutralGray100,
-                ),
+                Container(height: 6, color: AppTheme.neutralGray100),
               ],
             ),
           ),
@@ -443,8 +500,8 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
         // ── Ad List ──────────────────────────────────────────────────────────
         body: RefreshIndicator(
           onRefresh: () => ref.read(adsFeedProvider.notifier).refresh(),
-          color: AppTheme.primaryBlue,        // navy spinner on white bg
-          backgroundColor: Colors.white,       // always white pull-down bg
+          color: AppTheme.primaryBlue, // navy spinner on white bg
+          backgroundColor: Colors.white, // always white pull-down bg
           child: feedState.when(
             data: (feed) {
               if (feed.ads.isEmpty) {
@@ -470,7 +527,9 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                     crossAxisSpacing: 12,
                     childAspectRatio: 0.65,
                   ),
-                  itemCount: feed.hasMore ? feed.ads.length + 1 : feed.ads.length,
+                  itemCount: feed.hasMore
+                      ? feed.ads.length + 1
+                      : feed.ads.length,
                   itemBuilder: (context, i) {
                     if (i >= feed.ads.length) {
                       return const Center(
@@ -482,12 +541,16 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                     final ad = feed.ads[i];
                     return _AnimatedAdCard(
                       index: i,
-                      child: AdCard(ad: ad, isGrid: true, onTap: () => context.push('/ads/${ad.id}')),
+                      child: AdCard(
+                        ad: ad,
+                        isGrid: true,
+                        onTap: () => context.push('/ads/${ad.id}'),
+                      ),
                     );
                   },
                 );
               }
-              
+
               return ListView.builder(
                 padding: const EdgeInsets.only(bottom: 100),
                 itemCount: feed.hasMore ? feed.ads.length + 1 : feed.ads.length,
@@ -497,7 +560,7 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                       padding: EdgeInsets.all(16),
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: AppTheme.primaryBlue,   // always navy
+                          color: AppTheme.primaryBlue, // always navy
                           backgroundColor: Colors.transparent,
                           strokeWidth: 2.5,
                         ),
@@ -507,7 +570,11 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                   final ad = feed.ads[i];
                   return _AnimatedAdCard(
                     index: i,
-                    child: AdCard(ad: ad, isGrid: false, onTap: () => context.push('/ads/${ad.id}')),
+                    child: AdCard(
+                      ad: ad,
+                      isGrid: false,
+                      onTap: () => context.push('/ads/${ad.id}'),
+                    ),
                   );
                 },
               );
@@ -520,10 +587,27 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
               itemBuilder: (_, __) => const AdListTileShimmer(),
             ),
             error: (err, _) => Center(
-              child: _ErrorState(onRetry: () => ref.read(adsFeedProvider.notifier).refresh()),
+              child: _ErrorState(
+                onRetry: () => ref.read(adsFeedProvider.notifier).refresh(),
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FilterSheet(
+        currentFilter: _filter,
+        onApply: (newFilter) {
+          setState(() => _filter = newFilter);
+          ref.read(adsFeedProvider.notifier).applyFilter(newFilter);
+        },
       ),
     );
   }
@@ -550,7 +634,8 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
 
   Future<void> _shareApp() async {
     final text = Uri.encodeComponent(
-        'حمّل تطبيق برق واضح للإعلانات المبوبة في المملكة العربية السعودية!');
+      'حمّل تطبيق برق واضح للإعلانات المبوبة في المملكة العربية السعودية!',
+    );
     final uri = Uri.parse('https://wa.me/?text=$text');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -558,8 +643,7 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   }
 }
 
-
-  // ── Haraj-Style Drawer ──────────────────────────────────────────────────
+// ── Haraj-Style Drawer ──────────────────────────────────────────────────
 class _SidebarOverlayRoute extends ConsumerStatefulWidget {
   final double appBarHeight;
   final AuthState authState;
@@ -592,11 +676,17 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _slideAnim = Tween<double>(begin: -280, end: 0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _slideAnim = Tween<double>(
+      begin: -280,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _fadeAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
   }
 
@@ -663,7 +753,7 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
                           child: Container(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                           ),
                         ),
                       ),
@@ -683,10 +773,7 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                   },
                   child: Container(
                     color: const Color(0xFFF7F9FA),
-                    child: SafeArea(
-                      top: false,
-                      child: _buildDrawerContent(),
-                    ),
+                    child: SafeArea(top: false, child: _buildDrawerContent()),
                   ),
                 ),
               ],
@@ -701,8 +788,9 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
     final locale = ref.watch(localeProvider);
     final isArabic = locale.languageCode == 'ar';
     final isAuthenticated = widget.authState is AuthAuthenticated;
-    final AuthUser? user =
-        isAuthenticated ? (widget.authState as AuthAuthenticated).user : null;
+    final AuthUser? user = isAuthenticated
+        ? (widget.authState as AuthAuthenticated).user
+        : null;
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -736,7 +824,9 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                   badge: user.unreadNotificationsCount > 0
                       ? Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.red,
                             borderRadius: BorderRadius.circular(10),
@@ -744,9 +834,10 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                           child: Text(
                             '${user.unreadNotificationsCount}',
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700),
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         )
                       : null,
@@ -762,10 +853,12 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
             child: ListTile(
               dense: true,
               minVerticalPadding: 0,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.login_rounded,
-                  color: Color(0xFF0DA37F), size: 22),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: const Icon(
+                Icons.login_rounded,
+                color: Color(0xFF0DA37F),
+                size: 22,
+              ),
               title: const Text(
                 'تسجيل دخول / حساب جديد',
                 style: TextStyle(
@@ -860,16 +953,19 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
             child: ListTile(
               dense: true,
               minVerticalPadding: 0,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.logout_rounded,
-                  color: Colors.red, size: 22),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: const Icon(
+                Icons.logout_rounded,
+                color: Colors.red,
+                size: 22,
+              ),
               title: const Text(
                 'تسجيل الخروج',
                 style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600),
+                  color: Colors.red,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               onTap: _showLogoutDialog,
             ),
@@ -886,17 +982,25 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.language_outlined,
-                        color: Color(0xFF555555), size: 16),
+                    const Icon(
+                      Icons.language_outlined,
+                      color: Color(0xFF555555),
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       isArabic ? 'العربية / English' : 'English / العربية',
                       style: const TextStyle(
-                          color: Color(0xFF555555), fontSize: 12),
+                        color: Color(0xFF555555),
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.expand_less_rounded,
-                        color: Color(0xFF555555), size: 14),
+                    const Icon(
+                      Icons.expand_less_rounded,
+                      color: Color(0xFF555555),
+                      size: 14,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -918,8 +1022,7 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
       child: Container(
         color: Colors.white,
         margin: const EdgeInsets.only(bottom: 6),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             CircleAvatar(
@@ -930,13 +1033,12 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
               backgroundColor: const Color(0xFF1B3A6B),
               child: user.avatarUrl == null
                   ? Text(
-                      user.name.isNotEmpty
-                          ? user.name[0].toUpperCase()
-                          : '?',
+                      user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700),
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     )
                   : null,
             ),
@@ -948,9 +1050,10 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                   Text(
                     user.name,
                     style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -959,7 +1062,9 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                     Text(
                       user.email ?? user.phone!,
                       style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF777777)),
+                        fontSize: 12,
+                        color: Color(0xFF777777),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -967,8 +1072,11 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left_rounded,
-                color: Color(0xFFAAAAAA), size: 20),
+            const Icon(
+              Icons.chevron_left_rounded,
+              color: Color(0xFFAAAAAA),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -979,12 +1087,15 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تسجيل الخروج',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'تسجيل الخروج',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         content: const Text(
-            'هل تريد تسجيل الخروج من حسابك؟',
-            textAlign: TextAlign.center),
+          'هل تريد تسجيل الخروج من حسابك؟',
+          textAlign: TextAlign.center,
+        ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           TextButton(
@@ -997,8 +1108,10 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
               widget.onLogout();
               Navigator.pop(context);
             },
-            child: const Text('تسجيل الخروج',
-                style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'تسجيل الخروج',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -1030,9 +1143,10 @@ class _LanguageSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const Text('اختر اللغة / Choose Language',
-              style:
-                  TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          const Text(
+            'اختر اللغة / Choose Language',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 16),
           _buildLocaleOption(
             context,
@@ -1081,22 +1195,32 @@ class _LanguageSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? AppTheme.primaryBlue
-                              : AppTheme.neutralGray800)),
-                  Text(sublabel,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppTheme.neutralGray500)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? AppTheme.primaryBlue
+                          : AppTheme.neutralGray800,
+                    ),
+                  ),
+                  Text(
+                    sublabel,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.neutralGray500,
+                    ),
+                  ),
                 ],
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle_rounded,
-                  color: AppTheme.primaryBlue, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppTheme.primaryBlue,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -1139,10 +1263,7 @@ class _HarajDrawerItem extends StatelessWidget {
       subtitle: subtitle != null
           ? Text(
               subtitle!,
-              style: const TextStyle(
-                color: Color(0xFF888888),
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: Color(0xFF888888), fontSize: 11),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             )
@@ -1153,12 +1274,18 @@ class _HarajDrawerItem extends StatelessWidget {
               children: [
                 badge!,
                 const SizedBox(width: 6),
-                const Icon(Icons.chevron_left_rounded,
-                    color: Color(0xFFB0BEC5), size: 18),
+                const Icon(
+                  Icons.chevron_left_rounded,
+                  color: Color(0xFFB0BEC5),
+                  size: 18,
+                ),
               ],
             )
-          : const Icon(Icons.chevron_left_rounded,
-              color: Color(0xFFB0BEC5), size: 18),
+          : const Icon(
+              Icons.chevron_left_rounded,
+              color: Color(0xFFB0BEC5),
+              size: 18,
+            ),
       onTap: onTap,
     );
   }
@@ -1183,7 +1310,11 @@ class _PinnedCategoriesHeader extends SliverPersistentHeaderDelegate {
   double get maxExtent => 46;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return SizedBox.expand(child: child);
   }
 
@@ -1198,7 +1329,11 @@ class _MainCategoryTab extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _MainCategoryTab({required this.label, required this.selected, required this.onTap});
+  const _MainCategoryTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1221,9 +1356,7 @@ class _MainCategoryTab extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected
-                  ? AppTheme.primaryBlue
-                  : AppTheme.neutralGray600,
+              color: selected ? AppTheme.primaryBlue : AppTheme.neutralGray600,
             ),
           ),
         ),
@@ -1237,7 +1370,11 @@ class _SubCategoryChip extends StatelessWidget {
   final bool isPrimary;
   final VoidCallback? onTap;
 
-  const _SubCategoryChip({required this.label, this.isPrimary = false, this.onTap});
+  const _SubCategoryChip({
+    required this.label,
+    this.isPrimary = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1268,30 +1405,57 @@ class _SubCategoryChip extends StatelessWidget {
 class _ThemedFilterChip extends StatelessWidget {
   final String label;
   final IconData? icon;
+  final bool isActive;
 
-  const _ThemedFilterChip({required this.label, this.icon});
+  const _ThemedFilterChip({
+    required this.label,
+    this.icon,
+    this.isActive = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isActive
+            ? AppTheme.primaryBlue.withValues(alpha: .08)
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.neutralGray200),
+        border: Border.all(
+          color: isActive ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: AppTheme.neutralGray600),
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? AppTheme.primaryBlue : AppTheme.neutralGray600,
+            ),
             const SizedBox(width: 4),
           ],
-          Text(label, style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.neutralGray800,
-          )),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              color: isActive ? AppTheme.primaryBlue : AppTheme.neutralGray800,
+            ),
+          ),
+          if (isActive) ...[
+            const SizedBox(width: 4),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: AppTheme.primaryBlue,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1309,19 +1473,28 @@ class _AnimatedAdCard extends StatefulWidget {
   State<_AnimatedAdCard> createState() => _AnimatedAdCardState();
 }
 
-class _AnimatedAdCardState extends State<_AnimatedAdCard> with SingleTickerProviderStateMixin {
+class _AnimatedAdCardState extends State<_AnimatedAdCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     final delay = Duration(milliseconds: (widget.index % 6) * 50);
-    Future.delayed(delay, () { if (mounted) _ctrl.forward(); });
+    Future.delayed(delay, () {
+      if (mounted) _ctrl.forward();
+    });
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1342,18 +1515,24 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 96, height: 96,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue.withValues(alpha: .08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.storefront_outlined, size: 48, color: AppTheme.primaryBlue),
+              child: const Icon(
+                Icons.storefront_outlined,
+                size: 48,
+                color: AppTheme.primaryBlue,
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
               'لا توجد إعلانات',
               style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w700,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
                 color: AppTheme.neutralGray800,
               ),
             ),
@@ -1370,8 +1549,13 @@ class _EmptyState extends StatelessWidget {
                 icon: const Icon(Icons.add_rounded, size: 20),
                 label: const Text('أضف إعلانك'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -1392,19 +1576,32 @@ class _ErrorState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 72, height: 72,
+          width: 72,
+          height: 72,
           decoration: BoxDecoration(
             color: AppTheme.neutralGray100,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.wifi_off_rounded, size: 36, color: AppTheme.neutralGray500),
+          child: const Icon(
+            Icons.wifi_off_rounded,
+            size: 36,
+            color: AppTheme.neutralGray500,
+          ),
         ),
         const SizedBox(height: 16),
-        const Text('تعذّر تحميل الإعلانات',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.neutralGray900)),
+        const Text(
+          'تعذّر تحميل الإعلانات',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.neutralGray900,
+          ),
+        ),
         const SizedBox(height: 6),
-        const Text('تحقّق من الاتصال وأعد المحاولة',
-            style: TextStyle(fontSize: 13, color: AppTheme.neutralGray500)),
+        const Text(
+          'تحقّق من الاتصال وأعد المحاولة',
+          style: TextStyle(fontSize: 13, color: AppTheme.neutralGray500),
+        ),
         const SizedBox(height: 20),
         ElevatedButton.icon(
           onPressed: onRetry,
@@ -1414,13 +1611,790 @@ class _ErrorState extends StatelessWidget {
             backgroundColor: AppTheme.primaryBlue,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             elevation: 0,
           ),
         ),
       ],
     );
   }
+}
+
+// ── Filter Bottom Sheet ───────────────────────────────────────────────────────
+
+class _FilterSheet extends StatefulWidget {
+  final AdsFilter currentFilter;
+  final void Function(AdsFilter) onApply;
+
+  const _FilterSheet({required this.currentFilter, required this.onApply});
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late String _sort;
+  final _priceMinCtrl = TextEditingController();
+  final _priceMaxCtrl = TextEditingController();
+  final _keywordCtrl = TextEditingController();
+  final _minFocus = FocusNode();
+  final _maxFocus = FocusNode();
+  bool _minFocused = false;
+  bool _maxFocused = false;
+
+  // Preset: (minVal, maxVal) — null means no bound
+  static const _pricePresets = [
+    (label: 'أقل من 500', min: null, max: 500.0),
+    (label: '500 – 2,000', min: 500.0, max: 2000.0),
+    (label: '2,000 – 10,000', min: 2000.0, max: 10000.0),
+    (label: 'أكثر من 10,000', min: 10000.0, max: null),
+  ];
+
+  static const _sortOptions = [
+    (value: 'newest', label: 'الأحدث', icon: Icons.bolt_rounded),
+    (value: 'oldest', label: 'الأقدم', icon: Icons.history_rounded),
+    (value: 'price_asc', label: 'الأرخص', icon: Icons.trending_down_rounded),
+    (value: 'price_desc', label: 'الأغلى', icon: Icons.trending_up_rounded),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _sort = widget.currentFilter.sort;
+    if (widget.currentFilter.priceMin != null) {
+      _priceMinCtrl.text = widget.currentFilter.priceMin!.toStringAsFixed(0);
+    }
+    if (widget.currentFilter.priceMax != null) {
+      _priceMaxCtrl.text = widget.currentFilter.priceMax!.toStringAsFixed(0);
+    }
+    if (widget.currentFilter.q?.isNotEmpty ?? false) {
+      _keywordCtrl.text = widget.currentFilter.q!;
+    }
+    _minFocus.addListener(
+      () => setState(() => _minFocused = _minFocus.hasFocus),
+    );
+    _maxFocus.addListener(
+      () => setState(() => _maxFocused = _maxFocus.hasFocus),
+    );
+  }
+
+  @override
+  void dispose() {
+    _priceMinCtrl.dispose();
+    _priceMaxCtrl.dispose();
+    _keywordCtrl.dispose();
+    _minFocus.dispose();
+    _maxFocus.dispose();
+    super.dispose();
+  }
+
+  int get _activeCount {
+    int n = 0;
+    if (_sort != 'newest') n++;
+    if (_priceMinCtrl.text.isNotEmpty) n++;
+    if (_priceMaxCtrl.text.isNotEmpty) n++;
+    if (_keywordCtrl.text.isNotEmpty) n++;
+    return n;
+  }
+
+  String get _rangeSummary {
+    final minTxt = _priceMinCtrl.text.trim();
+    final maxTxt = _priceMaxCtrl.text.trim();
+    if (minTxt.isEmpty && maxTxt.isEmpty) return 'غير محدد';
+    if (minTxt.isEmpty) return 'حتى $maxTxt ر.س';
+    if (maxTxt.isEmpty) return 'من $minTxt ر.س';
+    return '$minTxt – $maxTxt ر.س';
+  }
+
+  bool _isPresetSelected(double? min, double? max) {
+    final curMin = double.tryParse(_priceMinCtrl.text.trim());
+    final curMax = double.tryParse(_priceMaxCtrl.text.trim());
+    return curMin == min && curMax == max;
+  }
+
+  void _applyPreset(double? min, double? max) {
+    setState(() {
+      _priceMinCtrl.text = min != null ? min.toStringAsFixed(0) : '';
+      _priceMaxCtrl.text = max != null ? max.toStringAsFixed(0) : '';
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      _sort = 'newest';
+      _priceMinCtrl.clear();
+      _priceMaxCtrl.clear();
+      _keywordCtrl.clear();
+    });
+  }
+
+  void _apply() {
+    final priceMin = double.tryParse(_priceMinCtrl.text.trim());
+    final priceMax = double.tryParse(_priceMaxCtrl.text.trim());
+    final keyword = _keywordCtrl.text.trim();
+    widget.onApply(
+      AdsFilter(
+        categoryId: widget.currentFilter.categoryId,
+        categoryIds: widget.currentFilter.categoryIds,
+        cityId: widget.currentFilter.cityId,
+        cityIds: widget.currentFilter.cityIds,
+        regionId: widget.currentFilter.regionId,
+        priceMin: priceMin,
+        priceMax: priceMax,
+        q: keyword.isEmpty ? null : keyword,
+        sort: _sort,
+        page: 1,
+      ),
+    );
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _activeCount;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Handle ────────────────────────────────────────────────
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 14, bottom: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.neutralGray300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // ── Header ────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'تصفية الإعلانات',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.neutralGray900,
+                          ),
+                        ),
+                        if (active > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 22,
+                            height: 22,
+                            decoration: const BoxDecoration(
+                              color: AppTheme.primaryBlue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$active',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    GestureDetector(
+                      onTap: _reset,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.neutralGray100,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppTheme.neutralGray200),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.refresh_rounded,
+                              size: 13,
+                              color: AppTheme.neutralGray600,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'مسح الكل',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.neutralGray600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppTheme.neutralGray200),
+
+              // ── Scrollable body ───────────────────────────────────────
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Sort ───────────────────────────────────────
+                      _sectionLabel('الترتيب', Icons.swap_vert_rounded),
+                      const SizedBox(height: 12),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 3.2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: _sortOptions.map((opt) {
+                          final sel = _sort == opt.value;
+                          return GestureDetector(
+                            onTap: () => setState(() => _sort = opt.value),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              decoration: BoxDecoration(
+                                gradient: sel
+                                    ? const LinearGradient(
+                                        colors: [
+                                          AppTheme.primaryBlueLight,
+                                          AppTheme.primaryBlue,
+                                        ],
+                                        begin: Alignment.topRight,
+                                        end: Alignment.bottomLeft,
+                                      )
+                                    : null,
+                                color: sel ? null : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: sel
+                                      ? Colors.transparent
+                                      : AppTheme.neutralGray200,
+                                ),
+                                boxShadow: sel
+                                    ? [
+                                        BoxShadow(
+                                          color: AppTheme.primaryBlue
+                                              .withValues(alpha: .30),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: .04,
+                                          ),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    opt.icon,
+                                    size: 16,
+                                    color: sel
+                                        ? Colors.white
+                                        : AppTheme.neutralGray400,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    opt.label,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: sel
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: sel
+                                          ? Colors.white
+                                          : AppTheme.neutralGray700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // ── Price range ─────────────────────────────────
+                      _sectionLabel('نطاق السعر', Icons.payments_outlined),
+                      const SizedBox(height: 12),
+
+                      // Unified price card
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.neutralGray200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Live summary header
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryBlue.withValues(
+                                  alpha: .05,
+                                ),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(17),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.price_change_outlined,
+                                        size: 15,
+                                        color: AppTheme.primaryBlue,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'النطاق المحدد',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.primaryBlue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  ValueListenableBuilder(
+                                    valueListenable: _priceMinCtrl,
+                                    builder: (_, __, ___) =>
+                                        ValueListenableBuilder(
+                                          valueListenable: _priceMaxCtrl,
+                                          builder: (_, __, ___) => Text(
+                                            _rangeSummary,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.primaryBlue,
+                                            ),
+                                          ),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Two inputs side by side
+                            IntrinsicHeight(
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _priceInput(
+                                      controller: _priceMinCtrl,
+                                      focusNode: _minFocus,
+                                      isFocused: _minFocused,
+                                      label: 'الحد الأدنى',
+                                      hint: '0',
+                                      isRight: true,
+                                    ),
+                                  ),
+                                  VerticalDivider(
+                                    width: 1,
+                                    color: AppTheme.neutralGray100,
+                                  ),
+                                  Expanded(
+                                    child: _priceInput(
+                                      controller: _priceMaxCtrl,
+                                      focusNode: _maxFocus,
+                                      isFocused: _maxFocused,
+                                      label: 'الحد الأعلى',
+                                      hint: 'بلا حد',
+                                      isRight: false,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Quick preset chips
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: true,
+                        child: Row(
+                          children: _pricePresets.map((p) {
+                            final sel = _isPresetSelected(p.min, p.max);
+                            return GestureDetector(
+                              onTap: () => _applyPreset(p.min, p.max),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: sel
+                                      ? AppTheme.primaryBlue
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: sel
+                                        ? AppTheme.primaryBlue
+                                        : AppTheme.neutralGray200,
+                                  ),
+                                  boxShadow: sel
+                                      ? [
+                                          BoxShadow(
+                                            color: AppTheme.primaryBlue
+                                                .withValues(alpha: .25),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ]
+                                      : [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: .04,
+                                            ),
+                                            blurRadius: 3,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                ),
+                                child: Text(
+                                  p.label,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: sel
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: sel
+                                        ? Colors.white
+                                        : AppTheme.neutralGray700,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // ── Keyword ────────────────────────────────────
+                      _sectionLabel('الكلمة المفتاحية', Icons.search_rounded),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppTheme.neutralGray200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 14),
+                            const Icon(
+                              Icons.search_rounded,
+                              size: 18,
+                              color: AppTheme.neutralGray400,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: _keywordCtrl,
+                                textDirection: TextDirection.rtl,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppTheme.neutralGray900,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'مثال: كامري 2022، آيفون 15، شقة...',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.neutralGray400,
+                                  ),
+                                  hintTextDirection: TextDirection.rtl,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                  ),
+                                  suffixIcon: ValueListenableBuilder(
+                                    valueListenable: _keywordCtrl,
+                                    builder: (_, v, __) => v.text.isEmpty
+                                        ? const SizedBox.shrink()
+                                        : GestureDetector(
+                                            onTap: () => setState(
+                                              () => _keywordCtrl.clear(),
+                                            ),
+                                            child: const Icon(
+                                              Icons.clear_rounded,
+                                              size: 16,
+                                              color: AppTheme.neutralGray400,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Apply button ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          AppTheme.primaryBlueLight,
+                          AppTheme.primaryBlue,
+                        ],
+                        begin: Alignment.centerRight,
+                        end: Alignment.centerLeft,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withValues(alpha: .38),
+                          blurRadius: 18,
+                          offset: const Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _apply,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.check_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'عرض النتائج',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (active > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: .25),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$active',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _priceInput({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required bool isFocused,
+    required String label,
+    required String hint,
+    required bool isRight,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+              color: isFocused ? AppTheme.primaryBlue : AppTheme.neutralGray500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: false,
+                  ),
+                  textAlign: TextAlign.start,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: isFocused
+                        ? AppTheme.primaryBlue
+                        : AppTheme.neutralGray900,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w300,
+                      color: AppTheme.neutralGray300,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isFocused
+                      ? AppTheme.primaryBlue
+                      : AppTheme.neutralGray400,
+                ),
+                child: const Text('ر.س'),
+              ),
+            ],
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            margin: const EdgeInsets.only(top: 6),
+            height: 2,
+            decoration: BoxDecoration(
+              color: isFocused ? AppTheme.primaryBlue : AppTheme.neutralGray100,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text, IconData icon) => Row(
+    children: [
+      Container(
+        width: 3,
+        height: 16,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryBlue,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Icon(icon, size: 15, color: AppTheme.primaryBlue),
+      const SizedBox(width: 6),
+      Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.neutralGray800,
+        ),
+      ),
+    ],
+  );
 }
 
 // ── Notification bell icon for AppBar ─────────────────────────────────────────
@@ -1441,7 +2415,10 @@ class _NotifBell extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            color: Colors.white,
+          ),
           onPressed: () => context.push('/notifications'),
           tooltip: 'الإشعارات',
         ),

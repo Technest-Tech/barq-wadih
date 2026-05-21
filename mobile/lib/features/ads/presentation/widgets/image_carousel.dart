@@ -2,10 +2,12 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../domain/ad_model.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/image_cache_manager.dart';
 
 class ImageCarousel extends StatefulWidget {
   final List<AdImageModel> images;
@@ -44,15 +46,40 @@ class _ImageCarouselState extends State<ImageCarousel> {
         PageView.builder(
           controller: _controller,
           itemCount: widget.images.length,
-          onPageChanged: (i) => setState(() => _current = i),
+          onPageChanged: (i) {
+            setState(() => _current = i);
+            // Prefetch the next image so it's ready before the user swipes to it.
+            final next = i + 1;
+            if (next < widget.images.length) {
+              precacheImage(
+                CachedNetworkImageProvider(
+                  AppConstants.normalizeImageUrl(widget.images[next].imageUrl),
+                  cacheManager: AppImageCacheManager.instance,
+                ),
+                context,
+              );
+            }
+          },
           itemBuilder: (context, i) {
             return CachedNetworkImage(
-              imageUrl: AppConstants.normalizeImageUrl(widget.images[i].imageUrl),
+              imageUrl: AppConstants.normalizeImageUrl(
+                widget.images[i].imageUrl,
+              ),
+              cacheManager: AppImageCacheManager.instance,
               fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: AppTheme.neutralGray100),
+              memCacheWidth: 900,
+              placeholder: (_, __) => Shimmer.fromColors(
+                baseColor: AppTheme.neutralGray200,
+                highlightColor: const Color(0xFFF5F5F5),
+                child: Container(color: Colors.white),
+              ),
               errorWidget: (_, __, ___) => Container(
                 color: AppTheme.neutralGray100,
-                child: const Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey),
+                child: const Icon(
+                  Icons.broken_image_outlined,
+                  size: 48,
+                  color: Colors.grey,
+                ),
               ),
             );
           },
@@ -61,7 +88,9 @@ class _ImageCarouselState extends State<ImageCarousel> {
         if (widget.images.length > 1) ...[
           // ── Bottom Gradient ─────────────────────────────────────────────
           Positioned(
-            left: 0, right: 0, bottom: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             height: 140,
             child: const DecoratedBox(
               decoration: BoxDecoration(
@@ -76,7 +105,9 @@ class _ImageCarouselState extends State<ImageCarousel> {
 
           // ── Overlays (Thumbnails + Dots) ────────────────────────────────
           Positioned(
-            left: 0, right: 0, bottom: 16,
+            left: 0,
+            right: 0,
+            bottom: 16,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -103,7 +134,9 @@ class _ImageCarouselState extends State<ImageCarousel> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: isActive ? Colors.white : Colors.transparent,
+                              color: isActive
+                                  ? Colors.white
+                                  : Colors.transparent,
                               width: 2,
                             ),
                             boxShadow: [
@@ -111,14 +144,24 @@ class _ImageCarouselState extends State<ImageCarousel> {
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: .3),
                                   blurRadius: 4,
-                                )
+                                ),
                             ],
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: CachedNetworkImage(
-                              imageUrl: AppConstants.normalizeImageUrl(widget.images[i].thumbnailUrl),
+                              imageUrl: AppConstants.normalizeImageUrl(
+                                widget.images[i].thumbnailUrl,
+                              ),
+                              cacheManager: AppImageCacheManager.instance,
                               fit: BoxFit.cover,
+                              memCacheWidth: 160,
+                              memCacheHeight: 160,
+                              placeholder: (_, __) => Shimmer.fromColors(
+                                baseColor: AppTheme.neutralGray200,
+                                highlightColor: const Color(0xFFF5F5F5),
+                                child: Container(color: Colors.white),
+                              ),
                             ),
                           ),
                         ),
@@ -127,7 +170,7 @@ class _ImageCarouselState extends State<ImageCarousel> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Dots
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

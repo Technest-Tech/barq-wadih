@@ -21,13 +21,16 @@ import '../widgets/contact_sheet.dart';
 
 final relatedAdsProvider =
     FutureProvider.family<List<AdListModel>, ({int categoryId, int excludeId})>(
-  (ref, params) async {
-    final result = await ref.read(adRepositoryProvider).getAds(
-      AdsFilter(categoryId: params.categoryId, page: 1),
+      (ref, params) async {
+        final result = await ref
+            .read(adRepositoryProvider)
+            .getAds(AdsFilter(categoryId: params.categoryId, page: 1));
+        return result.ads
+            .where((a) => a.id != params.excludeId)
+            .take(4)
+            .toList();
+      },
     );
-    return result.ads.where((a) => a.id != params.excludeId).take(4).toList();
-  },
-);
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
@@ -195,8 +198,11 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
           foregroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_forward,
-                color: Colors.white, textDirection: TextDirection.ltr),
+            icon: const Icon(
+              Icons.arrow_forward,
+              color: Colors.white,
+              textDirection: TextDirection.ltr,
+            ),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -225,8 +231,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 images: ad.images,
                 controller: _pageController,
                 currentIndex: _currentImageIndex,
-                onPageChanged: (i) =>
-                    setState(() => _currentImageIndex = i),
+                onPageChanged: (i) => setState(() => _currentImageIndex = i),
               ),
 
               // Title + Price + Meta
@@ -253,7 +258,9 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: ad.isFree
                                 ? const Color(0xFF159787)
@@ -273,20 +280,23 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.orange.withValues(alpha: .12),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color:
-                                      Colors.orange.withValues(alpha: .4)),
+                                color: Colors.orange.withValues(alpha: .4),
+                              ),
                             ),
                             child: const Text(
                               'قابل للتفاوض',
                               style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.w600),
+                                fontSize: 12,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -303,42 +313,54 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.location_on,
-                                  size: 14, color: Color(0xFF0075C4)),
+                              const Icon(
+                                Icons.location_on,
+                                size: 14,
+                                color: Color(0xFF0075C4),
+                              ),
                               const SizedBox(width: 3),
-                              Text(ad.city!.nameAr,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.neutralGray600)),
+                              Text(
+                                ad.city!.nameAr,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.neutralGray600,
+                                ),
+                              ),
                             ],
                           ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.access_time,
-                                size: 14,
-                                color: AppTheme.neutralGray500),
+                            const Icon(
+                              Icons.access_time,
+                              size: 14,
+                              color: AppTheme.neutralGray500,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               _timeAgo(ad.publishedAt ?? ad.createdAt),
                               style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.neutralGray600),
+                                fontSize: 13,
+                                color: AppTheme.neutralGray600,
+                              ),
                             ),
                           ],
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.visibility_outlined,
-                                size: 14,
-                                color: AppTheme.neutralGray500),
+                            const Icon(
+                              Icons.visibility_outlined,
+                              size: 14,
+                              color: AppTheme.neutralGray500,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               '${ad.viewsCount} مشاهدة',
                               style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.neutralGray600),
+                                fontSize: 13,
+                                color: AppTheme.neutralGray600,
+                              ),
                             ),
                           ],
                         ),
@@ -353,7 +375,9 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 color: Colors.white,
                 margin: const EdgeInsets.only(top: 2),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: InkWell(
                   onTap: ad.user == null
                       ? null
@@ -367,15 +391,23 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                       CircleAvatar(
                         radius: 22,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: ad.user?.avatar != null &&
+                        backgroundImage:
+                            ad.user?.avatar != null &&
                                 ad.user!.avatar!.isNotEmpty
-                            ? NetworkImage(AppConstants.normalizeImageUrl(
-                                ad.user!.avatar!))
+                            ? NetworkImage(
+                                AppConstants.normalizeImageUrl(
+                                  ad.user!.avatar!,
+                                ),
+                              )
                             : null,
-                        child: ad.user?.avatar == null ||
+                        child:
+                            ad.user?.avatar == null ||
                                 (ad.user?.avatar?.isEmpty ?? true)
-                            ? const Icon(Icons.person,
-                                size: 22, color: Colors.grey)
+                            ? const Icon(
+                                Icons.person,
+                                size: 22,
+                                color: Colors.grey,
+                              )
                             : null,
                       ),
                       const SizedBox(width: 10),
@@ -399,33 +431,41 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                                 ),
                                 if (ad.user?.isVerified ?? false) ...[
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.verified_rounded,
-                                      size: 16,
-                                      color: Color(0xFF0075C4)),
+                                  const Icon(
+                                    Icons.verified_rounded,
+                                    size: 16,
+                                    color: Color(0xFF0075C4),
+                                  ),
                                 ],
                                 if (ad.user?.isDealer ?? false) ...[
                                   const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 1),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF159787)
-                                          .withValues(alpha: .12),
-                                      borderRadius:
-                                          BorderRadius.circular(8),
+                                      horizontal: 6,
+                                      vertical: 1,
                                     ),
-                                    child: const Text('معرض',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            color: Color(0xFF159787),
-                                            fontWeight:
-                                                FontWeight.w700)),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF159787,
+                                      ).withValues(alpha: .12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'معرض',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Color(0xFF159787),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ],
                                 const SizedBox(width: 4),
-                                const Icon(Icons.chevron_left,
-                                    size: 18,
-                                    color: AppTheme.neutralGray500),
+                                const Icon(
+                                  Icons.chevron_left,
+                                  size: 18,
+                                  color: AppTheme.neutralGray500,
+                                ),
                               ],
                             ),
                             const SizedBox(height: 3),
@@ -435,22 +475,26 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                                   child: Text(
                                     '${ad.user?.totalAdsCount ?? 0} إعلان · عضو منذ ${_formatMemberSince(ad.user?.memberSince)}',
                                     style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppTheme.neutralGray500),
+                                      fontSize: 11,
+                                      color: AppTheme.neutralGray500,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if ((ad.user?.avgRating ?? 0) > 0) ...[
                                   const SizedBox(width: 8),
-                                  const Icon(Icons.star,
-                                      size: 12,
-                                      color: Color(0xFFFFC107)),
+                                  const Icon(
+                                    Icons.star,
+                                    size: 12,
+                                    color: Color(0xFFFFC107),
+                                  ),
                                   const SizedBox(width: 2),
                                   Text(
                                     '${ad.user!.avgRating!.toStringAsFixed(1)} (${ad.user!.ratingCount ?? 0})',
                                     style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppTheme.neutralGray600),
+                                      fontSize: 11,
+                                      color: AppTheme.neutralGray600,
+                                    ),
                                   ),
                                 ],
                               ],
@@ -461,16 +505,21 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0075C4),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text('الملف',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'الملف',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -518,9 +567,10 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                     const Text(
                       'الوصف',
                       style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.neutralGray800),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.neutralGray800,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -539,11 +589,47 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 ),
               ),
 
+              // Disclaimer
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                color: const Color(0xFFFFF8E1),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Color(0xFFF57F17),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'أخبرني أنك عن طريق تطبيق برق واضح إبراءً للذمة',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFFF57F17),
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // Contact Button
               Container(
                 color: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 16),
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 margin: const EdgeInsets.only(top: 2),
                 child: InkWell(
                   onTap: _openContactSheet,
@@ -558,14 +644,20 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('تواصل مع البائع',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          'تواصل مع البائع',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         SizedBox(width: 8),
-                        Icon(Icons.contact_phone,
-                            color: Colors.white, size: 22),
+                        Icon(
+                          Icons.contact_phone,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ],
                     ),
                   ),
@@ -595,9 +687,10 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: .05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2))
+                color: Colors.black.withValues(alpha: .05),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
             ],
           ),
           child: SafeArea(
@@ -637,8 +730,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 ),
                 _BottomAction(
                   icon: Icons.arrow_forward_ios,
-                  onPress: () =>
-                      context.pushReplacement('/ads/${ad.id + 1}'),
+                  onPress: () => context.pushReplacement('/ads/${ad.id + 1}'),
                 ),
               ],
             ),
@@ -671,7 +763,8 @@ class _ImageCarousel extends StatelessWidget {
         height: 280,
         color: Colors.grey[200],
         child: const Center(
-            child: Icon(Icons.image, size: 64, color: Colors.grey)),
+          child: Icon(Icons.image, size: 64, color: Colors.grey),
+        ),
       );
     }
 
@@ -685,17 +778,15 @@ class _ImageCarousel extends StatelessWidget {
             onPageChanged: onPageChanged,
             itemCount: images.length,
             itemBuilder: (context, i) => CachedNetworkImage(
-              imageUrl:
-                  AppConstants.normalizeImageUrl(images[i].imageUrl),
+              imageUrl: AppConstants.normalizeImageUrl(images[i].imageUrl),
               fit: BoxFit.cover,
               width: double.infinity,
-              placeholder: (_, __) =>
-                  Container(color: Colors.grey[200]),
+              placeholder: (_, __) => Container(color: Colors.grey[200]),
               errorWidget: (_, __, ___) => Container(
                 color: Colors.grey[200],
                 child: const Center(
-                    child: Icon(Icons.broken_image,
-                        size: 48, color: Colors.grey)),
+                  child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -705,8 +796,7 @@ class _ImageCarousel extends StatelessWidget {
             top: 12,
             left: 12,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(12),
@@ -714,9 +804,10 @@ class _ImageCarousel extends StatelessWidget {
               child: Text(
                 '${currentIndex + 1} / ${images.length}',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -729,26 +820,24 @@ class _ImageCarousel extends StatelessWidget {
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  images.length > 8 ? 8 : images.length,
-                  (i) {
-                    final displayIndex =
-                        images.length > 8 ? currentIndex.clamp(0, 7) : currentIndex;
-                    final isActive = i == displayIndex;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin:
-                          const EdgeInsets.symmetric(horizontal: 3),
-                      width: isActive ? 16 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color:
-                            isActive ? Colors.white : Colors.white54,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    );
-                  },
-                ),
+                children: List.generate(images.length > 8 ? 8 : images.length, (
+                  i,
+                ) {
+                  final displayIndex = images.length > 8
+                      ? currentIndex.clamp(0, 7)
+                      : currentIndex;
+                  final isActive = i == displayIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: isActive ? 16 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.white : Colors.white54,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
               ),
             ),
         ],
@@ -766,13 +855,13 @@ class _FieldValueChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F4FF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-            color: const Color(0xFF0075C4).withValues(alpha: .2)),
+          color: const Color(0xFF0075C4).withValues(alpha: .2),
+        ),
       ),
       child: RichText(
         textDirection: TextDirection.rtl,
@@ -807,8 +896,7 @@ class _RatingsSection extends ConsumerWidget {
   final AdDetailModel ad;
   final VoidCallback onWriteReview;
 
-  const _RatingsSection(
-      {required this.ad, required this.onWriteReview});
+  const _RatingsSection({required this.ad, required this.onWriteReview});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -829,17 +917,21 @@ class _RatingsSection extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded,
-                        color: Color(0xFFFFC107), size: 20),
+                    const Icon(
+                      Icons.star_rounded,
+                      color: Color(0xFFFFC107),
+                      size: 20,
+                    ),
                     const SizedBox(width: 6),
                     const Flexible(
                       child: Text(
                         'التقييمات والآراء',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.neutralGray800),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.neutralGray800,
+                        ),
                       ),
                     ),
                     if ((ad.user?.ratingCount ?? 0) > 0) ...[
@@ -847,8 +939,9 @@ class _RatingsSection extends ConsumerWidget {
                       Text(
                         '(${ad.user!.ratingCount})',
                         style: const TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.neutralGray500),
+                          fontSize: 13,
+                          color: AppTheme.neutralGray500,
+                        ),
                       ),
                     ],
                   ],
@@ -860,7 +953,9 @@ class _RatingsSection extends ConsumerWidget {
                   onTap: onWriteReview,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF0075C4),
                       borderRadius: BorderRadius.circular(16),
@@ -870,11 +965,14 @@ class _RatingsSection extends ConsumerWidget {
                       children: [
                         Icon(Icons.edit, size: 14, color: Colors.white),
                         SizedBox(width: 4),
-                        Text('اكتب تقييم',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          'اكتب تقييم',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -900,21 +998,22 @@ class _RatingsSection extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(
-                    color: Color(0xFF0075C4), strokeWidth: 2),
+                  color: Color(0xFF0075C4),
+                  strokeWidth: 2,
+                ),
               ),
             ),
             error: (e, _) => Center(
               child: Column(
                 children: [
-                  const Icon(Icons.error_outline,
-                      color: Colors.red, size: 32),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 32),
                   const SizedBox(height: 8),
-                  Text('تعذر تحميل التقييمات',
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 13)),
+                  Text(
+                    'تعذر تحميل التقييمات',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
                   TextButton(
-                    onPressed: () =>
-                        ref.invalidate(adRatingsProvider(ad.id)),
+                    onPressed: () => ref.invalidate(adRatingsProvider(ad.id)),
                     child: const Text('إعادة المحاولة'),
                   ),
                 ],
@@ -924,20 +1023,23 @@ class _RatingsSection extends ConsumerWidget {
               if (ratings.isEmpty) {
                 return Center(
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 24),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Column(
                       children: [
-                        Icon(Icons.star_outline,
-                            size: 48, color: Colors.grey[300]),
+                        Icon(
+                          Icons.star_outline,
+                          size: 48,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           'لا توجد تقييمات بعد\nكن أول من يقيّم هذا الإعلان',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                              height: 1.5),
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                            height: 1.5,
+                          ),
                         ),
                       ],
                     ),
@@ -945,8 +1047,10 @@ class _RatingsSection extends ConsumerWidget {
                 );
               }
               return Column(
-                children:
-                    ratings.take(3).map((r) => _RatingCard(rating: r)).toList(),
+                children: ratings
+                    .take(3)
+                    .map((r) => _RatingCard(rating: r))
+                    .toList(),
               );
             },
           ),
@@ -961,8 +1065,7 @@ class _RatingsSection extends ConsumerWidget {
 class _RatingSummaryRow extends StatelessWidget {
   final double avgRating;
   final int ratingCount;
-  const _RatingSummaryRow(
-      {required this.avgRating, required this.ratingCount});
+  const _RatingSummaryRow({required this.avgRating, required this.ratingCount});
 
   @override
   Widget build(BuildContext context) {
@@ -971,10 +1074,11 @@ class _RatingSummaryRow extends StatelessWidget {
         Text(
           avgRating.toStringAsFixed(1),
           style: const TextStyle(
-              fontSize: 40,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF0A1628),
-              height: 1),
+            fontSize: 40,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF0A1628),
+            height: 1,
+          ),
         ),
         const SizedBox(width: 14),
         Column(
@@ -996,7 +1100,9 @@ class _RatingSummaryRow extends StatelessWidget {
             Text(
               '$ratingCount تقييم',
               style: const TextStyle(
-                  fontSize: 12, color: AppTheme.neutralGray500),
+                fontSize: 12,
+                color: AppTheme.neutralGray500,
+              ),
             ),
           ],
         ),
@@ -1040,8 +1146,9 @@ class _RatingCard extends StatelessWidget {
                 radius: 16,
                 backgroundColor: const Color(0xFF0075C4),
                 backgroundImage: rating.rater.avatar != null
-                    ? NetworkImage(AppConstants.normalizeImageUrl(
-                        rating.rater.avatar!))
+                    ? NetworkImage(
+                        AppConstants.normalizeImageUrl(rating.rater.avatar!),
+                      )
                     : null,
                 child: rating.rater.avatar == null
                     ? Text(
@@ -1049,9 +1156,10 @@ class _RatingCard extends StatelessWidget {
                             ? rating.rater.name[0]
                             : '؟',
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
                       )
                     : null,
               ),
@@ -1063,14 +1171,18 @@ class _RatingCard extends StatelessWidget {
                     Text(
                       rating.rater.name,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: AppTheme.neutralGray800),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppTheme.neutralGray800,
+                      ),
                     ),
-                    Text(_timeAgo(rating.createdAt),
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.neutralGray500)),
+                    Text(
+                      _timeAgo(rating.createdAt),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.neutralGray500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1094,17 +1206,17 @@ class _RatingCard extends StatelessWidget {
           ),
 
           // Comment
-          if (rating.comment != null &&
-              rating.comment!.isNotEmpty) ...[
+          if (rating.comment != null && rating.comment!.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
               rating.comment!,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.right,
               style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF475569),
-                  height: 1.5),
+                fontSize: 13,
+                color: Color(0xFF475569),
+                height: 1.5,
+              ),
             ),
           ],
         ],
@@ -1147,21 +1259,28 @@ class _RelatedAdsSection extends ConsumerWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 6),
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0075C4),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text('إعلانات مماثلة',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'إعلانات مماثلة',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               Text(
                 '#$categoryName',
                 style: const TextStyle(
-                    color: AppTheme.neutralGray500, fontSize: 14),
+                  color: AppTheme.neutralGray500,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -1171,7 +1290,9 @@ class _RelatedAdsSection extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(
-                    color: Color(0xFF0075C4), strokeWidth: 2),
+                  color: Color(0xFF0075C4),
+                  strokeWidth: 2,
+                ),
               ),
             ),
             error: (_, __) => const SizedBox.shrink(),
@@ -1180,8 +1301,7 @@ class _RelatedAdsSection extends ConsumerWidget {
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
@@ -1213,9 +1333,10 @@ class _RelatedAdCard extends StatelessWidget {
           border: Border.all(color: Colors.grey[200]!),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: .04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
+              color: Colors.black.withValues(alpha: .04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Column(
@@ -1223,25 +1344,26 @@ class _RelatedAdCard extends StatelessWidget {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
                 child: ad.primaryImage != null
                     ? CachedNetworkImage(
                         imageUrl: AppConstants.normalizeImageUrl(
-                            ad.primaryImage!.thumbnailUrl),
+                          ad.primaryImage!.thumbnailUrl,
+                        ),
                         fit: BoxFit.cover,
                         placeholder: (_, __) =>
                             Container(color: Colors.grey[200]),
                         errorWidget: (_, __, ___) => Container(
                           color: Colors.grey[200],
-                          child: const Icon(Icons.image,
-                              color: Colors.grey),
+                          child: const Icon(Icons.image, color: Colors.grey),
                         ),
                       )
                     : Container(
                         color: Colors.grey[200],
-                        child: const Icon(Icons.image,
-                            color: Colors.grey)),
+                        child: const Icon(Icons.image, color: Colors.grey),
+                      ),
               ),
             ),
             Padding(
@@ -1252,9 +1374,10 @@ class _RelatedAdCard extends StatelessWidget {
                   Text(
                     ad.title,
                     style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.neutralGray800),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.neutralGray800,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textDirection: TextDirection.rtl,
@@ -1264,9 +1387,10 @@ class _RelatedAdCard extends StatelessWidget {
                   Text(
                     ad.priceDisplay,
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0075C4)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0075C4),
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ],
@@ -1311,11 +1435,14 @@ class _BottomAction extends StatelessWidget {
             Icon(icon, color: color, size: size),
             if (label != null) ...[
               const SizedBox(height: 2),
-              Text(label!,
-                  style: TextStyle(
-                      color: color,
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                label!,
+                style: TextStyle(
+                  color: color,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ],
         ),
@@ -1333,28 +1460,27 @@ class _DetailSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-          backgroundColor: const Color(0xFF0075C4), elevation: 0),
+      appBar: AppBar(backgroundColor: const Color(0xFF0075C4), elevation: 0),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Container(
-                height: 300,
-                width: double.infinity,
-                color: Colors.grey[200]),
+              height: 300,
+              width: double.infinity,
+              color: Colors.grey[200],
+            ),
             const SizedBox(height: 16),
             Container(
-                height: 24,
-                width: double.infinity,
-                color: Colors.grey[200]),
+              height: 24,
+              width: double.infinity,
+              color: Colors.grey[200],
+            ),
             const SizedBox(height: 12),
-            Container(
-                height: 16, width: 120, color: Colors.grey[200]),
+            Container(height: 16, width: 120, color: Colors.grey[200]),
             const SizedBox(height: 20),
-            Container(
-                height: 14, width: 200, color: Colors.grey[200]),
+            Container(height: 14, width: 200, color: Colors.grey[200]),
           ],
         ),
       ),
@@ -1374,8 +1500,9 @@ class _ErrorScaffold extends StatelessWidget {
       appBar: AppBar(backgroundColor: const Color(0xFF0075C4)),
       body: Center(
         child: ElevatedButton(
-            onPressed: onRetry,
-            child: const Text('إعادة المحاولة')),
+          onPressed: onRetry,
+          child: const Text('إعادة المحاولة'),
+        ),
       ),
     );
   }
@@ -1392,8 +1519,7 @@ class _MoreOptionsDialog extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -1410,9 +1536,10 @@ class _MoreOptionsDialog extends StatelessWidget {
                       'خيارات إضافية',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.neutralGray800),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.neutralGray800,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -1429,8 +1556,7 @@ class _MoreOptionsDialog extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('تمت متابعة البائع بنجاح')),
+                    const SnackBar(content: Text('تمت متابعة البائع بنجاح')),
                   );
                 },
               ),
@@ -1475,14 +1601,20 @@ class _MoreOptionsDialog extends StatelessWidget {
             Icon(icon, color: color, size: 24),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: color)),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
             ),
-            Icon(Icons.arrow_forward_ios,
-                size: 14, color: color.withValues(alpha: 0.5)),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: color.withValues(alpha: 0.5),
+            ),
           ],
         ),
       ),

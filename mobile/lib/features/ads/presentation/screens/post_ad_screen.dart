@@ -23,6 +23,8 @@ import '../../../regions/data/region_api.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
 
+enum _PriceOption { fixed, negotiable, callForPrice }
+
 class PostAdScreen extends ConsumerStatefulWidget {
   final int? adId;
   const PostAdScreen({super.key, this.adId});
@@ -46,12 +48,12 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   // Step 2 — Details
   String _sellerType = 'individual'; // 'individual' | 'dealer'
-  final _titleCtrl    = TextEditingController();
-  final _descCtrl     = TextEditingController();
-  final _priceCtrl    = TextEditingController();
-  final _phoneCtrl    = TextEditingController();
+  final _titleCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
-  bool _isNegotiable     = false;
+  _PriceOption _priceOption = _PriceOption.fixed;
   bool _showPhonePublicly = true;
 
   // Dynamic category field controllers
@@ -62,9 +64,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   final List<XFile> _images = [];
 
   // Step 4 — Location + District
-  RegionModel?    _selectedRegion;
-  CityModel?      _selectedCity;
-  DistrictModel?  _selectedDistrict;
+  RegionModel? _selectedRegion;
+  CityModel? _selectedCity;
+  DistrictModel? _selectedDistrict;
   final _districtFreeTextCtrl = TextEditingController();
   List<DistrictModel>? _districtsForCity;
   int? _districtsLoadedForCityId;
@@ -78,7 +80,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       _titleCtrl.text.trim().isNotEmpty &&
       _descCtrl.text.trim().isNotEmpty &&
       (!_showPhonePublicly || _phoneCtrl.text.trim().isNotEmpty) &&
-      _priceCtrl.text.trim().isNotEmpty;
+      (_priceOption != _PriceOption.fixed || _priceCtrl.text.trim().isNotEmpty);
 
   @override
   void initState() {
@@ -102,7 +104,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     _phoneCtrl.dispose();
     _whatsappCtrl.dispose();
     _districtFreeTextCtrl.dispose();
-    for (final c in _dynControllers.values) { c.dispose(); }
+    for (final c in _dynControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -116,26 +120,30 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       setState(() {
         if (ad.category != null) {
           final cat = CategoryModel(
-            id:          ad.category!.id,
-            nameAr:      ad.category!.nameAr,
-            nameEn:      '',
-            slug:        '',
-            icon:        ad.category!.icon,
-            sortOrder:   0,
-            isActive:    true,
-            isFree:      false,
-            adsCount:    0,
+            id: ad.category!.id,
+            nameAr: ad.category!.nameAr,
+            nameEn: '',
+            slug: '',
+            icon: ad.category!.icon,
+            sortOrder: 0,
+            isActive: true,
+            isFree: false,
+            adsCount: 0,
             fieldsCount: 0,
           );
           _selectedCategory = cat;
         }
-        _titleCtrl.text    = ad.title;
-        _descCtrl.text     = ad.description;
-        _priceCtrl.text    = ad.price?.toStringAsFixed(0) ?? '';
-        _phoneCtrl.text    = ad.contactPhone;
+        _titleCtrl.text = ad.title;
+        _descCtrl.text = ad.description;
+        _priceCtrl.text = ad.price?.toStringAsFixed(0) ?? '';
+        _phoneCtrl.text = ad.contactPhone;
         _whatsappCtrl.text = ad.contactWhatsapp ?? '';
-        _isNegotiable       = ad.isNegotiable;
-        _showPhonePublicly  = ad.showPhonePublicly;
+        _priceOption = ad.priceHidden
+            ? _PriceOption.callForPrice
+            : ad.isNegotiable
+            ? _PriceOption.negotiable
+            : _PriceOption.fixed;
+        _showPhonePublicly = ad.showPhonePublicly;
 
         for (final fv in ad.fieldValues) {
           _fieldValues[fv.fieldKey] = fv.value?.toString() ?? '';
@@ -143,31 +151,30 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
         if (ad.region != null) {
           _selectedRegion = RegionModel(
-            id:          ad.region!.id,
-            nameAr:      ad.region!.nameAr,
-            nameEn:      '',
-            slug:        '',
-            sortOrder:   0,
+            id: ad.region!.id,
+            nameAr: ad.region!.nameAr,
+            nameEn: '',
+            slug: '',
+            sortOrder: 0,
             citiesCount: 0,
           );
         }
         if (ad.city != null) {
           _selectedCity = CityModel(
-            id:       ad.city!.id,
-            nameAr:   ad.city!.nameAr,
-            nameEn:   '',
-            slug:     '',
+            id: ad.city!.id,
+            nameAr: ad.city!.nameAr,
+            nameEn: '',
+            slug: '',
             adsCount: 0,
           );
         }
         if (ad.district != null) {
           _selectedDistrict = DistrictModel(
-            id:     ad.district!.id,
+            id: ad.district!.id,
             nameAr: ad.district!.nameAr,
             nameEn: '',
           );
         }
-
       });
 
       if (_selectedCity != null) {
@@ -198,8 +205,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       _districtFreeTextCtrl.clear();
     });
     try {
-      final districts =
-          await ref.read(regionRepositoryProvider).getDistricts(cityId);
+      final districts = await ref
+          .read(regionRepositoryProvider)
+          .getDistricts(cityId);
       if (mounted) {
         setState(() {
           _districtsForCity = districts;
@@ -276,7 +284,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   Future<void> _pickFromCamera() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-        source: ImageSource.camera, imageQuality: 80);
+      source: ImageSource.camera,
+      imageQuality: 80,
+    );
     if (picked != null && _images.length < 10) {
       setState(() => _images.add(picked));
     }
@@ -317,37 +327,44 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   Future<void> _submit() async {
     if (!_pledgeAccepted || _selectedCity == null) return;
-    setState(() { _submitting = true; _fieldErrors = {}; });
+    setState(() {
+      _submitting = true;
+      _fieldErrors = {};
+    });
     try {
       final imagesData = await Future.wait(
-        _images.map((f) async => MultipartFile.fromFile(
-          f.path,
-          filename: File(f.path).uri.pathSegments.last,
-        )),
+        _images.map(
+          (f) async => MultipartFile.fromFile(
+            f.path,
+            filename: File(f.path).uri.pathSegments.last,
+          ),
+        ),
       );
 
       final regionId = _selectedCity?.region?.id ?? _selectedRegion?.id;
 
       final formFields = <String, dynamic>{
-        'seller_type':          _sellerType,
-        'city_id':              _selectedCity!.id.toString(),
+        'seller_type': _sellerType,
+        'city_id': _selectedCity!.id.toString(),
         if (regionId != null) 'region_id': regionId.toString(),
-        'title':                _titleCtrl.text.trim(),
-        'description':          _descCtrl.text.trim(),
-        'price':                _priceCtrl.text.trim(),
-        'is_free':              '0',
-        'is_negotiable':        _isNegotiable ? '1' : '0',
-        'price_hidden':         '0',
-        'show_phone_publicly':  _showPhonePublicly ? '1' : '0',
-        'contact_phone':        _phoneCtrl.text.trim(),
+        'title': _titleCtrl.text.trim(),
+        'description': _descCtrl.text.trim(),
+        if (_priceOption == _PriceOption.fixed &&
+            _priceCtrl.text.trim().isNotEmpty)
+          'price': _priceCtrl.text.trim(),
+        'is_free': '0',
+        'is_negotiable': (_priceOption == _PriceOption.negotiable) ? '1' : '0',
+        'price_hidden': (_priceOption == _PriceOption.callForPrice) ? '1' : '0',
+        'show_phone_publicly': _showPhonePublicly ? '1' : '0',
+        'contact_phone': _phoneCtrl.text.trim(),
         if (_whatsappCtrl.text.isNotEmpty)
-          'contact_whatsapp':   _whatsappCtrl.text.trim(),
+          'contact_whatsapp': _whatsappCtrl.text.trim(),
         if (_selectedDistrict != null)
-          'district_id':        _selectedDistrict!.id.toString()
+          'district_id': _selectedDistrict!.id.toString()
         else if (_districtFreeTextCtrl.text.trim().isNotEmpty)
           'district_name_free': _districtFreeTextCtrl.text.trim(),
-        'pledge_accepted':      '1',
-        if (_latitude != null)  'latitude':  _latitude.toString(),
+        'pledge_accepted': '1',
+        if (_latitude != null) 'latitude': _latitude.toString(),
         if (_longitude != null) 'longitude': _longitude.toString(),
         ..._fieldValues.map((k, v) => MapEntry('fields[$k]', v)),
       };
@@ -363,7 +380,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
       final AdDetailModel ad;
       if (_isEditMode) {
-        ad = await ref.read(adRepositoryProvider).updateAd(widget.adId!, formData);
+        ad = await ref
+            .read(adRepositoryProvider)
+            .updateAd(widget.adId!, formData);
       } else {
         ad = await ref.read(adRepositoryProvider).createAd(formData);
       }
@@ -374,23 +393,28 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         context.go('/ads/${ad.id}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(
-                _isEditMode ? 'تم حفظ التعديلات!' : 'تم نشر الإعلان بنجاح!',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ]),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  _isEditMode ? 'تم حفظ التعديلات!' : 'تم نشر الإعلان بنجاح!',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
             backgroundColor: AppTheme.primaryBlue,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     } on ApiException catch (e) {
       final errors = (e.errors ?? {}).map(
-          (k, v) => MapEntry(k, (v as List).first as String));
+        (k, v) => MapEntry(k, (v as List).first as String),
+      );
       setState(() => _fieldErrors = errors);
       if (!mounted) return;
       await showDialog<void>(
@@ -407,11 +431,15 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ غير متوقع: ${e.toString()}',
-                textDirection: TextDirection.rtl),
+            content: Text(
+              'حدث خطأ غير متوقع: ${e.toString()}',
+              textDirection: TextDirection.rtl,
+            ),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -433,10 +461,14 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(
-                  color: AppTheme.primaryBlue, strokeWidth: 2.5),
+                color: AppTheme.primaryBlue,
+                strokeWidth: 2.5,
+              ),
               SizedBox(height: 16),
-              Text('جارٍ تحميل الإعلان...',
-                  style: TextStyle(color: AppTheme.neutralGray500)),
+              Text(
+                'جارٍ تحميل الإعلان...',
+                style: TextStyle(color: AppTheme.neutralGray500),
+              ),
             ],
           ),
         ),
@@ -473,68 +505,73 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                 ),
                 // ── Step 2: Details ────────────────────────────────────────
                 _Step2Details(
-                  titleCtrl:         _titleCtrl,
-                  descCtrl:          _descCtrl,
-                  priceCtrl:         _priceCtrl,
-                  phoneCtrl:         _phoneCtrl,
-                  whatsappCtrl:      _whatsappCtrl,
-                  sellerType:        _sellerType,
-                  isNegotiable:      _isNegotiable,
+                  titleCtrl: _titleCtrl,
+                  descCtrl: _descCtrl,
+                  priceCtrl: _priceCtrl,
+                  phoneCtrl: _phoneCtrl,
+                  whatsappCtrl: _whatsappCtrl,
+                  sellerType: _sellerType,
+                  priceOption: _priceOption,
                   showPhonePublicly: _showPhonePublicly,
-                  categoryId:        _selectedCategory?.id,
-                  fieldValues:       _fieldValues,
-                  errors:            _fieldErrors,
-                  onSellerTypeChanged:  (v) => setState(() => _sellerType = v),
-                  onNegotiableChanged:  (v) => setState(() => _isNegotiable = v),
-                  onShowPhoneChanged:   (v) => setState(() => _showPhonePublicly = v),
+                  categoryId: _selectedCategory?.id,
+                  fieldValues: _fieldValues,
+                  errors: _fieldErrors,
+                  onSellerTypeChanged: (v) => setState(() => _sellerType = v),
+                  onPriceOptionChanged: (v) => setState(() => _priceOption = v),
+                  onShowPhoneChanged: (v) =>
+                      setState(() => _showPhonePublicly = v),
                   onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
-                  dynCtrl:   _dynCtrl,
-                  isValid:   _step2Valid,
-                  onBack:    _prev,
-                  onNext:    () { if (_step2Valid) _next(); },
+                  dynCtrl: _dynCtrl,
+                  isValid: _step2Valid,
+                  onBack: _prev,
+                  onNext: () {
+                    if (_step2Valid) _next();
+                  },
                 ),
                 // ── Step 3: Images ─────────────────────────────────────────
                 _Step3Images(
-                  images:        _images,
+                  images: _images,
                   onPickGallery: _pickImages,
-                  onPickCamera:  _pickFromCamera,
-                  onRemove:      (i) => setState(() => _images.removeAt(i)),
-                  onBack:        _prev,
-                  onNext:        _next,
+                  onPickCamera: _pickFromCamera,
+                  onRemove: (i) => setState(() => _images.removeAt(i)),
+                  onBack: _prev,
+                  onNext: _next,
                 ),
                 // ── Step 4: Location + Submit ──────────────────────────────
                 _Step4LocationSubmit(
-                  selectedRegion:   _selectedRegion,
-                  selectedCity:     _selectedCity,
+                  selectedRegion: _selectedRegion,
+                  selectedCity: _selectedCity,
                   selectedDistrict: _selectedDistrict,
                   districtsForCity: _districtsForCity,
                   loadingDistricts: _loadingDistricts,
                   districtFreeTextCtrl: _districtFreeTextCtrl,
-                  latitude:         _latitude,
-                  longitude:        _longitude,
-                  submitting:       _submitting,
-                  isEditMode:       _isEditMode,
-                  priceText:        _priceCtrl.text.trim(),
-                  categoryId:       _selectedCategory?.id,
-                  sellerType:       _sellerType,
+                  latitude: _latitude,
+                  longitude: _longitude,
+                  submitting: _submitting,
+                  isEditMode: _isEditMode,
+                  priceText: _priceCtrl.text.trim(),
+                  categoryId: _selectedCategory?.id,
+                  sellerType: _sellerType,
                   onSelectLocation: (r, c) {
                     setState(() {
-                      _selectedRegion   = r;
-                      _selectedCity     = c;
+                      _selectedRegion = r;
+                      _selectedCity = c;
                       _selectedDistrict = null;
                       _districtFreeTextCtrl.clear();
                     });
                     if (c != null) _loadDistricts(c.id);
                   },
-                  onPickDistrict:   _showDistrictPicker,
-                  onClearDistrict:  () => setState(() => _selectedDistrict = null),
+                  onPickDistrict: _showDistrictPicker,
+                  onClearDistrict: () =>
+                      setState(() => _selectedDistrict = null),
                   onPickMapLocation: () async {
                     final picked = await Navigator.push<LatLng>(
                       context,
                       MaterialPageRoute(
                         fullscreenDialog: true,
                         builder: (_) => MapLocationPicker(
-                          initialLocation: (_latitude != null && _longitude != null)
+                          initialLocation:
+                              (_latitude != null && _longitude != null)
                               ? LatLng(_latitude!, _longitude!)
                               : null,
                         ),
@@ -542,12 +579,12 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                     );
                     if (picked != null) {
                       setState(() {
-                        _latitude  = picked.latitude;
+                        _latitude = picked.latitude;
                         _longitude = picked.longitude;
                       });
                     }
                   },
-                  onBack:   _prev,
+                  onBack: _prev,
                   onSubmit: _handleSubmit,
                 ),
               ],
@@ -559,19 +596,19 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   }
 
   AppBar _appBar() => AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AppTheme.neutralGray900,
-        title: Text(
-          _isEditMode ? 'تعديل الإعلان' : 'نشر إعلان',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () => context.pop(),
-        ),
-      );
+    backgroundColor: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    foregroundColor: AppTheme.neutralGray900,
+    title: Text(
+      _isEditMode ? 'تعديل الإعلان' : 'نشر إعلان',
+      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+    ),
+    leading: IconButton(
+      icon: const Icon(Icons.close_rounded),
+      onPressed: () => context.pop(),
+    ),
+  );
 }
 
 // ── Step Indicator ────────────────────────────────────────────────────────────
@@ -587,7 +624,7 @@ class _StepIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
       child: Row(
         children: List.generate(_labels.length, (i) {
-          final isDone   = i < current;
+          final isDone = i < current;
           final isActive = i == current;
           return Expanded(
             child: Row(
@@ -597,14 +634,15 @@ class _StepIndicator extends StatelessWidget {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
-                        width: 30, height: 30,
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isDone
                               ? AppTheme.primaryBlue
                               : isActive
-                                  ? AppTheme.primaryBlue.withValues(alpha: .12)
-                                  : AppTheme.neutralGray100,
+                              ? AppTheme.primaryBlue.withValues(alpha: .12)
+                              : AppTheme.neutralGray100,
                           border: Border.all(
                             color: isActive || isDone
                                 ? AppTheme.primaryBlue
@@ -614,8 +652,11 @@ class _StepIndicator extends StatelessWidget {
                         ),
                         child: Center(
                           child: isDone
-                              ? const Icon(Icons.check_rounded,
-                                  size: 15, color: Colors.white)
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 15,
+                                  color: Colors.white,
+                                )
                               : Text(
                                   '${i + 1}',
                                   style: TextStyle(
@@ -670,9 +711,18 @@ class _StepIndicator extends StatelessWidget {
 // ── Shared color palette for category lists ───────────────────────────────────
 
 const _kCategoryColors = [
-  Color(0xFF6C63FF), Color(0xFF00B4D8), Color(0xFFFF6B6B), Color(0xFF2EC4B6),
-  Color(0xFFFF9F1C), Color(0xFF8338EC), Color(0xFF06D6A0), Color(0xFFEF476F),
-  Color(0xFF118AB2), Color(0xFFFFD166), Color(0xFF073B4C), Color(0xFFE63946),
+  Color(0xFF6C63FF),
+  Color(0xFF00B4D8),
+  Color(0xFFFF6B6B),
+  Color(0xFF2EC4B6),
+  Color(0xFFFF9F1C),
+  Color(0xFF8338EC),
+  Color(0xFF06D6A0),
+  Color(0xFFEF476F),
+  Color(0xFF118AB2),
+  Color(0xFFFFD166),
+  Color(0xFF073B4C),
+  Color(0xFFE63946),
 ];
 
 // ── Step 0: Pledge (القسم) ────────────────────────────────────────────────────
@@ -716,7 +766,8 @@ class _Step0Pledge extends StatelessWidget {
               color: AppTheme.primaryBlue.withValues(alpha: .05),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: AppTheme.primaryBlue.withValues(alpha: .2)),
+                color: AppTheme.primaryBlue.withValues(alpha: .2),
+              ),
             ),
             child: const Column(
               children: [
@@ -725,16 +776,19 @@ class _Step0Pledge extends StatelessWidget {
                 Text(
                   'تعهّد المعلن',
                   style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.neutralGray900),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.neutralGray900,
+                  ),
                   textDirection: TextDirection.rtl,
                 ),
                 SizedBox(height: 4),
                 Text(
                   'اقرأ الميثاق ثم وافق للمتابعة',
                   style: TextStyle(
-                      fontSize: 13, color: AppTheme.neutralGray500),
+                    fontSize: 13,
+                    color: AppTheme.neutralGray500,
+                  ),
                   textDirection: TextDirection.rtl,
                 ),
               ],
@@ -778,9 +832,10 @@ class _Step0Pledge extends StatelessWidget {
               _pledgeBody,
               textDirection: TextDirection.rtl,
               style: TextStyle(
-                  fontSize: 13,
-                  height: 1.9,
-                  color: AppTheme.neutralGray800),
+                fontSize: 13,
+                height: 1.9,
+                color: AppTheme.neutralGray800,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -840,8 +895,11 @@ class _Step0Pledge extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: pledgeAccepted
-                        ? const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 14)
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          )
                         : null,
                   ),
                 ],
@@ -894,7 +952,9 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
     return catsAsync.when(
       loading: () => const Center(
         child: CircularProgressIndicator(
-            color: AppTheme.primaryBlue, strokeWidth: 2.5),
+          color: AppTheme.primaryBlue,
+          strokeWidth: 2.5,
+        ),
       ),
       error: (_, __) => Center(
         child: Column(
@@ -902,8 +962,7 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 12),
-            const Text('فشل تحميل الأقسام',
-                textDirection: TextDirection.rtl),
+            const Text('فشل تحميل الأقسام', textDirection: TextDirection.rtl),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => ref.refresh(categoriesProvider),
@@ -931,50 +990,60 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
               color: AppTheme.primaryBlue.withValues(alpha: .08),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.grid_view_rounded,
-                size: 36, color: AppTheme.primaryBlue),
+            child: const Icon(
+              Icons.grid_view_rounded,
+              size: 36,
+              color: AppTheme.primaryBlue,
+            ),
           ),
           const SizedBox(height: 20),
-          const Text('تصنيف الإعلان',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.neutralGray900)),
+          const Text(
+            'تصنيف الإعلان',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.neutralGray900,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('لا يمكن تغيير التصنيف عند تعديل الإعلان',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: AppTheme.neutralGray500, fontSize: 13)),
+          const Text(
+            'لا يمكن تغيير التصنيف عند تعديل الإعلان',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.neutralGray500, fontSize: 13),
+          ),
           const SizedBox(height: 32),
           if (widget.selected != null) ...[
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppTheme.primaryBlue, width: 1.5),
+                border: Border.all(color: AppTheme.primaryBlue, width: 1.5),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(width: 10),
-                  Text(widget.selected!.nameAr,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.primaryBlue,
-                          fontSize: 15)),
+                  Text(
+                    widget.selected!.nameAr,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryBlue,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.check_circle_rounded,
-                      color: AppTheme.primaryBlue, size: 18),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppTheme.primaryBlue,
+                    size: 18,
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.amber.shade50,
                 borderRadius: BorderRadius.circular(10),
@@ -983,13 +1052,19 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.lock_outline_rounded,
-                      size: 15, color: Colors.amber.shade700),
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 15,
+                    color: Colors.amber.shade700,
+                  ),
                   const SizedBox(width: 6),
-                  Text('التصنيف مقفل أثناء التعديل',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.amber.shade700)),
+                  Text(
+                    'التصنيف مقفل أثناء التعديل',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber.shade700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1017,9 +1092,10 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
           child: Text(
             'اختر القسم',
             style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.neutralGray600),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.neutralGray600,
+            ),
             textDirection: TextDirection.rtl,
           ),
         ),
@@ -1029,14 +1105,14 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
             padding: const EdgeInsets.only(bottom: 16),
             itemCount: cats.length,
             separatorBuilder: (_, __) => const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: AppTheme.neutralGray100),
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: AppTheme.neutralGray100,
+            ),
             itemBuilder: (_, i) {
               final cat = cats[i];
-              final color =
-                  _kCategoryColors[i % _kCategoryColors.length];
+              final color = _kCategoryColors[i % _kCategoryColors.length];
               final isSelected = widget.selected?.id == cat.id;
               return InkWell(
                 onTap: () {
@@ -1048,7 +1124,9 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   color: isSelected
                       ? AppTheme.primaryBlue.withValues(alpha: .05)
                       : null,
@@ -1059,7 +1137,9 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                            color: color, shape: BoxShape.circle),
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -1080,7 +1160,9 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
                       if (cat.children.isNotEmpty) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
@@ -1088,15 +1170,18 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
                           child: Text(
                             '${cat.children.length}',
                             style: TextStyle(
-                                color: color,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700),
+                              color: color,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.arrow_back_ios,
-                            size: 12,
-                            color: AppTheme.neutralGray400),
+                        const Icon(
+                          Icons.arrow_back_ios,
+                          size: 12,
+                          color: AppTheme.neutralGray400,
+                        ),
                       ] else
                         Icon(
                           isSelected
@@ -1126,12 +1211,11 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
         InkWell(
           onTap: () => setState(() => _browsing = null),
           child: Container(
-            padding:
-                const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             decoration: const BoxDecoration(
               border: Border(
-                  bottom:
-                      BorderSide(color: AppTheme.neutralGray100)),
+                bottom: BorderSide(color: AppTheme.neutralGray100),
+              ),
             ),
             child: Row(
               textDirection: TextDirection.rtl,
@@ -1143,28 +1227,34 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
                     color: AppTheme.neutralGray100,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.arrow_forward_ios,
-                      size: 14,
-                      color: AppTheme.neutralGray600),
+                  child: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: AppTheme.neutralGray600,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('اختر القسم الفرعي',
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.neutralGray500)),
-                      Text(parent.nameAr,
-                          textDirection: TextDirection.rtl,
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  AppTheme.neutralGray900)),
+                      const Text(
+                        'اختر القسم الفرعي',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.neutralGray500,
+                        ),
+                      ),
+                      Text(
+                        parent.nameAr,
+                        textDirection: TextDirection.rtl,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.neutralGray900,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1177,20 +1267,22 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
             padding: const EdgeInsets.only(bottom: 16),
             itemCount: parent.children.length,
             separatorBuilder: (_, __) => const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: AppTheme.neutralGray100),
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: AppTheme.neutralGray100,
+            ),
             itemBuilder: (_, i) {
               final sub = parent.children[i];
-              final color =
-                  _kCategoryColors[i % _kCategoryColors.length];
+              final color = _kCategoryColors[i % _kCategoryColors.length];
               final isSelected = widget.selected?.id == sub.id;
               return InkWell(
                 onTap: () => widget.onSelect(sub),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   color: isSelected
                       ? AppTheme.primaryBlue.withValues(alpha: .05)
                       : null,
@@ -1201,7 +1293,9 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                            color: color, shape: BoxShape.circle),
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -1243,15 +1337,19 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
 // ── Step 2: Details ───────────────────────────────────────────────────────────
 
 class _Step2Details extends ConsumerStatefulWidget {
-  final TextEditingController titleCtrl, descCtrl, priceCtrl, phoneCtrl,
+  final TextEditingController titleCtrl,
+      descCtrl,
+      priceCtrl,
+      phoneCtrl,
       whatsappCtrl;
   final String sellerType;
-  final bool isNegotiable, showPhonePublicly, isValid;
+  final _PriceOption priceOption;
+  final bool showPhonePublicly, isValid;
   final int? categoryId;
   final Map<String, String> fieldValues;
   final Map<String, String> errors;
   final void Function(String) onSellerTypeChanged;
-  final void Function(bool) onNegotiableChanged;
+  final void Function(_PriceOption) onPriceOptionChanged;
   final void Function(bool) onShowPhoneChanged;
   final void Function(String, String) onFieldChanged;
   final TextEditingController Function(String) dynCtrl;
@@ -1264,14 +1362,14 @@ class _Step2Details extends ConsumerStatefulWidget {
     required this.phoneCtrl,
     required this.whatsappCtrl,
     required this.sellerType,
-    required this.isNegotiable,
+    required this.priceOption,
     required this.showPhonePublicly,
     required this.isValid,
     required this.categoryId,
     required this.fieldValues,
     required this.errors,
     required this.onSellerTypeChanged,
-    required this.onNegotiableChanged,
+    required this.onPriceOptionChanged,
     required this.onShowPhoneChanged,
     required this.onFieldChanged,
     required this.dynCtrl,
@@ -1296,7 +1394,10 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Seller type ─────────────────────────────────────────────────
-          _SectionHeader(title: 'أنت تبيع بصفتك', icon: Icons.person_outline_rounded),
+          _SectionHeader(
+            title: 'أنت تبيع بصفتك',
+            icon: Icons.person_outline_rounded,
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -1379,7 +1480,9 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
 
           // ── Basic info ───────────────────────────────────────────────────
           _SectionHeader(
-              title: 'معلومات الإعلان', icon: Icons.edit_note_rounded),
+            title: 'معلومات الإعلان',
+            icon: Icons.edit_note_rounded,
+          ),
           const SizedBox(height: 12),
 
           _FormField(
@@ -1407,7 +1510,8 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               style: const TextStyle(color: AppTheme.neutralGray900),
               onChanged: (_) => setState(() {}),
               decoration: _inputDecoration(
-                hint: 'صف السلعة بتفاصيل كافية — الحالة، المواصفات، سبب البيع...',
+                hint:
+                    'صف السلعة بتفاصيل كافية — الحالة، المواصفات، سبب البيع...',
                 error: widget.errors['description'],
               ),
             ),
@@ -1417,39 +1521,71 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           _SectionHeader(title: 'السعر', icon: Icons.payments_outlined),
           const SizedBox(height: 12),
 
-          _ToggleRow(
-            label: 'قابل للتفاوض',
-            value: widget.isNegotiable,
-            onChanged: (v) {
-              widget.onNegotiableChanged(v);
-              setState(() {});
-            },
+          Row(
+            children: [
+              _PriceOptionChip(
+                label: 'أدخل السعر',
+                icon: Icons.payments_outlined,
+                selected: widget.priceOption == _PriceOption.fixed,
+                onTap: () {
+                  widget.onPriceOptionChanged(_PriceOption.fixed);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(width: 8),
+              _PriceOptionChip(
+                label: 'على السوم',
+                icon: Icons.handshake_outlined,
+                selected: widget.priceOption == _PriceOption.negotiable,
+                onTap: () {
+                  widget.onPriceOptionChanged(_PriceOption.negotiable);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(width: 8),
+              _PriceOptionChip(
+                label: 'عند الاتصال',
+                icon: Icons.phone_outlined,
+                selected: widget.priceOption == _PriceOption.callForPrice,
+                onTap: () {
+                  widget.onPriceOptionChanged(_PriceOption.callForPrice);
+                  setState(() {});
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          _FormField(
-            label: 'السعر',
-            required: true,
-            child: TextField(
-              controller: widget.priceCtrl,
-              textDirection: TextDirection.rtl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (_) => setState(() {}),
-              style: const TextStyle(
+          const SizedBox(height: 12),
+
+          if (widget.priceOption == _PriceOption.fixed) ...[
+            _FormField(
+              label: 'السعر',
+              required: true,
+              child: TextField(
+                controller: widget.priceCtrl,
+                textDirection: TextDirection.rtl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(
                   color: AppTheme.neutralGray900,
                   fontSize: 18,
-                  fontWeight: FontWeight.w700),
-              decoration: _inputDecoration(
-                hint: '0',
-                error: widget.errors['price'],
-                prefix: const Text('ر.س  ',
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: _inputDecoration(
+                  hint: '0',
+                  error: widget.errors['price'],
+                  prefix: const Text(
+                    'ر.س  ',
                     style: TextStyle(
-                        color: AppTheme.primaryBlue,
-                        fontWeight: FontWeight.w700)),
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
+            const SizedBox(height: 4),
+          ],
 
           // ── Dynamic category fields ───────────────────────────────────────
           if (categoryFieldsState != null) ...[
@@ -1458,7 +1594,9 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(
                   child: CircularProgressIndicator(
-                      color: AppTheme.primaryBlue, strokeWidth: 2),
+                    color: AppTheme.primaryBlue,
+                    strokeWidth: 2,
+                  ),
                 ),
               ),
               error: (_, __) => const SizedBox.shrink(),
@@ -1468,7 +1606,9 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _SectionHeader(
-                        title: 'المواصفات', icon: Icons.tune_rounded),
+                      title: 'المواصفات',
+                      icon: Icons.tune_rounded,
+                    ),
                     const SizedBox(height: 12),
                     ...fields.map((f) {
                       if (f.options.isNotEmpty) {
@@ -1477,39 +1617,53 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                           required: f.isRequired,
                           child: DropdownButtonFormField<String>(
                             initialValue: widget.fieldValues[f.fieldKey],
-                            hint: Text(f.placeholderAr ?? 'اختر...',
-                                style: const TextStyle(
-                                    color: AppTheme.neutralGray500)),
+                            hint: Text(
+                              f.placeholderAr ?? 'اختر...',
+                              style: const TextStyle(
+                                color: AppTheme.neutralGray500,
+                              ),
+                            ),
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 14),
+                                horizontal: 14,
+                                vertical: 14,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: const BorderSide(
-                                    color: AppTheme.neutralGray200),
+                                  color: AppTheme.neutralGray200,
+                                ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: const BorderSide(
-                                    color: AppTheme.neutralGray200),
+                                  color: AppTheme.neutralGray200,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: const BorderSide(
-                                    color: AppTheme.primaryBlue, width: 1.5),
+                                  color: AppTheme.primaryBlue,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                             items: f.options
-                                .map((o) => DropdownMenuItem(
-                                      value: o,
-                                      child: Text(o,
-                                          textDirection: TextDirection.rtl),
-                                    ))
+                                .map(
+                                  (o) => DropdownMenuItem(
+                                    value: o,
+                                    child: Text(
+                                      o,
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (v) {
-                              if (v != null) widget.onFieldChanged(f.fieldKey, v);
+                              if (v != null)
+                                widget.onFieldChanged(f.fieldKey, v);
                             },
                           ),
                         );
@@ -1522,12 +1676,14 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                           textDirection: TextDirection.rtl,
                           keyboardType:
                               f.fieldType == 'number' || f.fieldType == 'year'
-                                  ? TextInputType.number
-                                  : TextInputType.text,
+                              ? TextInputType.number
+                              : TextInputType.text,
                           style: const TextStyle(
-                              color: AppTheme.neutralGray900),
-                          decoration:
-                              _inputDecoration(hint: f.placeholderAr ?? ''),
+                            color: AppTheme.neutralGray900,
+                          ),
+                          decoration: _inputDecoration(
+                            hint: f.placeholderAr ?? '',
+                          ),
                         ),
                       );
                     }),
@@ -1538,8 +1694,7 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           ],
 
           // ── Contact ──────────────────────────────────────────────────────
-          _SectionHeader(
-              title: 'معلومات التواصل', icon: Icons.phone_outlined),
+          _SectionHeader(title: 'معلومات التواصل', icon: Icons.phone_outlined),
           const SizedBox(height: 12),
 
           _ToggleRow(
@@ -1564,8 +1719,10 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               decoration: _inputDecoration(
                 hint: '05xxxxxxxx',
                 error: widget.errors['contact_phone'],
-                prefix: const Text('🇸🇦 +966  ',
-                    style: TextStyle(fontSize: 13)),
+                prefix: const Text(
+                  '🇸🇦 +966  ',
+                  style: TextStyle(fontSize: 13),
+                ),
               ),
             ),
           ),
@@ -1582,9 +1739,7 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                 hint: '05xxxxxxxx (اختياري)',
                 prefix: const Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('💬  ', style: TextStyle(fontSize: 15)),
-                  ],
+                  children: [Text('💬  ', style: TextStyle(fontSize: 15))],
                 ),
               ),
             ),
@@ -1629,25 +1784,32 @@ class _Step3Images extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppTheme.primaryBlue.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.photo_library_rounded,
-                    color: AppTheme.primaryBlue, size: 22),
+                child: const Icon(
+                  Icons.photo_library_rounded,
+                  color: AppTheme.primaryBlue,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('صور الإعلان',
-                      style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700)),
+                  const Text(
+                    'صور الإعلان',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
                   Text(
                     'أضف حتى 10 صور • الصورة الأولى ستكون الرئيسية',
                     style: TextStyle(
-                        fontSize: 12, color: AppTheme.neutralGray500),
+                      fontSize: 12,
+                      color: AppTheme.neutralGray500,
+                    ),
                   ),
                 ],
               ),
@@ -1660,14 +1822,19 @@ class _Step3Images extends StatelessWidget {
               Text(
                 '${images.length}/10 صور',
                 style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.neutralGray600),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.neutralGray600,
+                ),
               ),
               if (images.isNotEmpty)
-                Text('اضغط × لحذف صورة',
-                    style: TextStyle(
-                        fontSize: 12, color: AppTheme.neutralGray500)),
+                Text(
+                  'اضغط × لحذف صورة',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.neutralGray500,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1678,8 +1845,7 @@ class _Step3Images extends StatelessWidget {
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount:
-                  images.length + (images.length < 10 ? 1 : 0),
+              itemCount: images.length + (images.length < 10 ? 1 : 0),
               itemBuilder: (context, i) {
                 if (i == images.length) {
                   return _AddImageTile(
@@ -1711,8 +1877,11 @@ class _ImageTile extends StatelessWidget {
   final XFile file;
   final bool isPrimary;
   final VoidCallback onRemove;
-  const _ImageTile(
-      {required this.file, required this.isPrimary, required this.onRemove});
+  const _ImageTile({
+    required this.file,
+    required this.isPrimary,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1725,7 +1894,9 @@ class _ImageTile extends StatelessWidget {
         ),
         if (isPrimary)
           Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 3),
               decoration: BoxDecoration(
@@ -1739,22 +1910,30 @@ class _ImageTile extends StatelessWidget {
                 'رئيسية',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700),
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
         Positioned(
-          top: 4, left: 4,
+          top: 4,
+          left: 4,
           child: GestureDetector(
             onTap: onRemove,
             child: Container(
-              width: 24, height: 24,
+              width: 24,
+              height: 24,
               decoration: const BoxDecoration(
-                  color: Colors.black54, shape: BoxShape.circle),
-              child: const Icon(Icons.close_rounded,
-                  color: Colors.white, size: 14),
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+                size: 14,
+              ),
             ),
           ),
         ),
@@ -1765,8 +1944,10 @@ class _ImageTile extends StatelessWidget {
 
 class _AddImageTile extends StatelessWidget {
   final VoidCallback onPickGallery, onPickCamera;
-  const _AddImageTile(
-      {required this.onPickGallery, required this.onPickCamera});
+  const _AddImageTile({
+    required this.onPickGallery,
+    required this.onPickCamera,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1783,15 +1964,19 @@ class _AddImageTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: AppTheme.neutralGray200,
-                        borderRadius: BorderRadius.circular(2))),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.neutralGray200,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: const Icon(Icons.photo_library_rounded,
-                      color: AppTheme.primaryBlue),
+                  leading: const Icon(
+                    Icons.photo_library_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
                   title: const Text('اختر من المعرض'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1799,8 +1984,10 @@ class _AddImageTile extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt_rounded,
-                      color: AppTheme.primaryBlue),
+                  leading: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
                   title: const Text('التقط صورة'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1821,14 +2008,20 @@ class _AddImageTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_photo_alternate_rounded,
-                size: 30, color: AppTheme.primaryBlue),
+            const Icon(
+              Icons.add_photo_alternate_rounded,
+              size: 30,
+              color: AppTheme.primaryBlue,
+            ),
             const SizedBox(height: 6),
-            Text('إضافة صورة',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.neutralGray500,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              'إضافة صورة',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppTheme.neutralGray500,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -1839,8 +2032,8 @@ class _AddImageTile extends StatelessWidget {
 // ── Step 4: Location + District + Pledge + Submit ─────────────────────────────
 
 class _Step4LocationSubmit extends ConsumerWidget {
-  final RegionModel?   selectedRegion;
-  final CityModel?     selectedCity;
+  final RegionModel? selectedRegion;
+  final CityModel? selectedCity;
   final DistrictModel? selectedDistrict;
   final List<DistrictModel>? districtsForCity;
   final bool loadingDistricts;
@@ -1884,11 +2077,13 @@ class _Step4LocationSubmit extends ConsumerWidget {
     final canSubmit = selectedCity != null && !submitting;
     final price = double.tryParse(priceText ?? '');
     final commissionState = (price != null && price > 0 && categoryId != null)
-        ? ref.watch(commissionPreviewProvider((
-            price: price,
-            categoryId: categoryId!,
-            sellerType: sellerType,
-          )))
+        ? ref.watch(
+            commissionPreviewProvider((
+              price: price,
+              categoryId: categoryId!,
+              sellerType: sellerType,
+            )),
+          )
         : null;
 
     final hasDistrictsLoaded =
@@ -1901,7 +2096,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-              title: 'موقع الإعلان', icon: Icons.location_on_rounded),
+            title: 'موقع الإعلان',
+            icon: Icons.location_on_rounded,
+          ),
           const SizedBox(height: 12),
 
           // City / Region picker
@@ -1911,8 +2108,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
                 context,
                 ref,
                 isMultiSelect: false,
-                initialSelection:
-                    selectedCity != null ? [selectedCity!] : null,
+                initialSelection: selectedCity != null ? [selectedCity!] : null,
               );
               if (result != null && result.isNotEmpty) {
                 onSelectLocation(result.first.region!, result.first);
@@ -1958,8 +2154,10 @@ class _Step4LocationSubmit extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  Icon(Icons.chevron_left_rounded,
-                      color: AppTheme.neutralGray500),
+                  Icon(
+                    Icons.chevron_left_rounded,
+                    color: AppTheme.neutralGray500,
+                  ),
                 ],
               ),
             ),
@@ -2039,8 +2237,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
           if (selectedCity != null) ...[
             const SizedBox(height: 16),
             _SectionHeader(
-                title: 'الحي (اختياري)',
-                icon: Icons.holiday_village_outlined),
+              title: 'الحي (اختياري)',
+              icon: Icons.holiday_village_outlined,
+            ),
             const SizedBox(height: 8),
 
             if (loadingDistricts)
@@ -2056,7 +2255,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppTheme.primaryBlue),
+                    strokeWidth: 2,
+                    color: AppTheme.primaryBlue,
+                  ),
                 ),
               )
             else if (hasDistrictsLoaded)
@@ -2103,12 +2304,17 @@ class _Step4LocationSubmit extends ConsumerWidget {
                       if (selectedDistrict != null)
                         GestureDetector(
                           onTap: onClearDistrict,
-                          child: const Icon(Icons.close_rounded,
-                              size: 16, color: AppTheme.neutralGray400),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: AppTheme.neutralGray400,
+                          ),
                         )
                       else
-                        const Icon(Icons.chevron_left_rounded,
-                            color: AppTheme.neutralGray400),
+                        const Icon(
+                          Icons.chevron_left_rounded,
+                          color: AppTheme.neutralGray400,
+                        ),
                     ],
                   ),
                 ),
@@ -2119,17 +2325,14 @@ class _Step4LocationSubmit extends ConsumerWidget {
                 textDirection: TextDirection.rtl,
                 maxLength: 120,
                 style: const TextStyle(color: AppTheme.neutralGray900),
-                decoration: _inputDecoration(
-                  hint: 'اكتب اسم الحي (اختياري)',
-                ),
+                decoration: _inputDecoration(hint: 'اكتب اسم الحي (اختياري)'),
               ),
           ],
 
           // ── Commission ────────────────────────────────────────────────────
           if (commissionState != null) ...[
             const SizedBox(height: 20),
-            _SectionHeader(
-                title: 'عمولة الخدمة', icon: Icons.percent_rounded),
+            _SectionHeader(title: 'عمولة الخدمة', icon: Icons.percent_rounded),
             const SizedBox(height: 8),
             commissionState.when(
               loading: () => Container(
@@ -2144,7 +2347,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.amber),
+                      strokeWidth: 2,
+                      color: Colors.amber,
+                    ),
                   ),
                 ),
               ),
@@ -2159,14 +2364,15 @@ class _Step4LocationSubmit extends ConsumerWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 38, height: 38,
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
                         color: Colors.amber.shade100,
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                          child: Text('💰',
-                              style: TextStyle(fontSize: 18))),
+                        child: Text('💰', style: TextStyle(fontSize: 18)),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -2176,12 +2382,14 @@ class _Step4LocationSubmit extends ConsumerWidget {
                           Row(
                             children: [
                               if (!preview.isFlatFee)
-                                Text('~',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.amber.shade900,
-                                    )),
+                                Text(
+                                  '~',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
                               Text(
                                 '${preview.commissionAmount.toStringAsFixed(0)} ر.س'
                                 '${preview.isFlatFee ? '' : ' عمولة متوقعة'}',
@@ -2197,9 +2405,10 @@ class _Step4LocationSubmit extends ConsumerWidget {
                           Text(
                             preview.note,
                             style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.amber.shade800,
-                                height: 1.4),
+                              fontSize: 11,
+                              color: Colors.amber.shade800,
+                              height: 1.4,
+                            ),
                             textDirection: TextDirection.rtl,
                           ),
                         ],
@@ -2248,21 +2457,24 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     height: 50,
                     decoration: BoxDecoration(
                       gradient: canSubmit
-                          ? const LinearGradient(colors: [
-                              AppTheme.primaryBlue,
-                              AppTheme.primaryBlueLight
-                            ])
+                          ? const LinearGradient(
+                              colors: [
+                                AppTheme.primaryBlue,
+                                AppTheme.primaryBlueLight,
+                              ],
+                            )
                           : null,
                       color: canSubmit ? null : AppTheme.neutralGray200,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: canSubmit
                           ? [
                               BoxShadow(
-                                color: AppTheme.primaryBlue
-                                    .withValues(alpha: .3),
+                                color: AppTheme.primaryBlue.withValues(
+                                  alpha: .3,
+                                ),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
-                              )
+                              ),
                             ]
                           : null,
                     ),
@@ -2272,7 +2484,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5),
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -2286,9 +2500,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  isEditMode
-                                      ? 'حفظ التعديلات'
-                                      : 'نشر الإعلان',
+                                  isEditMode ? 'حفظ التعديلات' : 'نشر الإعلان',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -2336,8 +2548,8 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
     final filtered = _query.trim().isEmpty
         ? widget.districts
         : widget.districts
-            .where((d) => d.nameAr.contains(_query.trim()))
-            .toList();
+              .where((d) => d.nameAr.contains(_query.trim()))
+              .toList();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -2351,7 +2563,8 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
         child: Column(
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.neutralGray200,
@@ -2367,7 +2580,9 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
                       'اختر الحي',
                       textDirection: TextDirection.rtl,
                       style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -2392,13 +2607,20 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
                   hintText: 'بحث في الأحياء...',
                   hintTextDirection: TextDirection.rtl,
                   hintStyle: const TextStyle(
-                      color: AppTheme.neutralGray500, fontSize: 14),
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: AppTheme.neutralGray400, size: 20),
+                    color: AppTheme.neutralGray500,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: AppTheme.neutralGray400,
+                    size: 20,
+                  ),
                   filled: true,
                   fillColor: AppTheme.neutralGray50,
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -2406,12 +2628,16 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
-                        color: AppTheme.neutralGray200, width: 1),
+                      color: AppTheme.neutralGray200,
+                      width: 1,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
-                        color: AppTheme.primaryBlue, width: 1.5),
+                      color: AppTheme.primaryBlue,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -2422,10 +2648,11 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
                 controller: ctrl,
                 itemCount: filtered.length,
                 separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                    color: AppTheme.neutralGray100),
+                  height: 1,
+                  indent: 16,
+                  endIndent: 16,
+                  color: AppTheme.neutralGray100,
+                ),
                 itemBuilder: (_, i) {
                   final d = filtered[i];
                   return ListTile(
@@ -2433,10 +2660,15 @@ class _DistrictPickerSheetState extends State<_DistrictPickerSheet> {
                       d.nameAr,
                       textDirection: TextDirection.rtl,
                       style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w500),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    trailing: const Icon(Icons.arrow_back_ios,
-                        size: 14, color: AppTheme.neutralGray400),
+                    trailing: const Icon(
+                      Icons.arrow_back_ios,
+                      size: 14,
+                      color: AppTheme.neutralGray400,
+                    ),
                     onTap: () => Navigator.pop(context, d),
                   );
                 },
@@ -2482,8 +2714,11 @@ class _FormField extends StatelessWidget {
   final String label;
   final bool required;
   final Widget child;
-  const _FormField(
-      {required this.label, required this.required, required this.child});
+  const _FormField({
+    required this.label,
+    required this.required,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2503,8 +2738,9 @@ class _FormField extends StatelessWidget {
               children: required
                   ? [
                       const TextSpan(
-                          text: ' *',
-                          style: TextStyle(color: Colors.red))
+                        text: ' *',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ]
                   : [],
             ),
@@ -2521,8 +2757,11 @@ class _ToggleRow extends StatelessWidget {
   final String label;
   final bool value;
   final void Function(bool) onChanged;
-  const _ToggleRow(
-      {required this.label, required this.value, required this.onChanged});
+  const _ToggleRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2534,26 +2773,91 @@ class _ToggleRow extends StatelessWidget {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 22, height: 22,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
                 color: value ? AppTheme.primaryBlue : Colors.white,
                 border: Border.all(
-                    color: value
-                        ? AppTheme.primaryBlue
-                        : AppTheme.neutralGray200,
-                    width: 1.5),
+                  color: value ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+                  width: 1.5,
+                ),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: value
-                  ? const Icon(Icons.check_rounded,
-                      color: Colors.white, size: 14)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    )
                   : null,
             ),
             const SizedBox(width: 10),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PriceOptionChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PriceOptionChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppTheme.primaryBlue.withValues(alpha: .10)
+                : AppTheme.neutralGray50,
+            border: Border.all(
+              color: selected ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+              width: selected ? 1.8 : 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: selected
+                    ? AppTheme.primaryBlue
+                    : AppTheme.neutralGray500,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? AppTheme.primaryBlue
+                      : AppTheme.neutralGray600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2564,10 +2868,11 @@ class _NavRow extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback? onNext;
   final String nextLabel;
-  const _NavRow(
-      {required this.onBack,
-      required this.onNext,
-      required this.nextLabel});
+  const _NavRow({
+    required this.onBack,
+    required this.onNext,
+    required this.nextLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2607,8 +2912,11 @@ class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
-  const _PrimaryButton(
-      {required this.label, required this.onPressed, this.icon});
+  const _PrimaryButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2621,16 +2929,18 @@ class _PrimaryButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: enabled
               ? const LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight])
+                  colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight],
+                )
               : null,
           color: enabled ? null : AppTheme.neutralGray200,
           borderRadius: BorderRadius.circular(12),
           boxShadow: enabled
               ? [
                   BoxShadow(
-                      color: AppTheme.primaryBlue.withValues(alpha: .25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3))
+                    color: AppTheme.primaryBlue.withValues(alpha: .25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
                 ]
               : null,
         ),
@@ -2638,10 +2948,11 @@ class _PrimaryButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon,
-                  color:
-                      enabled ? Colors.white : AppTheme.neutralGray500,
-                  size: 18),
+              Icon(
+                icon,
+                color: enabled ? Colors.white : AppTheme.neutralGray500,
+                size: 18,
+              ),
               const SizedBox(width: 8),
             ],
             Text(
@@ -2675,13 +2986,17 @@ class _ErrorDialog extends StatelessWidget {
       title: Row(
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: Colors.red.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.error_outline_rounded,
-                color: Colors.red.shade600, size: 20),
+            child: Icon(
+              Icons.error_outline_rounded,
+              color: Colors.red.shade600,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -2704,31 +3019,37 @@ class _ErrorDialog extends StatelessWidget {
           ),
           if (errors.isNotEmpty) ...[
             const SizedBox(height: 12),
-            ...errors.values.map((err) => Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: Text(
-                      err,
-                      textDirection: TextDirection.rtl,
-                      style: TextStyle(
+            ...errors.values.map(
+              (err) => Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        err,
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(
                           fontSize: 13,
                           color: Colors.red.shade700,
-                          height: 1.4),
+                          height: 1.4,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Icon(Icons.circle,
-                        size: 6, color: Colors.red.shade500),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Icon(
+                        Icons.circle,
+                        size: 6,
+                        color: Colors.red.shade500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ],
       ),
@@ -2753,14 +3074,12 @@ InputDecoration _inputDecoration({
   return InputDecoration(
     hintText: hint,
     hintTextDirection: TextDirection.rtl,
-    hintStyle:
-        const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
+    hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
     errorText: error,
     prefix: prefix,
     filled: true,
     fillColor: Colors.white,
-    contentPadding:
-        const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: AppTheme.neutralGray200),
@@ -2771,8 +3090,7 @@ InputDecoration _inputDecoration({
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide:
-          const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+      borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -2808,13 +3126,18 @@ class _PublishPaymentSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 32),
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 32,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Drag handle
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
               color: AppTheme.neutralGray200,
@@ -2824,15 +3147,22 @@ class _PublishPaymentSheet extends StatelessWidget {
 
           const Text('💳', style: TextStyle(fontSize: 36)),
           const SizedBox(height: 12),
-          const Text('رسوم نشر الإعلان',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.neutralGray900)),
+          const Text(
+            'رسوم نشر الإعلان',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.neutralGray900,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('قسم: $categoryName',
-              style: const TextStyle(
-                  fontSize: 13, color: AppTheme.neutralGray500)),
+          Text(
+            'قسم: $categoryName',
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.neutralGray500,
+            ),
+          ),
           const SizedBox(height: 20),
 
           // Fee display
@@ -2842,19 +3172,27 @@ class _PublishPaymentSheet extends StatelessWidget {
               color: AppTheme.primaryBlue.withValues(alpha: .06),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: AppTheme.primaryBlue.withValues(alpha: .2)),
+                color: AppTheme.primaryBlue.withValues(alpha: .2),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('رسوم النشر',
-                    style: TextStyle(
-                        fontSize: 14, color: AppTheme.neutralGray700)),
-                Text('${fee.toStringAsFixed(0)} ر.س',
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.primaryBlue)),
+                const Text(
+                  'رسوم النشر',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.neutralGray700,
+                  ),
+                ),
+                Text(
+                  '${fee.toStringAsFixed(0)} ر.س',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
               ],
             ),
           ),
@@ -2864,13 +3202,25 @@ class _PublishPaymentSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _pmBadge(Icons.credit_card_rounded, 'مدى', const Color(0xFF006B3F)),
+              _pmBadge(
+                Icons.credit_card_rounded,
+                'مدى',
+                const Color(0xFF006B3F),
+              ),
               const SizedBox(width: 12),
               _pmBadge(Icons.apple, 'Apple Pay', Colors.black87),
               const SizedBox(width: 12),
-              _pmBadge(Icons.phone_android_rounded, 'STC Pay', const Color(0xFF7B1FA2)),
+              _pmBadge(
+                Icons.phone_android_rounded,
+                'STC Pay',
+                const Color(0xFF7B1FA2),
+              ),
               const SizedBox(width: 12),
-              _pmBadge(Icons.account_balance_rounded, 'بنكي', const Color(0xFF1565C0)),
+              _pmBadge(
+                Icons.account_balance_rounded,
+                'بنكي',
+                const Color(0xFF1565C0),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -2885,16 +3235,20 @@ class _PublishPaymentSheet extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded,
-                    color: Colors.orange.shade700, size: 16),
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.orange.shade700,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'الرسوم غير مستردة وتُخصم من العمولة عند إتمام البيع.',
                     style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange.shade800,
-                        height: 1.4),
+                      fontSize: 11,
+                      color: Colors.orange.shade800,
+                      height: 1.4,
+                    ),
                     textDirection: TextDirection.rtl,
                   ),
                 ),
@@ -2912,15 +3266,21 @@ class _PublishPaymentSheet extends StatelessWidget {
               minimumSize: const Size(double.infinity, 52),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            child: Text('تأكيد الدفع ونشر الإعلان (${fee.toStringAsFixed(0)} ر.س)'),
+            child: Text(
+              'تأكيد الدفع ونشر الإعلان (${fee.toStringAsFixed(0)} ر.س)',
+            ),
           ),
           const SizedBox(height: 10),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء',
-                style: TextStyle(color: AppTheme.neutralGray500)),
+            child: const Text(
+              'إلغاء',
+              style: TextStyle(color: AppTheme.neutralGray500),
+            ),
           ),
         ],
       ),
@@ -2932,7 +3292,8 @@ class _PublishPaymentSheet extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 44, height: 44,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
@@ -2941,11 +3302,14 @@ class _PublishPaymentSheet extends StatelessWidget {
           child: Icon(icon, color: color, size: 22),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.neutralGray600)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.neutralGray600,
+          ),
+        ),
       ],
     );
   }

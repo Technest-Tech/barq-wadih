@@ -21,12 +21,13 @@ class AdImageModel {
 
   factory AdImageModel.fromJson(Map<String, dynamic> json) {
     return AdImageModel(
-      id:           json['id'] as int,
-      imageUrl:     json['image_url'] as String,
-      thumbnailUrl: (json['thumbnail_url'] as String?) ?? json['image_url'] as String,
-      sortOrder:    json['sort_order'] as int? ?? 0,
-      width:        json['width'] as int?,
-      height:       json['height'] as int?,
+      id: json['id'] as int,
+      imageUrl: json['image_url'] as String,
+      thumbnailUrl:
+          (json['thumbnail_url'] as String?) ?? json['image_url'] as String,
+      sortOrder: json['sort_order'] as int? ?? 0,
+      width: json['width'] as int?,
+      height: json['height'] as int?,
     );
   }
 }
@@ -50,11 +51,11 @@ class AdFieldValueModel {
 
   factory AdFieldValueModel.fromJson(Map<String, dynamic> json) {
     return AdFieldValueModel(
-      fieldKey:  json['field_key'] as String? ?? '',
-      labelAr:   json['label_ar'] as String? ?? '',
-      labelEn:   json['label_en'] as String? ?? '',
+      fieldKey: json['field_key'] as String? ?? '',
+      labelAr: json['label_ar'] as String? ?? '',
+      labelEn: json['label_en'] as String? ?? '',
       fieldType: json['field_type'] as String? ?? 'text',
-      value:     json['value'],
+      value: json['value'],
     );
   }
 
@@ -95,13 +96,13 @@ class CategoryFieldModel {
         ? rawOptions.map((e) => e.toString()).toList()
         : <String>[];
     return CategoryFieldModel(
-      id:            json['id'] as int,
-      fieldKey:      json['field_key'] as String,
-      labelAr:       json['label_ar'] as String? ?? '',
-      labelEn:       json['label_en'] as String? ?? '',
-      fieldType:     json['field_type'] as String? ?? 'text',
-      options:       opts,
-      isRequired:    json['is_required'] as bool? ?? false,
+      id: json['id'] as int,
+      fieldKey: json['field_key'] as String,
+      labelAr: json['label_ar'] as String? ?? '',
+      labelEn: json['label_en'] as String? ?? '',
+      fieldType: json['field_type'] as String? ?? 'text',
+      options: opts,
+      isRequired: json['is_required'] as bool? ?? false,
       placeholderAr: json['placeholder_ar'] as String?,
     );
   }
@@ -167,54 +168,79 @@ class AdListModel {
   });
 
   factory AdListModel.fromJson(Map<String, dynamic> json) {
-    final catJson  = json['category'] as Map<String, dynamic>?;
+    final catJson = json['category'] as Map<String, dynamic>?;
     final cityJson = json['city'] as Map<String, dynamic>?;
-    final regJson  = json['region'] as Map<String, dynamic>?;
-    final imgJson  = json['primary_image'] as Map<String, dynamic>?;
+    final regJson = json['region'] as Map<String, dynamic>?;
+    final imgJson = json['primary_image'] as Map<String, dynamic>?;
     final userJson = json['user'] as Map<String, dynamic>?;
 
     return AdListModel(
-      id:            json['id'] as int,
-      title:         json['title'] as String,
-      price:         json['price'] != null ? double.tryParse(json['price'].toString()) : null,
-      isNegotiable:  json['is_negotiable'] as bool? ?? false,
-      isFree:        json['is_free'] as bool? ?? false,
-      priceHidden:   json['price_hidden'] as bool? ?? false,
-      status:        json['status'] as String? ?? 'active',
-      statusLabel:   json['status_label'] as String? ?? '',
-      primaryImage:  imgJson != null ? AdImageModel.fromJson(imgJson) : null,
-      imagesCount:   json['images_count'] as int? ?? (imgJson != null ? 1 : 0),
-      category:      catJson != null
-          ? (id: catJson['id'] as int, nameAr: catJson['name_ar'] as String? ?? '', icon: catJson['icon'] as String?)
+      id: json['id'] as int,
+      title: json['title'] as String,
+      price: json['price'] != null
+          ? double.tryParse(json['price'].toString())
           : null,
-      city:   cityJson != null ? (id: cityJson['id'] as int, nameAr: cityJson['name_ar'] as String? ?? '') : null,
-      region: regJson  != null ? (id: regJson['id'] as int,  nameAr: regJson['name_ar']  as String? ?? '') : null,
+      isNegotiable: json['is_negotiable'] as bool? ?? false,
+      isFree: json['is_free'] as bool? ?? false,
+      priceHidden: json['price_hidden'] as bool? ?? false,
+      status: json['status'] as String? ?? 'active',
+      statusLabel: json['status_label'] as String? ?? '',
+      primaryImage: imgJson != null ? AdImageModel.fromJson(imgJson) : null,
+      imagesCount: json['images_count'] as int? ?? (imgJson != null ? 1 : 0),
+      category: catJson != null
+          ? (
+              id: catJson['id'] as int,
+              nameAr: catJson['name_ar'] as String? ?? '',
+              icon: catJson['icon'] as String?,
+            )
+          : null,
+      city: cityJson != null
+          ? (
+              id: cityJson['id'] as int,
+              nameAr: cityJson['name_ar'] as String? ?? '',
+            )
+          : null,
+      region: regJson != null
+          ? (
+              id: regJson['id'] as int,
+              nameAr: regJson['name_ar'] as String? ?? '',
+            )
+          : null,
       seller: userJson != null
           ? (
-              id:          userJson['id'] as int,
-              name:        userJson['name'] as String? ?? '',
-              avatar:      userJson['avatar'] as String?,
-              isVerified:  userJson['is_verified'] as bool? ?? false,
-              isDealer:    userJson['is_dealer'] as bool? ?? false,
-              avgRating:   userJson['avg_rating'] != null
+              id: userJson['id'] as int,
+              name: userJson['name'] as String? ?? '',
+              avatar: userJson['avatar'] as String?,
+              isVerified: userJson['is_verified'] as bool? ?? false,
+              isDealer: userJson['is_dealer'] as bool? ?? false,
+              avgRating: userJson['avg_rating'] != null
                   ? double.tryParse(userJson['avg_rating'].toString())
                   : null,
               ratingCount: userJson['rating_count'] as int?,
             )
           : null,
-      isBoosted:   json['is_boosted'] as bool? ?? false,
-      boostedUntil: json['boosted_until'] != null ? DateTime.tryParse(json['boosted_until'] as String) : null,
-      publishedAt: json['published_at'] != null ? DateTime.tryParse(json['published_at'] as String) : null,
-      createdAt:   DateTime.parse(json['created_at'] as String),
-      expiresAt:   json['expires_at'] != null ? DateTime.tryParse(json['expires_at'] as String) : null,
-      canRefresh:  json['can_refresh'] as bool?,
-      nextRefreshAt: json['next_refresh_at'] != null ? DateTime.tryParse(json['next_refresh_at'] as String) : null,
+      isBoosted: json['is_boosted'] as bool? ?? false,
+      boostedUntil: json['boosted_until'] != null
+          ? DateTime.tryParse(json['boosted_until'] as String)
+          : null,
+      publishedAt: json['published_at'] != null
+          ? DateTime.tryParse(json['published_at'] as String)
+          : null,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
+      canRefresh: json['can_refresh'] as bool?,
+      nextRefreshAt: json['next_refresh_at'] != null
+          ? DateTime.tryParse(json['next_refresh_at'] as String)
+          : null,
     );
   }
 
   String get priceDisplay {
     if (isFree) return 'مجاني';
-    if (priceHidden) return 'اتصل للسعر';
+    if (priceHidden) return 'عند الاتصال';
+    if (isNegotiable) return 'على السوم';
     if (price == null) return '—';
     return '${price!.toStringAsFixed(0)} ر.س';
   }
@@ -237,7 +263,8 @@ class AdDetailModel extends AdListModel {
     int? ratingCount,
     int? totalAdsCount,
     DateTime? memberSince,
-  })? user;
+  })?
+  user;
   final String contactPhone;
   final String? contactWhatsapp;
   final bool showPhonePublicly;
@@ -281,64 +308,67 @@ class AdDetailModel extends AdListModel {
   });
 
   factory AdDetailModel.fromJson(Map<String, dynamic> json) {
-    final base         = AdListModel.fromJson(json);
-    final userJson     = json['user'] as Map<String, dynamic>?;
+    final base = AdListModel.fromJson(json);
+    final userJson = json['user'] as Map<String, dynamic>?;
     final districtJson = json['district'] as Map<String, dynamic>?;
     return AdDetailModel(
-      id:                base.id,
-      title:             base.title,
-      price:             base.price,
-      isNegotiable:      base.isNegotiable,
-      isFree:            base.isFree,
-      priceHidden:       base.priceHidden,
-      status:            base.status,
-      statusLabel:       base.statusLabel,
-      primaryImage:      base.primaryImage,
-      category:          base.category,
-      city:              base.city,
-      region:            base.region,
-      seller:            base.seller,
-      isBoosted:         base.isBoosted,
-      boostedUntil:      base.boostedUntil,
-      publishedAt:       base.publishedAt,
-      createdAt:         base.createdAt,
-      expiresAt:         base.expiresAt,
-      canRefresh:        base.canRefresh,
-      nextRefreshAt:     base.nextRefreshAt,
-      description:       json['description'] as String? ?? '',
-      images:            (json['images'] as List<dynamic>? ?? [])
+      id: base.id,
+      title: base.title,
+      price: base.price,
+      isNegotiable: base.isNegotiable,
+      isFree: base.isFree,
+      priceHidden: base.priceHidden,
+      status: base.status,
+      statusLabel: base.statusLabel,
+      primaryImage: base.primaryImage,
+      category: base.category,
+      city: base.city,
+      region: base.region,
+      seller: base.seller,
+      isBoosted: base.isBoosted,
+      boostedUntil: base.boostedUntil,
+      publishedAt: base.publishedAt,
+      createdAt: base.createdAt,
+      expiresAt: base.expiresAt,
+      canRefresh: base.canRefresh,
+      nextRefreshAt: base.nextRefreshAt,
+      description: json['description'] as String? ?? '',
+      images: (json['images'] as List<dynamic>? ?? [])
           .map((e) => AdImageModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      fieldValues:       (json['field_values'] as List<dynamic>? ?? [])
+      fieldValues: (json['field_values'] as List<dynamic>? ?? [])
           .map((e) => AdFieldValueModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      user:              userJson != null
+      user: userJson != null
           ? (
-              id:            userJson['id'] as int,
-              name:          userJson['name'] as String? ?? '',
-              avatar:        userJson['avatar'] as String?,
-              bio:           userJson['bio'] as String?,
-              isVerified:    userJson['is_verified'] as bool? ?? false,
-              isDealer:      userJson['is_dealer'] as bool? ?? false,
-              avgRating:     userJson['avg_rating'] != null
+              id: userJson['id'] as int,
+              name: userJson['name'] as String? ?? '',
+              avatar: userJson['avatar'] as String?,
+              bio: userJson['bio'] as String?,
+              isVerified: userJson['is_verified'] as bool? ?? false,
+              isDealer: userJson['is_dealer'] as bool? ?? false,
+              avgRating: userJson['avg_rating'] != null
                   ? double.tryParse(userJson['avg_rating'].toString())
                   : null,
-              ratingCount:   userJson['rating_count'] as int?,
+              ratingCount: userJson['rating_count'] as int?,
               totalAdsCount: userJson['total_ads_count'] as int?,
-              memberSince:   userJson['member_since'] != null
+              memberSince: userJson['member_since'] != null
                   ? DateTime.tryParse(userJson['member_since'] as String)
                   : null,
             )
           : null,
-      contactPhone:      json['contact_phone'] as String? ?? '',
-      contactWhatsapp:   json['contact_whatsapp'] as String?,
+      contactPhone: json['contact_phone'] as String? ?? '',
+      contactWhatsapp: json['contact_whatsapp'] as String?,
       showPhonePublicly: json['show_phone_publicly'] as bool? ?? true,
-      district:          districtJson != null
-          ? (id: districtJson['id'] as int, nameAr: districtJson['name_ar'] as String? ?? '')
+      district: districtJson != null
+          ? (
+              id: districtJson['id'] as int,
+              nameAr: districtJson['name_ar'] as String? ?? '',
+            )
           : null,
-      viewsCount:        json['views_count'] as int? ?? 0,
-      favoritesCount:    json['favorites_count'] as int? ?? 0,
-      canBoost:          json['can_boost'] as bool?,
+      viewsCount: json['views_count'] as int? ?? 0,
+      favoritesCount: json['favorites_count'] as int? ?? 0,
+      canBoost: json['can_boost'] as bool?,
     );
   }
 }

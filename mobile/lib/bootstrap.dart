@@ -23,6 +23,12 @@ Future<void> bootstrap() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
 
+  // Classifieds apps scroll through many images — raise Flutter's image
+  // memory cache well above the default (100 images / 100 MB) so thumbnails
+  // don't get evicted while the user scrolls, forcing re-downloads.
+  PaintingBinding.instance.imageCache.maximumSize = 300;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 150 * 1024 * 1024;
+
   // ── Firebase ───────────────────────────────────────────────────────────────
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
@@ -41,10 +47,12 @@ Future<void> bootstrap() async {
   ]);
 
   // ── Status bar style for splash ───────────────────────────────────────────
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
 
   // ── Global error handling ─────────────────────────────────────────────────
   FlutterError.onError = (details) {
@@ -64,9 +72,5 @@ Future<void> bootstrap() async {
   // await Hive.initFlutter();
 
   // ── Launch app ────────────────────────────────────────────────────────────
-  runApp(
-    const ProviderScope(
-      child: BarqWadihApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: BarqWadihApp()));
 }

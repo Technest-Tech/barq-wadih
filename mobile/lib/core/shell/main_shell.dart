@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_theme.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/widgets/auth_bottom_sheet.dart';
 import '../../features/messages/data/chat_providers.dart';
-import '../theme/app_theme.dart';
 
 /// Main app shell — matches the Haraj/target screenshot exactly:
 ///  - White BottomAppBar with CircularNotchedRectangle smooth curve
@@ -57,14 +57,54 @@ class _MainShellState extends ConsumerState<MainShell> {
     context.go(_routes[index]);
   }
 
+  Future<void> _showExitDialog(BuildContext context) async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'هل تريد الخروج؟',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              'لا',
+              style: TextStyle(fontSize: 15, color: AppTheme.neutralGray600),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'نعم',
+              style: TextStyle(
+                fontSize: 15,
+                color: AppTheme.primaryBlue,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (shouldExit == true) SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
 
     int activeIndex = 0;
-    if (location.startsWith('/favorites'))  { activeIndex = 1; }
-    else if (location.startsWith('/messages')) { activeIndex = 3; }
-    else if (location.startsWith('/profile'))  { activeIndex = 4; }
+    if (location.startsWith('/favorites')) {
+      activeIndex = 1;
+    } else if (location.startsWith('/messages')) {
+      activeIndex = 3;
+    } else if (location.startsWith('/profile')) {
+      activeIndex = 4;
+    }
 
     // Real-time unread count for messages tab badge
     final user = ref.watch(currentUserProvider);
@@ -72,19 +112,29 @@ class _MainShellState extends ConsumerState<MainShell> {
         ? ref.watch(totalUnreadProvider(user.id.toString()))
         : 0;
 
-    return Scaffold(
-      // extendBody MUST be false so the notch cutout shows the white scaffold BG
-      extendBody: false,
-      resizeToAvoidBottomInset: false,
-      backgroundColor: Colors.white,
-      body: widget.child,
+    return BackButtonListener(
+      onBackButtonPressed: () async {
+        if (activeIndex != 0) {
+          context.go('/');
+          return true;
+        }
+        await _showExitDialog(context);
+        return true;
+      },
+      child: Scaffold(
+        // extendBody MUST be false so the notch cutout shows the white scaffold BG
+        extendBody: false,
+        resizeToAvoidBottomInset: false,
+        backgroundColor: Colors.white,
+        body: widget.child,
 
-      // ── Floating Action Button ──────────────────────────────────────────────
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _PostFab(onTap: () => _onTap(2)),
+        // ── Floating Action Button ──────────────────────────────────────────────
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: _PostFab(onTap: () => _onTap(2)),
 
-      // ── Bottom Bar ─────────────────────────────────────────────────────────
-      bottomNavigationBar: _buildBottomBar(context, activeIndex, unread),
+        // ── Bottom Bar ─────────────────────────────────────────────────────────
+        bottomNavigationBar: _buildBottomBar(context, activeIndex, unread),
+      ),
     );
   }
 
@@ -94,7 +144,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       decoration: const BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Color(0x1A000000),   // ~10% black
+            color: Color(0x1A000000), // ~10% black
             blurRadius: 16,
             spreadRadius: 0,
             offset: Offset(0, -3),
@@ -105,7 +155,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
         color: Colors.white,
-        elevation: 0,              // shadow handled by parent Container
+        elevation: 0, // shadow handled by parent Container
         surfaceTintColor: Colors.transparent,
         padding: EdgeInsets.zero,
         height: 65,
@@ -172,7 +222,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor   = AppTheme.primaryBlue;
+    const activeColor = AppTheme.primaryBlue;
     const inactiveColor = AppTheme.neutralGray500;
 
     return GestureDetector(
@@ -236,7 +286,7 @@ class _NavItemBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor   = AppTheme.primaryBlue;
+    const activeColor = AppTheme.primaryBlue;
     const inactiveColor = AppTheme.neutralGray500;
 
     return GestureDetector(
@@ -271,7 +321,9 @@ class _NavItemBadge extends StatelessWidget {
                       right: -6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 1),
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFD63031),
                           borderRadius: BorderRadius.circular(99),
@@ -328,8 +380,10 @@ class _PostFabState extends State<_PostFab>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.88)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.88,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -365,11 +419,7 @@ class _PostFabState extends State<_PostFab>
               ),
             ],
           ),
-          child: const Icon(
-            Icons.add_rounded,
-            color: Colors.white,
-            size: 32,
-          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
         ),
       ),
     );

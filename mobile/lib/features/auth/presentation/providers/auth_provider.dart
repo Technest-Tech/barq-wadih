@@ -13,14 +13,24 @@ sealed class AuthState {
   const AuthState();
 }
 
-class AuthInitial        extends AuthState { const AuthInitial(); }
-class AuthLoading        extends AuthState { const AuthLoading(); }
-class AuthAuthenticated  extends AuthState {
+class AuthInitial extends AuthState {
+  const AuthInitial();
+}
+
+class AuthLoading extends AuthState {
+  const AuthLoading();
+}
+
+class AuthAuthenticated extends AuthState {
   final AuthUser user;
   const AuthAuthenticated(this.user);
 }
-class AuthUnauthenticated extends AuthState { const AuthUnauthenticated(); }
-class AuthError          extends AuthState {
+
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated();
+}
+
+class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);
 }
@@ -33,7 +43,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    _repo    = ref.read(authRepositoryProvider);
+    _repo = ref.read(authRepositoryProvider);
     _storage = ref.read(secureStorageProvider);
     _init();
     return const AuthInitial();
@@ -52,7 +62,9 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await _repo.me();
       state = AuthAuthenticated(user);
       // Re-register FCM token on each app start when already authenticated.
-      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
+      FCMService.instance.registerToken(
+        ref.read(notificationRepositoryProvider),
+      );
     } catch (_) {
       await _storage.delete(key: 'auth_token');
       state = const AuthUnauthenticated();
@@ -63,18 +75,23 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> register({
     required String name,
-    required String phone,
+    String? phone,
     String? email,
     String? password,
   }) async {
     state = const AuthLoading();
     try {
       final result = await _repo.register(
-        name: name, phone: phone, email: email, password: password,
+        name: name,
+        phone: phone,
+        email: email,
+        password: password,
       );
       await _storage.write(key: 'auth_token', value: result.token);
       state = AuthAuthenticated(result.user);
-      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
+      FCMService.instance.registerToken(
+        ref.read(notificationRepositoryProvider),
+      );
     } on ApiException catch (e) {
       state = AuthError(e.message);
     }
@@ -88,7 +105,9 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await _repo.login(email: email, password: password);
       await _storage.write(key: 'auth_token', value: result.token);
       state = AuthAuthenticated(result.user);
-      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
+      FCMService.instance.registerToken(
+        ref.read(notificationRepositoryProvider),
+      );
     } on ApiException catch (e) {
       state = AuthError(e.message);
     } catch (_) {
@@ -98,13 +117,21 @@ class AuthNotifier extends Notifier<AuthState> {
 
   // ── Firebase Token ────────────────────────────────────────────────────────
 
-  Future<void> loginWithFirebase({required String idToken, String? name}) async {
+  Future<void> loginWithFirebase({
+    required String idToken,
+    String? name,
+  }) async {
     state = const AuthLoading();
     try {
-      final result = await _repo.loginWithFirebase(idToken: idToken, name: name);
+      final result = await _repo.loginWithFirebase(
+        idToken: idToken,
+        name: name,
+      );
       await _storage.write(key: 'auth_token', value: result.token);
       state = AuthAuthenticated(result.user);
-      FCMService.instance.registerToken(ref.read(notificationRepositoryProvider));
+      FCMService.instance.registerToken(
+        ref.read(notificationRepositoryProvider),
+      );
     } on ApiException catch (e) {
       state = AuthError(e.message);
     }
@@ -113,7 +140,9 @@ class AuthNotifier extends Notifier<AuthState> {
   // ── Logout ────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
-    await FCMService.instance.deregisterToken(ref.read(notificationRepositoryProvider));
+    await FCMService.instance.deregisterToken(
+      ref.read(notificationRepositoryProvider),
+    );
     await _repo.logout();
     state = const AuthUnauthenticated();
   }
@@ -129,7 +158,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);
 
 // ── Convenience selectors ─────────────────────────────────────────────────────
 

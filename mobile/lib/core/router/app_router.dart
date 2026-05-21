@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../theme/app_theme.dart';
 
 import '../../features/ads/presentation/screens/ad_feed_screen.dart';
 import '../../features/ads/presentation/screens/ad_detail_screen.dart';
@@ -30,28 +33,28 @@ import '../shell/main_shell.dart';
 // ── Route paths ───────────────────────────────────────────────────────────────
 
 abstract class AppRoutes {
-  static const home       = '/';
+  static const home = '/';
   static const categories = '/categories';
-  static const search     = '/search';
-  static const login      = '/login';
-  static const register   = '/register';
-  static const profile    = '/profile';
+  static const search = '/search';
+  static const login = '/login';
+  static const register = '/register';
+  static const profile = '/profile';
   static const editProfile = '/profile/edit';
-  static const adDetail      = '/ads/:id';
+  static const adDetail = '/ads/:id';
   static const sellerProfile = '/users/:id';
-  static const postAd        = '/post-ad';
-  static const myAds         = '/my-ads';
-  static const favorites      = '/favorites';
+  static const postAd = '/post-ad';
+  static const myAds = '/my-ads';
+  static const favorites = '/favorites';
   static const notifications = '/notifications';
-  static const messages      = '/messages';
-  static const conversation     = '/messages/:conversationId';
-  static const payments         = '/payments';
+  static const messages = '/messages';
+  static const conversation = '/messages/:conversationId';
+  static const payments = '/payments';
   static const featuresServices = '/features-services';
-  static const contactUs        = '/contact-us';
-  static const privacyPolicy    = '/privacy-policy';
-  static const safetyCenter     = '/safety-center';
-  static const trustedPurchase  = '/trusted-purchase';
-  static const termsOfService   = '/terms-of-service';
+  static const contactUs = '/contact-us';
+  static const privacyPolicy = '/privacy-policy';
+  static const safetyCenter = '/safety-center';
+  static const trustedPurchase = '/trusted-purchase';
+  static const termsOfService = '/terms-of-service';
 
   /// Helper to build ad detail path with actual id
   static String adDetailPath(int id) => '/ads/$id';
@@ -65,7 +68,14 @@ abstract class AppRoutes {
 
 // ── Protected paths: redirect to login if not authed ─────────────────────────
 
-const _protectedPaths = <String>['/my-ads', '/post-ad', '/favorites', '/notifications', '/messages', '/profile'];
+const _protectedPaths = <String>[
+  '/my-ads',
+  '/post-ad',
+  '/favorites',
+  '/notifications',
+  '/messages',
+  '/profile',
+];
 
 // ── Router provider ───────────────────────────────────────────────────────────
 
@@ -78,12 +88,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isLoading = authState is AuthLoading || authState is AuthInitial;
-      final isAuthed  = authState is AuthAuthenticated;
-      final loc       = state.matchedLocation;
-      final isAuthPg  = loc == AppRoutes.login || loc == AppRoutes.register;
+      final isAuthed = authState is AuthAuthenticated;
+      final loc = state.matchedLocation;
+      final isAuthPg = loc == AppRoutes.login || loc == AppRoutes.register;
 
       if (isLoading) return null;
-      if (!isAuthed && _protectedPaths.any((p) => loc.startsWith(p))) return AppRoutes.login;
+      if (!isAuthed && _protectedPaths.any((p) => loc.startsWith(p)))
+        return AppRoutes.login;
       if (isAuthed && isAuthPg) return AppRoutes.home;
       return null;
     },
@@ -138,10 +149,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Profile & edit inside shell so the bottom nav stays visible
           GoRoute(
             path: AppRoutes.profile,
-            pageBuilder: (context, state) => _slidePage(
-              key: state.pageKey,
-              child: const ProfileScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _slidePage(key: state.pageKey, child: const ProfileScreen()),
           ),
           GoRoute(
             path: AppRoutes.editProfile,
@@ -186,24 +195,60 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.search,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const SearchScreen(),
-        ),
+        onExit: (context, state) async {
+          if (context.canPop()) return true;
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'هل تريد الخروج؟',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text(
+                    'لا',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppTheme.neutralGray600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text(
+                    'نعم',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (shouldExit == true) SystemNavigator.pop();
+          return false;
+        },
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const SearchScreen()),
       ),
       GoRoute(
         path: AppRoutes.login,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const LoginScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const LoginScreen()),
       ),
       GoRoute(
         path: AppRoutes.register,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const RegisterScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const RegisterScreen()),
       ),
       // Sprint 8: Individual conversation
       GoRoute(
@@ -220,10 +265,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ── Sidebar screens ────────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.payments,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const PaymentsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const PaymentsScreen()),
       ),
       GoRoute(
         path: AppRoutes.featuresServices,
@@ -234,24 +277,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.contactUs,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const ContactUsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const ContactUsScreen()),
       ),
       GoRoute(
         path: AppRoutes.privacyPolicy,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const PrivacyPolicyScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const PrivacyPolicyScreen()),
       ),
       GoRoute(
         path: AppRoutes.safetyCenter,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const SafetyCenterScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const SafetyCenterScreen()),
       ),
       GoRoute(
         path: AppRoutes.trustedPurchase,
@@ -262,10 +299,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.termsOfService,
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const TermsOfServiceScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const TermsOfServiceScreen()),
       ),
     ],
 
@@ -318,10 +353,10 @@ CustomTransitionPage<void> _slidePage({
     reverseTransitionDuration: const Duration(milliseconds: 250),
     transitionsBuilder: (_, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1, 0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
         child: child,
       );
     },
@@ -340,10 +375,10 @@ CustomTransitionPage<void> _modalPage({
     reverseTransitionDuration: const Duration(milliseconds: 250),
     transitionsBuilder: (_, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 1),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+        position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
         child: child,
       );
     },

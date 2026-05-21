@@ -72,7 +72,7 @@ export interface StaticPageData {
 export async function fetchStaticPage(slug: string): Promise<StaticPageData | null> {
   try {
     const res = await fetch(`${API_BASE}/v1/pages/${slug}`, {
-      next: { revalidate: 300 }, // 5-minute ISR cache
+      cache: 'no-store',
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) return null;

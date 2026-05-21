@@ -4,7 +4,7 @@ import type { AuthResponse, AuthUser } from './auth.types';
 export const authApi = {
   register: (data: {
     name: string;
-    phone: string;
+    phone?: string;
     email?: string;
     password: string;
     password_confirmation: string;

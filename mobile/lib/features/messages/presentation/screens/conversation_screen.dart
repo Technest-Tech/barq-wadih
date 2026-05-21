@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,13 +12,14 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/chat_providers.dart';
 import '../../domain/chat_models.dart';
 import '../widgets/chat_background.dart';
+import '../../../../core/services/image_cache_manager.dart';
 
-const _kHeaderBlue   = Color(0xFF1B4FE4);
-const _kBubbleSent   = Color(0xFFDCF8C6); // WhatsApp green
-const _kBubbleRecv   = Colors.white;
-const _kInputBg      = Color(0xFFF0F2F5);
-const _kTextPrimary  = Color(0xFF0A1628);
-const _kTickRead     = Color(0xFF1B4FE4);
+const _kHeaderBlue = Color(0xFF1B4FE4);
+const _kBubbleSent = Color(0xFFDCF8C6); // WhatsApp green
+const _kBubbleRecv = Colors.white;
+const _kInputBg = Color(0xFFF0F2F5);
+const _kTextPrimary = Color(0xFF0A1628);
+const _kTickRead = Color(0xFF1B4FE4);
 
 class ConversationScreen extends ConsumerStatefulWidget {
   const ConversationScreen({super.key, required this.conversationId});
@@ -61,16 +63,20 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       if (mounted && snap.exists) {
         setState(() => _convMeta = snap.data());
       }
-    } catch (_) {/* swallow */}
+    } catch (_) {
+      /* swallow */
+    }
   }
 
   Future<void> _markRead() async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
-    await ref.read(chatRepositoryProvider).markAsRead(
-      conversationId: widget.conversationId,
-      myId: user.id.toString(),
-    );
+    await ref
+        .read(chatRepositoryProvider)
+        .markAsRead(
+          conversationId: widget.conversationId,
+          myId: user.id.toString(),
+        );
   }
 
   Future<void> _send() async {
@@ -82,19 +88,24 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
     _textController.clear();
 
-    await ref.read(chatRepositoryProvider).sendMessage(
-      conversationId: widget.conversationId,
-      myId:           user.id.toString(),
-      myUid:          _firebaseUid(),
-      text:           text,
-    );
+    await ref
+        .read(chatRepositoryProvider)
+        .sendMessage(
+          conversationId: widget.conversationId,
+          myId: user.id.toString(),
+          myUid: _firebaseUid(),
+          text: text,
+        );
 
     _scrollToBottom();
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 75,
+    );
     if (picked == null) return;
 
     final user = ref.read(currentUserProvider);
@@ -102,12 +113,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
     setState(() => _uploading = true);
     try {
-      await ref.read(chatRepositoryProvider).sendImage(
-        conversationId: widget.conversationId,
-        myId:           user.id.toString(),
-        myUid:          _firebaseUid(),
-        imageFile:      File(picked.path),
-      );
+      await ref
+          .read(chatRepositoryProvider)
+          .sendImage(
+            conversationId: widget.conversationId,
+            myId: user.id.toString(),
+            myUid: _firebaseUid(),
+            imageFile: File(picked.path),
+          );
       _scrollToBottom();
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -115,8 +128,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   String _firebaseUid() {
-    return FirebaseAuth.instance.currentUser?.uid
-        ?? 'user_${ref.read(currentUserProvider)?.id ?? 0}';
+    return FirebaseAuth.instance.currentUser?.uid ??
+        'user_${ref.read(currentUserProvider)?.id ?? 0}';
   }
 
   void _scrollToBottom() {
@@ -154,8 +167,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             children: [
               Icon(Icons.cloud_off_rounded, size: 48, color: Colors.grey[400]),
               const SizedBox(height: 12),
-              Text('تعذّر تحميل الرسائل',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 15)),
+              Text(
+                'تعذّر تحميل الرسائل',
+                style: TextStyle(color: Colors.grey[700], fontSize: 15),
+              ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () => ref.invalidate(firebaseChatAuthProvider),
@@ -184,9 +199,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             children: [
               Expanded(
                 child: msgsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error:   (e, _) => Center(child: Text('خطأ: $e')),
-                  data:    (messages) => _buildMessageList(messages, myId),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('خطأ: $e')),
+                  data: (messages) => _buildMessageList(messages, myId),
                 ),
               ),
               _buildInputBar(),
@@ -212,7 +228,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             children: [
               const Text(
                 'ابدأ المحادثة!',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _kTextPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: _kTextPrimary,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -232,9 +252,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       itemCount: messages.length,
       itemBuilder: (context, index) {
-        final msg  = messages[index];
+        final msg = messages[index];
         final isMe = msg.senderId == myId;
-        final showSep = index == 0 ||
+        final showSep =
+            index == 0 ||
             !_sameDay(messages[index - 1].createdAt, msg.createdAt);
 
         return Column(
@@ -250,22 +271,29 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   PreferredSizeWidget _buildAppBar() {
     final myId = ref.read(currentUserProvider)?.id.toString() ?? '';
     final participantIds = List<String>.from(
-        (_convMeta?['participantIds'] as List<dynamic>?) ?? []);
-    final otherId = participantIds.firstWhere((id) => id != myId, orElse: () => '');
+      (_convMeta?['participantIds'] as List<dynamic>?) ?? [],
+    );
+    final otherId = participantIds.firstWhere(
+      (id) => id != myId,
+      orElse: () => '',
+    );
 
-    final peerNames   = Map<String, String>.from(
-        (_convMeta?['peerNames']   as Map<dynamic, dynamic>? ?? {})
-            .map((k, v) => MapEntry(k.toString(), v.toString())));
+    final peerNames = Map<String, String>.from(
+      (_convMeta?['peerNames'] as Map<dynamic, dynamic>? ?? {}).map(
+        (k, v) => MapEntry(k.toString(), v.toString()),
+      ),
+    );
     final peerAvatars = Map<String, String?>.from(
-        (_convMeta?['peerAvatars'] as Map<dynamic, dynamic>? ?? {})
-            .map((k, v) => MapEntry(k.toString(), v?.toString())));
+      (_convMeta?['peerAvatars'] as Map<dynamic, dynamic>? ?? {}).map(
+        (k, v) => MapEntry(k.toString(), v?.toString()),
+      ),
+    );
 
-    final displayName = peerNames[otherId]
-        ?? (_convMeta?['adTitle'] as String?)
-        ?? 'المحادثة';
-    final avatarUrl   = peerAvatars[otherId]
-        ?? (_convMeta?['adImage'] as String?);
-    final initial     = displayName.trim().isEmpty
+    final displayName =
+        peerNames[otherId] ?? (_convMeta?['adTitle'] as String?) ?? 'المحادثة';
+    final avatarUrl =
+        peerAvatars[otherId] ?? (_convMeta?['adImage'] as String?);
+    final initial = displayName.trim().isEmpty
         ? '?'
         : displayName.trim().substring(0, 1).toUpperCase();
 
@@ -288,20 +316,29 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             ),
             clipBehavior: Clip.antiAlias,
             child: avatarUrl != null
-                ? Image.network(
-                    avatarUrl,
+                ? CachedNetworkImage(
+                    imageUrl: avatarUrl,
+                    cacheManager: AppImageCacheManager.instance,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(
+                    memCacheWidth: 120,
+                    memCacheHeight: 120,
+                    errorWidget: (_, __, ___) => Center(
                       child: Text(
                         initial,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   )
                 : Center(
                     child: Text(
                       initial,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
           ),
@@ -370,10 +407,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                           color: Color(0x441B4FE4),
                           blurRadius: 8,
                           offset: Offset(0, 3),
-                        )
+                        ),
                       ],
                     ),
-                    child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                    child: const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 );
               }
@@ -384,7 +425,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   color: _kHeaderBlue,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.mic_none_rounded, color: Colors.white, size: 22),
+                child: const Icon(
+                  Icons.mic_none_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               );
             },
           ),
@@ -411,16 +456,23 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   IconButton(
                     icon: _uploading
                         ? const SizedBox(
-                            width: 20, height: 20,
+                            width: 20,
+                            height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(Icons.camera_alt_outlined, color: Colors.grey[600]),
+                        : Icon(
+                            Icons.camera_alt_outlined,
+                            color: Colors.grey[600],
+                          ),
                     onPressed: _uploading ? null : _pickImage,
                     splashRadius: 22,
                   ),
                   // Attachment button
                   IconButton(
-                    icon: Icon(Icons.attach_file_rounded, color: Colors.grey[600]),
+                    icon: Icon(
+                      Icons.attach_file_rounded,
+                      color: Colors.grey[600],
+                    ),
                     onPressed: _uploading ? null : _pickImage,
                     splashRadius: 22,
                   ),
@@ -435,7 +487,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                       decoration: const InputDecoration(
                         hintText: 'اكتب رسالة',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -476,10 +531,14 @@ class _MessageBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: isMe ? _kBubbleSent : _kBubbleRecv,
           borderRadius: BorderRadius.only(
-            topLeft:     const Radius.circular(12),
-            topRight:    const Radius.circular(12),
-            bottomLeft:  isMe ? const Radius.circular(12) : const Radius.circular(2),
-            bottomRight: isMe ? const Radius.circular(2)  : const Radius.circular(12),
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: isMe
+                ? const Radius.circular(12)
+                : const Radius.circular(2),
+            bottomRight: isMe
+                ? const Radius.circular(2)
+                : const Radius.circular(12),
           ),
           boxShadow: [
             BoxShadow(
@@ -497,17 +556,28 @@ class _MessageBubble extends StatelessWidget {
               if (msg.isImage && msg.imageUrl != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    msg.imageUrl!,
+                  child: CachedNetworkImage(
+                    imageUrl: msg.imageUrl!,
+                    cacheManager: AppImageCacheManager.instance,
                     width: 220,
                     height: 220,
                     fit: BoxFit.cover,
-                    loadingBuilder: (_, child, progress) => progress == null
-                        ? child
-                        : const SizedBox(
-                            width: 220, height: 220,
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
+                    memCacheWidth: 660,
+                    memCacheHeight: 660,
+                    placeholder: (_, __) => const SizedBox(
+                      width: 220,
+                      height: 220,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (_, __, ___) => const SizedBox(
+                      width: 220,
+                      height: 220,
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                    ),
                   ),
                 )
               else
@@ -534,7 +604,9 @@ class _MessageBubble extends StatelessWidget {
                     if (isMe) ...[
                       const SizedBox(width: 4),
                       Icon(
-                        msg.isRead ? Icons.done_all_rounded : Icons.check_rounded,
+                        msg.isRead
+                            ? Icons.done_all_rounded
+                            : Icons.check_rounded,
                         size: 14,
                         color: msg.isRead ? _kTickRead : Colors.grey[500],
                       ),
@@ -559,13 +631,13 @@ class _DateSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now  = DateTime.now();
+    final now = DateTime.now();
     final diff = now.difference(date).inDays;
     final label = diff == 0
         ? 'اليوم'
         : diff == 1
-            ? 'أمس'
-            : DateFormat('d MMMM', 'ar').format(date);
+        ? 'أمس'
+        : DateFormat('d MMMM', 'ar').format(date);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),

@@ -10,7 +10,7 @@ import '../domain/auth_user.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
-    dio:     ref.watch(dioProvider),
+    dio: ref.watch(dioProvider),
     storage: ref.watch(secureStorageProvider),
   );
 });
@@ -21,26 +21,28 @@ class AuthRepository {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  const AuthRepository({required Dio dio, required FlutterSecureStorage storage})
-      : _dio = dio,
-        _storage = storage;
+  const AuthRepository({
+    required Dio dio,
+    required FlutterSecureStorage storage,
+  }) : _dio = dio,
+       _storage = storage;
 
   // ── Register ──────────────────────────────────────────────────────────────
 
   Future<({AuthUser user, String token})> register({
     required String name,
-    required String phone,
+    String? phone,
     String? email,
     String? password,
     String locale = 'ar',
   }) async {
     final res = await _post('/auth/register', {
-      'name':     name,
-      'phone':    phone,
+      'name': name,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
       if (email != null && email.isNotEmpty) 'email': email,
       if (password != null) 'password': password,
       if (password != null) 'password_confirmation': password,
-      'locale':   locale,
+      'locale': locale,
     });
     return _parseAuthResponse(res);
   }
@@ -51,7 +53,10 @@ class AuthRepository {
     required String email,
     required String password,
   }) async {
-    final res = await _post('/auth/login', {'email': email, 'password': password});
+    final res = await _post('/auth/login', {
+      'email': email,
+      'password': password,
+    });
     return _parseAuthResponse(res);
   }
 
@@ -69,7 +74,7 @@ class AuthRepository {
     });
     final data = res.data as Map<String, dynamic>;
     return (
-      user:  AuthUser.fromJson(data['user'] as Map<String, dynamic>),
+      user: AuthUser.fromJson(data['user'] as Map<String, dynamic>),
       token: data['token'] as String,
       isNew: data['is_new'] as bool? ?? false,
     );
@@ -97,11 +102,11 @@ class AuthRepository {
     int? cityId,
   }) async {
     final data = <String, dynamic>{'name': name};
-    if (bio != null)      data['bio']       = bio;
-    if (email != null)    data['email']     = email;
+    if (bio != null) data['bio'] = bio;
+    if (email != null) data['email'] = email;
     if (regionId != null) data['region_id'] = regionId;
-    if (cityId != null)   data['city_id']   = cityId;
-    final res  = await _put('/auth/me', data);
+    if (cityId != null) data['city_id'] = cityId;
+    final res = await _put('/auth/me', data);
     final body = res.data as Map<String, dynamic>;
     return AuthUser.fromJson(body['data'] as Map<String, dynamic>);
   }
@@ -111,8 +116,7 @@ class AuthRepository {
   Future<void> uploadAvatar(XFile file) async {
     try {
       final formData = FormData.fromMap({
-        'avatar': await MultipartFile.fromFile(
-          file.path, filename: file.name),
+        'avatar': await MultipartFile.fromFile(file.path, filename: file.name),
       });
       await _dio.post('/auth/me/avatar', data: formData);
     } on DioException catch (e) {
@@ -154,14 +158,16 @@ class AuthRepository {
     final body = res.data as Map<String, dynamic>;
     final data = body['data'] as Map<String, dynamic>;
     return (
-      user:  AuthUser.fromJson(data['user'] as Map<String, dynamic>),
+      user: AuthUser.fromJson(data['user'] as Map<String, dynamic>),
       token: data['token'] as String,
     );
   }
 
   ApiException _mapError(DioException e) {
     final data = e.response?.data;
-    final message = data is Map ? (data['message'] as String?) ?? e.message ?? 'خطأ في الشبكة' : e.message ?? 'خطأ في الشبكة';
+    final message = data is Map
+        ? (data['message'] as String?) ?? e.message ?? 'خطأ في الشبكة'
+        : e.message ?? 'خطأ في الشبكة';
     return ApiException(message: message, statusCode: e.response?.statusCode);
   }
 }
