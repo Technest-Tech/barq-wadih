@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/presentation/report_sheet.dart';
 import '../../../ratings/data/rating_providers.dart';
 import '../../../ratings/domain/rating_model.dart';
@@ -16,6 +17,7 @@ import '../../../favorites/data/favorite_repository.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
 import '../widgets/contact_sheet.dart';
+import '../widgets/sold_fee_sheet.dart';
 
 // ── Related ads provider ──────────────────────────────────────────────────────
 
@@ -216,7 +218,11 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
               icon: const Icon(Icons.more_vert, color: Colors.white),
               onPressed: () => showDialog<void>(
                 context: context,
-                builder: (_) => _MoreOptionsDialog(adId: ad.id),
+                builder: (_) => _MoreOptionsDialog(
+                  adId: ad.id,
+                  sellerId: ad.user?.id,
+                  adStatus: ad.status,
+                ),
               ),
             ),
           ],
@@ -1510,12 +1516,54 @@ class _ErrorScaffold extends StatelessWidget {
 
 // ── More Options Modal ────────────────────────────────────────────────────────
 
-class _MoreOptionsDialog extends StatelessWidget {
+class _MoreOptionsDialog extends ConsumerStatefulWidget {
   final int adId;
-  const _MoreOptionsDialog({required this.adId});
+  final int? sellerId;
+  final String adStatus;
+
+  const _MoreOptionsDialog({
+    required this.adId,
+    required this.sellerId,
+    required this.adStatus,
+  });
+
+  @override
+  ConsumerState<_MoreOptionsDialog> createState() => _MoreOptionsDialogState();
+}
+
+class _MoreOptionsDialogState extends ConsumerState<_MoreOptionsDialog> {
+  bool _markingSold = false;
+
+  Future<void> _handleMarkSold() async {
+    setState(() => _markingSold = true);
+    try {
+      final result = await ref.read(adRepositoryProvider).markSold(widget.adId);
+      ref.invalidate(adDetailProvider(widget.adId));
+      if (mounted) {
+        Navigator.pop(context); // close the dialog
+        await SoldFeeSheet.show(
+          context,
+          adTitle: result.title,
+          adPrice: result.price,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _markingSold = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+    final isOwner = currentUser != null && currentUser.id == widget.sellerId;
+    final alreadySold = widget.adStatus == 'sold';
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
@@ -1549,6 +1597,16 @@ class _MoreOptionsDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              if (isOwner && !alreadySold) ...[
+                _buildOption(
+                  icon: Icons.sell_outlined,
+                  label: 'تم البيع',
+                  color: const Color(0xFF159787),
+                  isLoading: _markingSold,
+                  onTap: _handleMarkSold,
+                ),
+                const SizedBox(height: 16),
+              ],
               _buildOption(
                 icon: Icons.person_add_alt_1,
                 label: 'متابعة البائع',
@@ -1569,7 +1627,7 @@ class _MoreOptionsDialog extends StatelessWidget {
                   Navigator.pop(context);
                   showModalBottomSheet<void>(
                     context: context,
-                    builder: (_) => ReportSheet(adId: adId),
+                    builder: (_) => ReportSheet(adId: widget.adId),
                   );
                 },
               ),
@@ -1585,9 +1643,10 @@ class _MoreOptionsDialog extends StatelessWidget {
     required String label,
     required Color color,
     required VoidCallback onTap,
+    bool isLoading = false,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
@@ -1598,7 +1657,14 @@ class _MoreOptionsDialog extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 24),
+            if (isLoading)
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            else
+              Icon(icon, color: color, size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -1610,11 +1676,12 @@ class _MoreOptionsDialog extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: color.withValues(alpha: 0.5),
-            ),
+            if (!isLoading)
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: color.withValues(alpha: 0.5),
+              ),
           ],
         ),
       ),

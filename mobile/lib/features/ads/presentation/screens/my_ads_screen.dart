@@ -6,26 +6,26 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
-import '../widgets/boost_confirm_sheet.dart';
+import '../widgets/sold_fee_sheet.dart';
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
 const _statusConfig = {
-  'active':         (label: 'نشط',          color: Color(0xFF16A34A)),
-  'sold':           (label: 'مُباع',         color: Color(0xFF2563EB)),
+  'active': (label: 'نشط', color: Color(0xFF16A34A)),
+  'sold': (label: 'مُباع', color: Color(0xFF2563EB)),
   'pending_review': (label: 'قيد المراجعة', color: Color(0xFFCA8A04)),
-  'expired':        (label: 'منتهي',         color: Color(0xFFEA580C)),
-  'rejected':       (label: 'مرفوض',        color: Color(0xFFDC2626)),
+  'expired': (label: 'منتهي', color: Color(0xFFEA580C)),
+  'rejected': (label: 'مرفوض', color: Color(0xFFDC2626)),
 };
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const _tabs = [
-  (key: 'all',           label: 'الكل'),
-  (key: 'active',        label: 'نشط'),
-  (key: 'sold',          label: 'مُباع'),
-  (key: 'expired',       label: 'منتهي'),
-  (key: 'pending_review',label: 'قيد المراجعة'),
+  (key: 'all', label: 'الكل'),
+  (key: 'active', label: 'نشط'),
+  (key: 'sold', label: 'مُباع'),
+  (key: 'expired', label: 'منتهي'),
+  (key: 'pending_review', label: 'قيد المراجعة'),
 ];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -47,8 +47,11 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.neutralGray50,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text('إعلاناتي', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
+        backgroundColor: AppTheme.primaryBlue,
+        title: const Text(
+          'إعلاناتي',
+          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
@@ -63,7 +66,8 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
           // Per-tab counts
           final counts = <String, int>{
             'all': ads.length,
-            for (final t in _tabs.skip(1)) t.key: ads.where((a) => a.status == t.key).length,
+            for (final t in _tabs.skip(1))
+              t.key: ads.where((a) => a.status == t.key).length,
           };
 
           // Filtered list
@@ -85,14 +89,18 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
                 child: filtered.isEmpty
                     ? _EmptyState(
                         tab: _activeTab,
-                        tabLabel: _tabs.firstWhere((t) => t.key == _activeTab).label,
+                        tabLabel: _tabs
+                            .firstWhere((t) => t.key == _activeTab)
+                            .label,
                       )
                     : RefreshIndicator(
-                        onRefresh: () => ref.read(myAdsProvider.notifier).refresh(),
+                        onRefresh: () =>
+                            ref.read(myAdsProvider.notifier).refresh(),
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                           itemCount: filtered.length,
-                          itemBuilder: (context, i) => _AdListTile(ad: filtered[i]),
+                          itemBuilder: (context, i) =>
+                              _AdListTile(ad: filtered[i]),
                         ),
                       ),
               ),
@@ -123,16 +131,27 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 72, height: 72,
+                  width: 72,
+                  height: 72,
                   decoration: const BoxDecoration(
                     color: AppTheme.neutralGray100,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.error_outline_rounded, size: 36, color: AppTheme.neutralGray500),
+                  child: const Icon(
+                    Icons.error_outline_rounded,
+                    size: 36,
+                    color: AppTheme.neutralGray500,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                const Text('تعذّر تحميل الإعلانات',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.neutralGray900)),
+                const Text(
+                  'تعذّر تحميل الإعلانات',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.neutralGray900,
+                  ),
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
                   onPressed: () => ref.read(myAdsProvider.notifier).refresh(),
@@ -141,8 +160,13 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryBlue,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -154,7 +178,14 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/post-ad'),
         icon: const Icon(Icons.add_rounded, size: 22),
-        label: const Text('إعلان جديد', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white)),
+        label: const Text(
+          'إعلان جديد',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         elevation: 3,
@@ -217,15 +248,22 @@ class _StatusTabBar extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? AppTheme.primaryBlue : AppTheme.neutralGray600,
+                      color: isActive
+                          ? AppTheme.primaryBlue
+                          : AppTheme.neutralGray600,
                     ),
                   ),
                   if (count > 0) ...[
                     const SizedBox(width: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
-                        color: isActive ? AppTheme.primaryBlue : AppTheme.neutralGray500,
+                        color: isActive
+                            ? AppTheme.primaryBlue
+                            : AppTheme.neutralGray500,
                         borderRadius: BorderRadius.circular(99),
                       ),
                       child: Text(
@@ -250,273 +288,274 @@ class _StatusTabBar extends StatelessWidget {
 
 // ── Ad tile ───────────────────────────────────────────────────────────────────
 
-class _AdListTile extends ConsumerWidget {
+class _AdListTile extends ConsumerStatefulWidget {
   final AdListModel ad;
   const _AdListTile({required this.ad});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sc  = _statusConfig[ad.status] ?? (label: ad.statusLabel, color: AppTheme.neutralGray500);
-    final daysRemaining = _daysUntilExpiry(ad.expiresAt);
-    final isExpiringSoon = daysRemaining != null && daysRemaining <= 5 && daysRemaining >= 0 && ad.status == 'active';
+  ConsumerState<_AdListTile> createState() => _AdListTileState();
+}
 
-    Future<void> handleDelete() async {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('حذف الإعلان'),
-          content: const Text('هل أنت متأكد من حذف هذا الإعلان؟ لا يمكن التراجع.'),
+class _AdListTileState extends ConsumerState<_AdListTile> {
+  bool _deletingAd = false;
+  bool _markingSold = false;
+
+  AdListModel get ad => widget.ad;
+
+  Future<void> _handleDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'حذف الإعلان',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: const Text(
+            'هل أنت متأكد من حذف هذا الإعلان؟ لا يمكن التراجع.',
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
             TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('حذف', style: TextStyle(color: Colors.red)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                elevation: 0,
+              ),
+              child: const Text('حذف'),
             ),
           ],
         ),
-      );
-      if (confirm != true) return;
-      try {
-        await ref.read(adRepositoryProvider).deleteAd(ad.id);
-        ref.read(myAdsProvider.notifier).removeLocally(ad.id);
-        ref.invalidate(adsFeedProvider);
-      } on ApiException catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-          );
-        }
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _deletingAd = true);
+    try {
+      await ref.read(adRepositoryProvider).deleteAd(ad.id);
+      ref.read(myAdsProvider.notifier).removeLocally(ad.id);
+      ref.invalidate(adsFeedProvider);
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
       }
+    } finally {
+      if (mounted) setState(() => _deletingAd = false);
     }
+  }
 
-    Future<void> handleMarkSold() async {
-      try {
-        await ref.read(adRepositoryProvider).markSold(ad.id);
-        ref.read(myAdsProvider.notifier).updateStatus(ad.id, 'sold', 'مُباع');
-      } on ApiException catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-          );
-        }
+  Future<void> _handleMarkSold() async {
+    setState(() => _markingSold = true);
+    try {
+      await ref.read(adRepositoryProvider).markSold(ad.id);
+      ref.read(myAdsProvider.notifier).updateStatus(ad.id, 'sold', 'مُباع');
+      if (mounted) {
+        await SoldFeeSheet.show(context, adTitle: ad.title, adPrice: ad.price);
       }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _markingSold = false);
     }
+  }
 
-    Future<void> handleBoost() async {
-      bool loading = false;
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setSheetState) => BoostConfirmSheet(
-            adTitle: ad.title,
-            isLoading: loading,
-            onConfirm: () async {
-              setSheetState(() => loading = true);
-              try {
-                await ref.read(adRepositoryProvider).boostAd(ad.id);
-                ref.read(myAdsProvider.notifier).refresh();
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم ترقية الإعلان بنجاح! ⚡'), backgroundColor: Colors.green),
-                  );
-                }
-              } on ApiException catch (e) {
-                setSheetState(() => loading = false);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-          ),
+  @override
+  Widget build(BuildContext context) {
+    final sc =
+        _statusConfig[ad.status] ??
+        (label: ad.statusLabel, color: AppTheme.neutralGray500);
+    final daysRemaining = _daysUntilExpiry(ad.expiresAt);
+    final isExpiringSoon =
+        daysRemaining != null &&
+        daysRemaining <= 5 &&
+        daysRemaining >= 0 &&
+        ad.status == 'active';
+    final isActive = ad.status == 'active';
+
+    return Opacity(
+      opacity: _deletingAd ? 0.5 : 1.0,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      );
-    }
-
-    Future<void> handleRefresh() async {
-      try {
-        await ref.read(adRepositoryProvider).refreshAd(ad.id);
-        ref.read(myAdsProvider.notifier).refresh();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم تحديث الإعلان بنجاح! 🔄'), backgroundColor: Colors.green),
-          );
-        }
-      } on ApiException catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => context.push('/ads/${ad.id}'),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+        child: InkWell(
+          onTap: () => context.push('/ads/${ad.id}'),
+          borderRadius: BorderRadius.circular(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Thumbnail
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(
-                      width: 80, height: 70,
-                      child: ad.primaryImage != null
-                          ? Image.network(ad.primaryImage!.thumbnailUrl, fit: BoxFit.cover)
-                          : Container(
-                              color: AppTheme.neutralGray100,
-                              child: Center(child: Text(ad.category?.icon ?? '📦', style: const TextStyle(fontSize: 28))),
-                            ),
+              // ── Top section: image + info ───────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Thumbnail
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        width: 90,
+                        height: 90,
+                        child: ad.primaryImage != null
+                            ? Image.network(
+                                ad.primaryImage!.thumbnailUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _ImageFallback(icon: ad.category?.icon),
+                              )
+                            : _ImageFallback(icon: ad.category?.icon),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
+                    const SizedBox(width: 12),
 
-                  // Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Status + date row
-                        Row(
-                          children: [
-                            _StatusBadge(label: sc.label, color: sc.color),
-                            const Spacer(),
-                            Text(
-                              _formatDate(ad.createdAt),
-                              style: TextStyle(fontSize: 11, color: AppTheme.neutralGray500),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-
-                        // Title
-                        Text(
-                          ad.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
-                          textDirection: TextDirection.rtl,
-                        ),
-                        const SizedBox(height: 4),
-
-                        // Price
-                        Text(
-                          ad.priceDisplay,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Actions column
-                  Column(
-                    children: [
-                      if (ad.status == 'active') ...[
-                        // Boost button — only if not currently boosted
-                        if (!ad.isBoosted || ad.boostedUntil == null || ad.boostedUntil!.isBefore(DateTime.now())) ...[
-                          _ActionButton(
-                            label: 'ترقية',
-                            icon: Icons.rocket_launch_rounded,
-                            color: const Color(0xFFF59E0B),
-                            onTap: handleBoost,
-                          ),
-                        ] else ...[
-                          // Boosted indicator with remaining time
-                          Column(
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Status badge + date
+                          Row(
                             children: [
-                              const Icon(Icons.bolt_rounded, size: 20, color: Color(0xFFF59E0B)),
+                              _StatusBadge(label: sc.label, color: sc.color),
+                              const Spacer(),
                               Text(
-                                'مميز',
-                                style: TextStyle(fontSize: 10, color: const Color(0xFFF59E0B), fontWeight: FontWeight.w700),
-                              ),
-                              Text(
-                                _formatHoursLeft(ad.boostedUntil!),
-                                style: TextStyle(fontSize: 8, color: AppTheme.neutralGray500),
+                                _formatDate(ad.createdAt),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.neutralGray400,
+                                ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Title
+                          Text(
+                            ad.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textDirection: TextDirection.rtl,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.neutralGray900,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Price
+                          Text(
+                            ad.priceDisplay,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF16A34A),
+                            ),
                           ),
                         ],
-                        const SizedBox(height: 6),
-                        // Refresh button — only if 24h cooldown has passed
-                        if (ad.canRefresh == true)
-                          _ActionButton(
-                            label: 'تحديث',
-                            icon: Icons.refresh_rounded,
-                            color: const Color(0xFF10B981),
-                            onTap: handleRefresh,
-                          )
-                        else if (ad.nextRefreshAt != null)
-                          Column(
-                            children: [
-                              Icon(Icons.refresh_rounded, size: 20, color: AppTheme.neutralGray400),
-                              Text(
-                                _formatHoursLeft(ad.nextRefreshAt!),
-                                style: const TextStyle(fontSize: 8, color: AppTheme.neutralGray400),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 6),
-                        _ActionButton(label: 'مُباع', icon: Icons.sell_outlined, color: Colors.blue, onTap: handleMarkSold),
-                        const SizedBox(height: 6),
-                      ],
-                      if (ad.status == 'active' || ad.status == 'pending_review') ...[
-                        _ActionButton(
-                          label: 'تعديل',
-                          icon: Icons.edit_outlined,
-                          color: AppTheme.primaryGreen,
-                          // ✅ Wired: navigate to PostAdScreen in edit mode
-                          onTap: () => context.push('/post-ad', extra: ad.id),
-                        ),
-                        const SizedBox(height: 6),
-                      ],
-                      _ActionButton(label: 'حذف', icon: Icons.delete_outline, color: Colors.red, onTap: handleDelete),
-                    ],
-                  ),
-                ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              // ── Expiry countdown (active ads ≤ 5 days) ─────────────────
-              if (isExpiringSoon) ...[
-                const SizedBox(height: 8),
+              // ── Expiry warning ──────────────────────────────────────
+              if (isExpiringSoon)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade200),
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFCD34D)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.timer_outlined, size: 14, color: Colors.amber.shade800),
-                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 14,
+                        color: Color(0xFFB45309),
+                      ),
+                      const SizedBox(width: 6),
                       Text(
                         daysRemaining == 0
-                            ? 'ينتهي اليوم!'
+                            ? 'ينتهي الإعلان اليوم!'
                             : 'ينتهي خلال $daysRemaining ${daysRemaining == 1 ? "يوم" : "أيام"}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.amber.shade900,
-                        ),
                         textDirection: TextDirection.rtl,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF92400E),
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
+
+              // ── Divider ─────────────────────────────────────────────
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+              // ── Action bar ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    // Mark sold — active ads only
+                    if (isActive) ...[
+                      _TileAction(
+                        label: 'تم البيع',
+                        icon: Icons.sell_outlined,
+                        color: const Color(0xFF2563EB),
+                        isLoading: _markingSold,
+                        onTap: _handleMarkSold,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+
+                    const Spacer(),
+
+                    // Delete — always shown
+                    _TileAction(
+                      label: 'حذف',
+                      icon: Icons.delete_outline_rounded,
+                      color: const Color(0xFFDC2626),
+                      isLoading: _deletingAd,
+                      isDestructive: true,
+                      onTap: _handleDelete,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -531,16 +570,69 @@ class _AdListTile extends ConsumerWidget {
     return diff.inDays;
   }
 
-  static String _formatDate(DateTime dt) {
-    return '${dt.day}/${dt.month}/${dt.year}';
-  }
+  static String _formatDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
+}
 
-  static String _formatHoursLeft(DateTime until) {
-    final diff = until.difference(DateTime.now());
-    if (diff.isNegative) return '';
-    if (diff.inHours > 24) return 'باقي ${diff.inDays} يوم';
-    if (diff.inHours > 0) return 'باقي ${diff.inHours} س';
-    return 'باقي ${diff.inMinutes} د';
+// ── Tile action button ────────────────────────────────────────────────────────
+
+class _TileAction extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isLoading;
+  final bool isDestructive;
+
+  const _TileAction({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.isLoading = false,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isDestructive
+              ? color.withValues(alpha: .07)
+              : color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: color.withValues(alpha: .25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoading)
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: color,
+                ),
+              )
+            else
+              Icon(icon, size: 15, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -554,35 +646,36 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .15),
+        color: color.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: color.withValues(alpha: .4)),
+        border: Border.all(color: color.withValues(alpha: .35)),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }
 
-// ── Action button ─────────────────────────────────────────────────────────────
+// ── Image fallback ────────────────────────────────────────────────────────────
 
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  const _ActionButton({required this.label, required this.icon, required this.color, required this.onTap});
+class _ImageFallback extends StatelessWidget {
+  final String? icon;
+  const _ImageFallback({this.icon});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: color),
-          Text(label, style: TextStyle(fontSize: 10, color: color)),
-        ],
+    return Container(
+      color: AppTheme.neutralGray100,
+      child: Center(
+        child: Text(icon ?? '📦', style: const TextStyle(fontSize: 32)),
       ),
     );
   }
@@ -607,13 +700,22 @@ class _EmptyState extends StatelessWidget {
             Text(isAll ? '📋' : '🔍', style: const TextStyle(fontSize: 64)),
             const SizedBox(height: 16),
             Text(
-              isAll ? 'لا توجد إعلانات بعد' : 'لا توجد إعلانات بحالة "$tabLabel"',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
+              isAll
+                  ? 'لا توجد إعلانات بعد'
+                  : 'لا توجد إعلانات بحالة "$tabLabel"',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.neutralGray900,
+              ),
               textAlign: TextAlign.center,
             ),
             if (isAll) ...[
               const SizedBox(height: 8),
-              Text('انشر إعلانك الأول الآن!', style: TextStyle(color: AppTheme.neutralGray500)),
+              Text(
+                'انشر إعلانك الأول الآن!',
+                style: TextStyle(color: AppTheme.neutralGray500),
+              ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () => context.push('/post-ad'),
@@ -641,16 +743,29 @@ class _SkeletonTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Container(width: 80, height: 70, color: AppTheme.neutralGray100, margin: const EdgeInsets.only(right: 12)),
+            Container(
+              width: 80,
+              height: 70,
+              color: AppTheme.neutralGray100,
+              margin: const EdgeInsets.only(right: 12),
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(height: 12, width: 60, color: AppTheme.neutralGray100),
+                  Container(
+                    height: 12,
+                    width: 60,
+                    color: AppTheme.neutralGray100,
+                  ),
                   const SizedBox(height: 8),
                   Container(height: 14, color: AppTheme.neutralGray100),
                   const SizedBox(height: 6),
-                  Container(height: 14, width: 80, color: AppTheme.neutralGray100),
+                  Container(
+                    height: 14,
+                    width: 80,
+                    color: AppTheme.neutralGray100,
+                  ),
                 ],
               ),
             ),

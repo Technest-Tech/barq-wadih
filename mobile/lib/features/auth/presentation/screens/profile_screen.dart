@@ -13,11 +13,56 @@ import '../providers/auth_provider.dart';
 
 // ── Profile Screen ─────────────────────────────────────────────────────────────
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshUser());
+  }
+
+  Future<void> _refreshUser() async {
+    try {
+      final updated = await ref.read(authRepositoryProvider).me();
+      ref.read(authProvider.notifier).refreshUser(updated);
+    } catch (_) {}
+  }
+
+  Future<bool?> _confirmLogout(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('تسجيل الخروج'),
+          content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('خروج', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
     if (authState is! AuthAuthenticated) {
@@ -46,7 +91,8 @@ class ProfileScreen extends ConsumerWidget {
               // In RTL context, leading appears on the right (correct for Arabic back)
               leading: IconButton(
                 icon: const Icon(Icons.arrow_forward_ios),
-                onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                onPressed: () =>
+                    context.canPop() ? context.pop() : context.go('/'),
               ),
               actions: [
                 IconButton(
@@ -149,12 +195,11 @@ class ProfileScreen extends ConsumerWidget {
                     _InfoCard(
                       title: 'الحساب',
                       children: [
-                        // TODO: re-enable when my-ads screen is ready
-                        // _ActionRow(
-                        //   icon: Icons.article_outlined,
-                        //   label: 'إعلاناتي',
-                        //   onTap: () => context.push('/my-ads'),
-                        // ),
+                        _ActionRow(
+                          icon: Icons.article_outlined,
+                          label: 'إعلاناتي',
+                          onTap: () => context.push('/my-ads'),
+                        ),
                         _ActionRow(
                           icon: Icons.edit_outlined,
                           label: 'تعديل الملف الشخصي',
@@ -202,31 +247,6 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
-
-  Future<bool?> _confirmLogout(BuildContext context) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('تسجيل الخروج'),
-          content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('خروج', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ── Avatar Widget ─────────────────────────────────────────────────────────────
@@ -246,7 +266,8 @@ class _AvatarWidget extends ConsumerWidget {
             backgroundColor: Colors.white24,
             backgroundImage: user.avatarUrl != null
                 ? CachedNetworkImageProvider(
-                    AppConstants.normalizeImageUrl(user.avatarUrl!))
+                    AppConstants.normalizeImageUrl(user.avatarUrl!),
+                  )
                 : null,
             child: user.avatarUrl == null
                 ? Text(
@@ -283,8 +304,10 @@ class _AvatarWidget extends ConsumerWidget {
 
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
     final picker = ImagePicker();
-    final file =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (file == null || !context.mounted) return;
 
     try {
@@ -317,10 +340,7 @@ class _StatsRow extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: .04), blurRadius: 8),
         ],
       ),
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -388,10 +408,7 @@ class _InfoCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: .04), blurRadius: 8),
         ],
       ),
       child: Column(
@@ -450,8 +467,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: valueLtr ? TextAlign.left : TextAlign.right,
-              textDirection:
-                  valueLtr ? TextDirection.ltr : TextDirection.rtl,
+              textDirection: valueLtr ? TextDirection.ltr : TextDirection.rtl,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -497,10 +513,7 @@ class _ActionRow extends StatelessWidget {
                 ),
               ),
             ),
-            if (trailing != null) ...[
-              trailing!,
-              const SizedBox(width: 8),
-            ],
+            if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
             const Icon(
               Icons.chevron_left_rounded,
               color: AppTheme.neutralGray500,

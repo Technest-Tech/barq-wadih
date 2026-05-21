@@ -112,14 +112,15 @@ class _MainShellState extends ConsumerState<MainShell> {
         ? ref.watch(totalUnreadProvider(user.id.toString()))
         : 0;
 
-    return BackButtonListener(
-      onBackButtonPressed: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (didPop) return;
         if (activeIndex != 0) {
           context.go('/');
-          return true;
+        } else {
+          _showExitDialog(context);
         }
-        await _showExitDialog(context);
-        return true;
       },
       child: Scaffold(
         // extendBody MUST be false so the notch cutout shows the white scaffold BG

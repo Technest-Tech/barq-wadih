@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -34,6 +35,7 @@ class _RegisterBottomSheet extends ConsumerStatefulWidget {
 class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
@@ -41,9 +43,16 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  String _buildPhone() {
+    final digits = _phoneCtrl.text.trim();
+    final local = digits.startsWith('0') ? digits.substring(1) : digits;
+    return '+966$local';
   }
 
   Future<void> _submit() async {
@@ -52,6 +61,7 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
         .read(authProvider.notifier)
         .register(
           name: _nameCtrl.text.trim(),
+          phone: _buildPhone(),
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
@@ -176,6 +186,32 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
                   decoration: _dec(
                     hint: 'أحمد محمد',
                     icon: Icons.person_outline_rounded,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Phone
+                _FieldLabel('رقم الجوال', required: true),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: TextFormField(
+                    controller: _phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    style: _kInputTextStyle,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'رقم الجوال مطلوب';
+                      }
+                      if (!RegExp(r'^(05|5)[0-9]{8}$').hasMatch(v.trim())) {
+                        return 'أدخل رقم جوال سعودي صحيح (مثال: 0512345678)';
+                      }
+                      return null;
+                    },
+                    decoration: _phoneDec(),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -366,6 +402,50 @@ class _FieldLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+InputDecoration _phoneDec() {
+  return InputDecoration(
+    hintText: '05XXXXXXXX',
+    hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
+    filled: true,
+    fillColor: Colors.white,
+    prefix: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('🇸🇦', style: TextStyle(fontSize: 18)),
+        const SizedBox(width: 6),
+        const Text(
+          '+966',
+          style: TextStyle(
+            color: AppTheme.neutralGray700,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(width: 1, height: 18, color: AppTheme.neutralGray300),
+        const SizedBox(width: 8),
+      ],
+    ),
+    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppTheme.neutralGray200),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppTheme.neutralGray200),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Colors.red),
+    ),
+  );
 }
 
 InputDecoration _dec({required String hint, required IconData icon}) {

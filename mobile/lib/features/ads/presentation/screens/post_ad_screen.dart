@@ -510,13 +510,11 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   priceCtrl: _priceCtrl,
                   phoneCtrl: _phoneCtrl,
                   whatsappCtrl: _whatsappCtrl,
-                  sellerType: _sellerType,
                   priceOption: _priceOption,
                   showPhonePublicly: _showPhonePublicly,
                   categoryId: _selectedCategory?.id,
                   fieldValues: _fieldValues,
                   errors: _fieldErrors,
-                  onSellerTypeChanged: (v) => setState(() => _sellerType = v),
                   onPriceOptionChanged: (v) => setState(() => _priceOption = v),
                   onShowPhoneChanged: (v) =>
                       setState(() => _showPhonePublicly = v),
@@ -552,6 +550,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   priceText: _priceCtrl.text.trim(),
                   categoryId: _selectedCategory?.id,
                   sellerType: _sellerType,
+                  onSellerTypeChanged: (v) => setState(() => _sellerType = v),
                   onSelectLocation: (r, c) {
                     setState(() {
                       _selectedRegion = r;
@@ -1342,13 +1341,11 @@ class _Step2Details extends ConsumerStatefulWidget {
       priceCtrl,
       phoneCtrl,
       whatsappCtrl;
-  final String sellerType;
   final _PriceOption priceOption;
   final bool showPhonePublicly, isValid;
   final int? categoryId;
   final Map<String, String> fieldValues;
   final Map<String, String> errors;
-  final void Function(String) onSellerTypeChanged;
   final void Function(_PriceOption) onPriceOptionChanged;
   final void Function(bool) onShowPhoneChanged;
   final void Function(String, String) onFieldChanged;
@@ -1361,14 +1358,12 @@ class _Step2Details extends ConsumerStatefulWidget {
     required this.priceCtrl,
     required this.phoneCtrl,
     required this.whatsappCtrl,
-    required this.sellerType,
     required this.priceOption,
     required this.showPhonePublicly,
     required this.isValid,
     required this.categoryId,
     required this.fieldValues,
     required this.errors,
-    required this.onSellerTypeChanged,
     required this.onPriceOptionChanged,
     required this.onShowPhoneChanged,
     required this.onFieldChanged,
@@ -1393,91 +1388,6 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Seller type ─────────────────────────────────────────────────
-          _SectionHeader(
-            title: 'أنت تبيع بصفتك',
-            icon: Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => widget.onSellerTypeChanged('individual'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: widget.sellerType == 'individual'
-                          ? const Color(0xFF6366F1).withOpacity(0.15)
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: widget.sellerType == 'individual'
-                            ? const Color(0xFF6366F1)
-                            : const Color(0xFF334155),
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('👤', style: TextStyle(fontSize: 22)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'فرد',
-                          style: TextStyle(
-                            color: widget.sellerType == 'individual'
-                                ? const Color(0xFFA5B4FC)
-                                : const Color(0xFF94A3B8),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => widget.onSellerTypeChanged('dealer'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: widget.sellerType == 'dealer'
-                          ? const Color(0xFF6366F1).withOpacity(0.15)
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: widget.sellerType == 'dealer'
-                            ? const Color(0xFF6366F1)
-                            : const Color(0xFF334155),
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('🏢', style: TextStyle(fontSize: 22)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'معرض / تاجر',
-                          style: TextStyle(
-                            color: widget.sellerType == 'dealer'
-                                ? const Color(0xFFA5B4FC)
-                                : const Color(0xFF94A3B8),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
           // ── Basic info ───────────────────────────────────────────────────
           _SectionHeader(
             title: 'معلومات الإعلان',
@@ -2044,6 +1954,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
   final String? priceText;
   final int? categoryId;
   final String sellerType;
+  final void Function(String) onSellerTypeChanged;
   final void Function(RegionModel, CityModel?) onSelectLocation;
   final VoidCallback onPickDistrict;
   final VoidCallback onClearDistrict;
@@ -2064,6 +1975,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
     required this.priceText,
     required this.categoryId,
     required this.sellerType,
+    required this.onSellerTypeChanged,
     required this.onSelectLocation,
     required this.onPickDistrict,
     required this.onClearDistrict,
@@ -2095,6 +2007,115 @@ class _Step4LocationSubmit extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Seller type ────────────────────────────────────────────────────
+          _SectionHeader(
+            title: 'أنت تبيع بصفتك',
+            icon: Icons.person_outline_rounded,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onSellerTypeChanged('individual'),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: sellerType == 'individual'
+                          ? const Color(0xFFDCFCE7)
+                          : Colors.white,
+                      border: Border.all(
+                        color: sellerType == 'individual'
+                            ? const Color(0xFF16A34A)
+                            : AppTheme.neutralGray200,
+                        width: sellerType == 'individual' ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: sellerType == 'individual'
+                          ? [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF16A34A,
+                                ).withValues(alpha: .15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('👤', style: TextStyle(fontSize: 24)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'فرد',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: sellerType == 'individual'
+                                ? const Color(0xFF15803D)
+                                : AppTheme.neutralGray600,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onSellerTypeChanged('dealer'),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: sellerType == 'dealer'
+                          ? const Color(0xFFFFF7ED)
+                          : Colors.white,
+                      border: Border.all(
+                        color: sellerType == 'dealer'
+                            ? const Color(0xFFEA580C)
+                            : AppTheme.neutralGray200,
+                        width: sellerType == 'dealer' ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: sellerType == 'dealer'
+                          ? [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFEA580C,
+                                ).withValues(alpha: .15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('🏢', style: TextStyle(fontSize: 24)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'معرض / تاجر',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: sellerType == 'dealer'
+                                ? const Color(0xFFC2410C)
+                                : AppTheme.neutralGray600,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
           _SectionHeader(
             title: 'موقع الإعلان',
             icon: Icons.location_on_rounded,

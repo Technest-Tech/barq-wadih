@@ -10,7 +10,8 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
@@ -23,12 +24,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        title: const Text('الإشعارات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+        title: const Text(
+          'الإشعارات',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: _markAllRead,
-            child: const Text('تعيين الكل مقروء',
-                style: TextStyle(color: Colors.white70, fontSize: 12)),
+            child: const Text(
+              'تعيين الكل مقروء',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -64,17 +74,25 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_none_outlined, size: 72,
-              color: Colors.grey[300]),
+          Icon(
+            Icons.notifications_none_outlined,
+            size: 72,
+            color: Colors.grey[300],
+          ),
           const SizedBox(height: 16),
-          Text('لا توجد إشعارات',
-              style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
-              )),
+          Text(
+            'لا توجد إشعارات',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('ستظهر هنا إشعاراتك عند وصولها',
-              style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+          Text(
+            'ستظهر هنا إشعاراتك عند وصولها',
+            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+          ),
         ],
       ),
     );
@@ -117,6 +135,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           context.push('/ads/${data['ad_id']}');
         }
         break;
+      case 'sale_fee':
+        final price = data['price'];
+        if (price != null) {
+          context.push('/payments?price=$price');
+        } else {
+          context.push('/payments');
+        }
+        break;
     }
   }
 }
@@ -124,10 +150,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 // ── Notification tile widget ────────────────────────────────────────────────
 
 class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationTile({required this.notification, required this.onTap});
 
   final NotificationModel notification;
   final VoidCallback onTap;
@@ -140,9 +163,7 @@ class _NotificationTile extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: notification.isRead
-              ? Colors.white
-              : const Color(0xFFEEF2FF),
+          color: notification.isRead ? Colors.white : const Color(0xFFEEF2FF),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: notification.isRead
@@ -169,7 +190,10 @@ class _NotificationTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
-                child: Text(notification.icon, style: const TextStyle(fontSize: 20)),
+                child: Text(
+                  notification.icon,
+                  style: const TextStyle(fontSize: 20),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -183,11 +207,14 @@ class _NotificationTile extends StatelessWidget {
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w700,
+                      fontWeight: notification.isRead
+                          ? FontWeight.w500
+                          : FontWeight.w700,
                       color: const Color(0xFF0A1628),
                     ),
                   ),
-                  if (notification.body != null && notification.body!.isNotEmpty) ...[
+                  if (notification.body != null &&
+                      notification.body!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       notification.body!,

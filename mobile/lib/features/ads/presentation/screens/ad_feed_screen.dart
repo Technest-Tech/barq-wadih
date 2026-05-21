@@ -46,6 +46,10 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   List<CategoryModel> _subcategories = [];
   bool _isGridView = false;
   Timer? _searchDebounce;
+  Timer? _suggestDebounce;
+  final FocusNode _searchFocus = FocusNode();
+  List<String> _suggestions = [];
+  bool _showSuggestions = false;
 
   bool get _hasActiveFilters =>
       _filter.priceMin != null ||
@@ -57,11 +61,18 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _searchFocus.addListener(() {
+      if (!_searchFocus.hasFocus) {
+        setState(() => _showSuggestions = false);
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _suggestDebounce?.cancel();
+    _searchFocus.dispose();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -137,12 +148,42 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   void _onSearchChanged(String q) {
     setState(() {});
     _searchDebounce?.cancel();
+    _suggestDebounce?.cancel();
     if (q.isEmpty) {
       _applySearch('');
+      setState(() {
+        _suggestions = [];
+        _showSuggestions = false;
+      });
       return;
     }
-    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+    if (q.length >= 2) {
+      _suggestDebounce = Timer(const Duration(milliseconds: 200), () async {
+        try {
+          final s = await ref
+              .read(adRepositoryProvider)
+              .getSearchSuggestions(q);
+          if (mounted) {
+            setState(() {
+              _suggestions = s;
+              _showSuggestions = s.isNotEmpty;
+            });
+          }
+        } catch (_) {}
+      });
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 150), () {
       _applySearch(q);
+    });
+  }
+
+  void _onSuggestionSelected(String s) {
+    _searchController.text = s;
+    _applySearch(s);
+    _searchFocus.unfocus();
+    setState(() {
+      _suggestions = [];
+      _showSuggestions = false;
     });
   }
 
@@ -201,397 +242,432 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
     final feedState = ref.watch(adsFeedProvider);
     final categories = ref.watch(categoriesProvider);
 
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: AppTheme.neutralGray50,
-      resizeToAvoidBottomInset: false,
-      // ── App Bar ────────────────────────────────────────────────────────────
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          backgroundColor: AppTheme.primaryBlue,
-          elevation: 0,
-          leadingWidth: 48,
-          titleSpacing: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.menu_rounded, color: Colors.white),
-            onPressed: () => _openSidebarOverlay(),
-          ),
-          actions: [
-            _NotifBell(
-              notifAsync: ref.watch(authProvider) is AuthAuthenticated
-                  ? ref.watch(unreadNotificationCountProvider)
-                  : const AsyncValue<int>.data(0),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_selectedCategoryId != null) {
+          _applyCategory(null, []);
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: AppTheme.neutralGray50,
+        resizeToAvoidBottomInset: false,
+        // ── App Bar ────────────────────────────────────────────────────────────
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: AppBar(
+            backgroundColor: AppTheme.primaryBlue,
+            elevation: 0,
+            leadingWidth: 48,
+            titleSpacing: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.menu_rounded, color: Colors.white),
+              onPressed: () => _openSidebarOverlay(),
             ),
-            IconButton(
-              icon: const Icon(Icons.grid_view_rounded, color: Colors.white),
-              onPressed: () => context.push('/categories'),
-            ),
-          ],
-          title: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            clipBehavior: Clip.hardEdge,
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                const Icon(
-                  Icons.search_rounded,
-                  color: AppTheme.neutralGray400,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    textDirection: TextDirection.rtl,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.neutralGray900,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: 'ابحث في برق واضح...',
-                      hintTextDirection: TextDirection.rtl,
-                      hintStyle: TextStyle(
-                        color: AppTheme.neutralGray400,
+            actions: [
+              _NotifBell(
+                notifAsync: ref.watch(authProvider) is AuthAuthenticated
+                    ? ref.watch(unreadNotificationCountProvider)
+                    : const AsyncValue<int>.data(0),
+              ),
+              IconButton(
+                icon: const Icon(Icons.grid_view_rounded, color: Colors.white),
+                onPressed: () => context.push('/categories'),
+              ),
+            ],
+            title: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  const Icon(
+                    Icons.search_rounded,
+                    color: AppTheme.neutralGray400,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
                         fontSize: 14,
+                        color: AppTheme.neutralGray900,
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
-                      filled: false,
-                    ),
-                    onSubmitted: _applySearch,
-                    onChanged: _onSearchChanged,
-                  ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _searchController.clear();
-                      _applySearch('');
-                      setState(() {});
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 18,
-                        color: AppTheme.neutralGray400,
+                      decoration: const InputDecoration(
+                        hintText: 'ابحث في برق واضح...',
+                        hintTextDirection: TextDirection.rtl,
+                        hintStyle: TextStyle(
+                          color: AppTheme.neutralGray400,
+                          fontSize: 14,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                        filled: false,
                       ),
+                      focusNode: _searchFocus,
+                      onSubmitted: _applySearch,
+                      onChanged: _onSearchChanged,
                     ),
                   ),
-                const SizedBox(width: 12),
-              ],
+                  if (_searchController.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        _applySearch('');
+                        setState(() {});
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: AppTheme.neutralGray400,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 12),
+                ],
+              ),
             ),
           ),
         ),
-      ),
 
-      body: NestedScrollView(
-        controller: _scrollController,
-        headerSliverBuilder: (context, _) => [
-          // الحالات (Stories) مؤجلة لما بعد الإطلاق
-          // SliverToBoxAdapter(
-          //   child: Container(
-          //     color: Colors.white,
-          //     child: const StoriesRow(),
-          //   ),
-          // ),
+        body: Stack(
+          children: [
+            NestedScrollView(
+              controller: _scrollController,
+              headerSliverBuilder: (context, _) => [
+                // الحالات (Stories) مؤجلة لما بعد الإطلاق
+                // SliverToBoxAdapter(
+                //   child: Container(
+                //     color: Colors.white,
+                //     child: const StoriesRow(),
+                //   ),
+                // ),
 
-          // ── Main Categories (pinned) ────────────────────────────────────
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _PinnedCategoriesHeader(
-              child: Container(
-                color: Colors.white,
-                child: categories.when(
-                  data: (cats) => Container(
-                    height: 46,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: AppTheme.neutralGray200,
-                          width: 1,
+                // ── Main Categories (pinned) ────────────────────────────────────
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _PinnedCategoriesHeader(
+                    child: Container(
+                      color: Colors.white,
+                      child: categories.when(
+                        data: (cats) => Container(
+                          height: 46,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: AppTheme.neutralGray200,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            itemCount: cats.length + 1,
+                            itemBuilder: (context, i) {
+                              if (i == 0) {
+                                return _MainCategoryTab(
+                                  label: 'الكل',
+                                  selected: _selectedCategoryId == null,
+                                  onTap: () => _applyCategory(null, []),
+                                );
+                              }
+                              final cat = cats[i - 1];
+                              return _MainCategoryTab(
+                                label: cat.nameAr,
+                                selected: _selectedCategoryId == cat.id,
+                                onTap: () =>
+                                    _applyCategory(cat.id, cat.children),
+                              );
+                            },
+                          ),
                         ),
+                        loading: () => const SizedBox(height: 46),
+                        error: (_, __) => const SizedBox(height: 46),
                       ),
                     ),
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      itemCount: cats.length + 1,
-                      itemBuilder: (context, i) {
-                        if (i == 0) {
-                          return _MainCategoryTab(
-                            label: 'الكل',
-                            selected: _selectedCategoryId == null,
-                            onTap: () => _applyCategory(null, []),
-                          );
-                        }
-                        final cat = cats[i - 1];
-                        return _MainCategoryTab(
-                          label: cat.nameAr,
-                          selected: _selectedCategoryId == cat.id,
-                          onTap: () => _applyCategory(cat.id, cat.children),
-                        );
-                      },
-                    ),
                   ),
-                  loading: () => const SizedBox(height: 46),
-                  error: (_, __) => const SizedBox(height: 46),
                 ),
-              ),
-            ),
-          ),
 
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // ── Subcategories (real data from category children) ──────────
-                if (_selectedCategoryId != null && _subcategories.isNotEmpty)
-                  Container(
-                    height: 38,
-                    color: Colors.white,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
-                      itemCount: _subcategories.length + 1,
-                      itemBuilder: (context, i) {
-                        if (i == 0) {
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _SubCategoryChip(
-                              label: 'الكل',
-                              isPrimary: _selectedSubcategoryId == null,
-                              onTap: () => _applySubcategory(null),
-                            ),
-                          );
-                        }
-                        final sub = _subcategories[i - 1];
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 6),
-                          child: _SubCategoryChip(
-                            label: sub.nameAr,
-                            isPrimary: _selectedSubcategoryId == sub.id,
-                            onTap: () => _applySubcategory(sub.id),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                // ── Filter Bar ────────────────────────────────────────────
-                Container(
-                  height: 46,
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
+                SliverToBoxAdapter(
+                  child: Column(
                     children: [
-                      // Region/City Dropdown
-                      GestureDetector(
-                        onTap: () async {
-                          final result = await showRegionCityPicker(
-                            context,
-                            ref,
-                            isMultiSelect: true,
-                            initialSelection: _selectedCities,
-                          );
-                          if (result != null) {
-                            setState(() {
-                              _selectedCities = result.isEmpty ? null : result;
-                            });
-                            _filter = _filter.copyWith(
-                              clearCityIds: result.isEmpty,
-                              cityIds: result.isEmpty
-                                  ? null
-                                  : result.map((c) => c.id).toList(),
-                              page: 1,
-                            );
-                            ref
-                                .read(adsFeedProvider.notifier)
-                                .applyFilter(_filter);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+                      // ── Subcategories (real data from category children) ──────────
+                      if (_selectedCategoryId != null &&
+                          _subcategories.isNotEmpty)
+                        Container(
+                          height: 38,
+                          color: Colors.white,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+                            itemCount: _subcategories.length + 1,
+                            itemBuilder: (context, i) {
+                              if (i == 0) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 6),
+                                  child: _SubCategoryChip(
+                                    label: 'الكل',
+                                    isPrimary: _selectedSubcategoryId == null,
+                                    onTap: () => _applySubcategory(null),
+                                  ),
+                                );
+                              }
+                              final sub = _subcategories[i - 1];
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: _SubCategoryChip(
+                                  label: sub.nameAr,
+                                  isPrimary: _selectedSubcategoryId == sub.id,
+                                  onTap: () => _applySubcategory(sub.id),
+                                ),
+                              );
+                            },
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppTheme.neutralGray200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                size: 13,
-                                color: AppTheme.primaryBlue,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                _selectedCities != null &&
-                                        _selectedCities!.isNotEmpty
-                                    ? _selectedCities!.length == 1
-                                          ? _selectedCities!.first.nameAr
-                                          : '${_selectedCities!.length} مدن'
-                                    : 'كل المدن',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.neutralGray800,
+                        ),
+
+                      // ── Filter Bar ────────────────────────────────────────────
+                      Container(
+                        height: 46,
+                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          children: [
+                            // Region/City Dropdown
+                            GestureDetector(
+                              onTap: () async {
+                                final result = await showRegionCityPicker(
+                                  context,
+                                  ref,
+                                  isMultiSelect: true,
+                                  initialSelection: _selectedCities,
+                                );
+                                if (result != null) {
+                                  setState(() {
+                                    _selectedCities = result.isEmpty
+                                        ? null
+                                        : result;
+                                  });
+                                  _filter = _filter.copyWith(
+                                    clearCityIds: result.isEmpty,
+                                    cityIds: result.isEmpty
+                                        ? null
+                                        : result.map((c) => c.id).toList(),
+                                    page: 1,
+                                  );
+                                  ref
+                                      .read(adsFeedProvider.notifier)
+                                      .applyFilter(_filter);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppTheme.neutralGray200,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on_outlined,
+                                      size: 13,
+                                      color: AppTheme.primaryBlue,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      _selectedCities != null &&
+                                              _selectedCities!.isNotEmpty
+                                          ? _selectedCities!.length == 1
+                                                ? _selectedCities!.first.nameAr
+                                                : '${_selectedCities!.length} مدن'
+                                          : 'كل المدن',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.neutralGray800,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 14,
+                                      color: AppTheme.neutralGray500,
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 3),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 14,
-                                color: AppTheme.neutralGray500,
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _showFilterSheet,
+                              child: _ThemedFilterChip(
+                                label: 'تصفية',
+                                icon: Icons.filter_alt_outlined,
+                                isActive: _hasActiveFilters,
                               ),
-                            ],
-                          ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _isGridView = !_isGridView);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                color: Colors.transparent,
+                                child: Icon(
+                                  _isGridView
+                                      ? Icons.view_list_rounded
+                                      : Icons.grid_view_rounded,
+                                  color: AppTheme.neutralGray500,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: _showFilterSheet,
-                        child: _ThemedFilterChip(
-                          label: 'تصفية',
-                          icon: Icons.filter_alt_outlined,
-                          isActive: _hasActiveFilters,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() => _isGridView = !_isGridView);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          color: Colors.transparent,
-                          child: Icon(
-                            _isGridView
-                                ? Icons.view_list_rounded
-                                : Icons.grid_view_rounded,
-                            color: AppTheme.neutralGray500,
-                            size: 20,
-                          ),
-                        ),
-                      ),
+
+                      // Divider
+                      Container(height: 6, color: AppTheme.neutralGray100),
                     ],
                   ),
                 ),
-
-                // Divider
-                Container(height: 6, color: AppTheme.neutralGray100),
               ],
-            ),
-          ),
-        ],
 
-        // ── Ad List ──────────────────────────────────────────────────────────
-        body: RefreshIndicator(
-          onRefresh: () => ref.read(adsFeedProvider.notifier).refresh(),
-          color: AppTheme.primaryBlue, // navy spinner on white bg
-          backgroundColor: Colors.white, // always white pull-down bg
-          child: feedState.when(
-            data: (feed) {
-              if (feed.ads.isEmpty) {
-                return CustomScrollView(
-                  slivers: [
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _EmptyState(
-                        onPostAd: ref.read(authProvider) is AuthAuthenticated
-                            ? () => context.push('/post-ad')
-                            : null,
-                      ),
-                    ),
-                  ],
-                );
-              }
-              if (_isGridView) {
-                return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.65,
-                  ),
-                  itemCount: feed.hasMore
-                      ? feed.ads.length + 1
-                      : feed.ads.length,
-                  itemBuilder: (context, i) {
-                    if (i >= feed.ads.length) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: AppTheme.primaryBlue,
-                        ),
+              // ── Ad List ──────────────────────────────────────────────────────────
+              body: RefreshIndicator(
+                onRefresh: () => ref.read(adsFeedProvider.notifier).refresh(),
+                color: AppTheme.primaryBlue, // navy spinner on white bg
+                backgroundColor: Colors.white, // always white pull-down bg
+                child: feedState.when(
+                  data: (feed) {
+                    if (feed.ads.isEmpty) {
+                      return CustomScrollView(
+                        slivers: [
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _EmptyState(
+                              searchQuery: _filter.q,
+                              categoryId: _selectedCategoryId,
+                              onPostAd:
+                                  ref.read(authProvider) is AuthAuthenticated
+                                  ? () => context.push('/post-ad')
+                                  : null,
+                            ),
+                          ),
+                        ],
                       );
                     }
-                    final ad = feed.ads[i];
-                    return _AnimatedAdCard(
-                      index: i,
-                      child: AdCard(
-                        ad: ad,
-                        isGrid: true,
-                        onTap: () => context.push('/ads/${ad.id}'),
-                      ),
+                    if (_isGridView) {
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.65,
+                            ),
+                        itemCount: feed.hasMore
+                            ? feed.ads.length + 1
+                            : feed.ads.length,
+                        itemBuilder: (context, i) {
+                          if (i >= feed.ads.length) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: AppTheme.primaryBlue,
+                              ),
+                            );
+                          }
+                          final ad = feed.ads[i];
+                          return _AnimatedAdCard(
+                            index: i,
+                            child: AdCard(
+                              ad: ad,
+                              isGrid: true,
+                              onTap: () => context.push('/ads/${ad.id}'),
+                            ),
+                          );
+                        },
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: feed.hasMore
+                          ? feed.ads.length + 1
+                          : feed.ads.length,
+                      itemBuilder: (context, i) {
+                        if (i >= feed.ads.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppTheme.primaryBlue, // always navy
+                                backgroundColor: Colors.transparent,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          );
+                        }
+                        final ad = feed.ads[i];
+                        return _AnimatedAdCard(
+                          index: i,
+                          child: AdCard(
+                            ad: ad,
+                            isGrid: false,
+                            onTap: () => context.push('/ads/${ad.id}'),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 100),
-                itemCount: feed.hasMore ? feed.ads.length + 1 : feed.ads.length,
-                itemBuilder: (context, i) {
-                  if (i >= feed.ads.length) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppTheme.primaryBlue, // always navy
-                          backgroundColor: Colors.transparent,
-                          strokeWidth: 2.5,
-                        ),
-                      ),
-                    );
-                  }
-                  final ad = feed.ads[i];
-                  return _AnimatedAdCard(
-                    index: i,
-                    child: AdCard(
-                      ad: ad,
-                      isGrid: false,
-                      onTap: () => context.push('/ads/${ad.id}'),
+                  loading: () => ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 100),
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: 8,
+                    separatorBuilder: (_, __) => const SizedBox(height: 1),
+                    itemBuilder: (_, __) => const AdListTileShimmer(),
+                  ),
+                  error: (err, _) => Center(
+                    child: _ErrorState(
+                      onRetry: () =>
+                          ref.read(adsFeedProvider.notifier).refresh(),
                     ),
-                  );
-                },
-              );
-            },
-            loading: () => ListView.separated(
-              padding: const EdgeInsets.only(bottom: 100),
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 8,
-              separatorBuilder: (_, __) => const SizedBox(height: 1),
-              itemBuilder: (_, __) => const AdListTileShimmer(),
-            ),
-            error: (err, _) => Center(
-              child: _ErrorState(
-                onRetry: () => ref.read(adsFeedProvider.notifier).refresh(),
+                  ),
+                ),
               ),
             ),
-          ),
+            if (_showSuggestions && _suggestions.isNotEmpty)
+              _SuggestionsPanel(
+                suggestions: _suggestions,
+                query: _searchController.text,
+                onSelect: _onSuggestionSelected,
+              ),
+          ],
         ),
       ),
     );
@@ -1502,12 +1578,89 @@ class _AnimatedAdCardState extends State<_AnimatedAdCard>
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   final VoidCallback? onPostAd;
-  const _EmptyState({this.onPostAd});
+  final String? searchQuery;
+  final int? categoryId;
+
+  const _EmptyState({this.onPostAd, this.searchQuery, this.categoryId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isSearchEmpty = searchQuery != null && searchQuery!.isNotEmpty;
+
+    if (isSearchEmpty) {
+      final popularAsync = ref.watch(
+        popularAdsProvider((limit: 3, categoryId: categoryId)),
+      );
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.search_off_rounded,
+                size: 56,
+                color: AppTheme.neutralGray400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'لا توجد نتائج لـ "$searchQuery"',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.neutralGray700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'جرّب بحثاً مختلفاً أو تصفّح الفئات',
+                style: TextStyle(fontSize: 13, color: AppTheme.neutralGray500),
+              ),
+              const SizedBox(height: 28),
+              popularAsync.when(
+                data: (ads) {
+                  if (ads.isEmpty) return const SizedBox();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Text(
+                          'ربما يعجبك',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.neutralGray800,
+                          ),
+                        ),
+                      ),
+                      ...ads.map(
+                        (ad) => Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: AdCard(
+                            ad: ad,
+                            onTap: () => context.push('/ads/${ad.id}'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(color: AppTheme.primaryBlue),
+                ),
+                error: (_, __) => const SizedBox(),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -1636,6 +1789,7 @@ class _FilterSheet extends StatefulWidget {
 
 class _FilterSheetState extends State<_FilterSheet> {
   late String _sort;
+  bool _negotiable = false;
   final _priceMinCtrl = TextEditingController();
   final _priceMaxCtrl = TextEditingController();
   final _keywordCtrl = TextEditingController();
@@ -1644,7 +1798,6 @@ class _FilterSheetState extends State<_FilterSheet> {
   bool _minFocused = false;
   bool _maxFocused = false;
 
-  // Preset: (minVal, maxVal) — null means no bound
   static const _pricePresets = [
     (label: 'أقل من 500', min: null, max: 500.0),
     (label: '500 – 2,000', min: 500.0, max: 2000.0),
@@ -1663,6 +1816,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   void initState() {
     super.initState();
     _sort = widget.currentFilter.sort;
+    _negotiable = widget.currentFilter.negotiable ?? false;
     if (widget.currentFilter.priceMin != null) {
       _priceMinCtrl.text = widget.currentFilter.priceMin!.toStringAsFixed(0);
     }
@@ -1678,6 +1832,16 @@ class _FilterSheetState extends State<_FilterSheet> {
     _maxFocus.addListener(
       () => setState(() => _maxFocused = _maxFocus.hasFocus),
     );
+    // Typing in a price field clears the "على السوم" toggle
+    _priceMinCtrl.addListener(_onPriceTyped);
+    _priceMaxCtrl.addListener(_onPriceTyped);
+  }
+
+  void _onPriceTyped() {
+    if (_negotiable &&
+        (_priceMinCtrl.text.isNotEmpty || _priceMaxCtrl.text.isNotEmpty)) {
+      setState(() => _negotiable = false);
+    }
   }
 
   @override
@@ -1693,6 +1857,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   int get _activeCount {
     int n = 0;
     if (_sort != 'newest') n++;
+    if (_negotiable) n++;
     if (_priceMinCtrl.text.isNotEmpty) n++;
     if (_priceMaxCtrl.text.isNotEmpty) n++;
     if (_keywordCtrl.text.isNotEmpty) n++;
@@ -1700,6 +1865,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   String get _rangeSummary {
+    if (_negotiable) return 'على السوم';
     final minTxt = _priceMinCtrl.text.trim();
     final maxTxt = _priceMaxCtrl.text.trim();
     if (minTxt.isEmpty && maxTxt.isEmpty) return 'غير محدد';
@@ -1709,6 +1875,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   bool _isPresetSelected(double? min, double? max) {
+    if (_negotiable) return false;
     final curMin = double.tryParse(_priceMinCtrl.text.trim());
     final curMax = double.tryParse(_priceMaxCtrl.text.trim());
     return curMin == min && curMax == max;
@@ -1716,14 +1883,26 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   void _applyPreset(double? min, double? max) {
     setState(() {
+      _negotiable = false;
       _priceMinCtrl.text = min != null ? min.toStringAsFixed(0) : '';
       _priceMaxCtrl.text = max != null ? max.toStringAsFixed(0) : '';
+    });
+  }
+
+  void _toggleNegotiable() {
+    setState(() {
+      _negotiable = !_negotiable;
+      if (_negotiable) {
+        _priceMinCtrl.clear();
+        _priceMaxCtrl.clear();
+      }
     });
   }
 
   void _reset() {
     setState(() {
       _sort = 'newest';
+      _negotiable = false;
       _priceMinCtrl.clear();
       _priceMaxCtrl.clear();
       _keywordCtrl.clear();
@@ -1731,8 +1910,12 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   void _apply() {
-    final priceMin = double.tryParse(_priceMinCtrl.text.trim());
-    final priceMax = double.tryParse(_priceMaxCtrl.text.trim());
+    final priceMin = _negotiable
+        ? null
+        : double.tryParse(_priceMinCtrl.text.trim());
+    final priceMax = _negotiable
+        ? null
+        : double.tryParse(_priceMaxCtrl.text.trim());
     final keyword = _keywordCtrl.text.trim();
     widget.onApply(
       AdsFilter(
@@ -1745,6 +1928,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         priceMax: priceMax,
         q: keyword.isEmpty ? null : keyword,
         sort: _sort,
+        negotiable: _negotiable ? true : null,
         page: 1,
       ),
     );
@@ -2028,35 +2212,42 @@ class _FilterSheetState extends State<_FilterSheet> {
                                 ],
                               ),
                             ),
-                            // Two inputs side by side
-                            IntrinsicHeight(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: _priceInput(
-                                      controller: _priceMinCtrl,
-                                      focusNode: _minFocus,
-                                      isFocused: _minFocused,
-                                      label: 'الحد الأدنى',
-                                      hint: '0',
-                                      isRight: true,
-                                    ),
+                            // Two inputs — dimmed/disabled when على السوم active
+                            AnimatedOpacity(
+                              opacity: _negotiable ? 0.35 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: IgnorePointer(
+                                ignoring: _negotiable,
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _priceInput(
+                                          controller: _priceMinCtrl,
+                                          focusNode: _minFocus,
+                                          isFocused: _minFocused,
+                                          label: 'الحد الأدنى',
+                                          hint: '0',
+                                          isRight: true,
+                                        ),
+                                      ),
+                                      VerticalDivider(
+                                        width: 1,
+                                        color: AppTheme.neutralGray100,
+                                      ),
+                                      Expanded(
+                                        child: _priceInput(
+                                          controller: _priceMaxCtrl,
+                                          focusNode: _maxFocus,
+                                          isFocused: _maxFocused,
+                                          label: 'الحد الأعلى',
+                                          hint: 'بلا حد',
+                                          isRight: false,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  VerticalDivider(
-                                    width: 1,
-                                    color: AppTheme.neutralGray100,
-                                  ),
-                                  Expanded(
-                                    child: _priceInput(
-                                      controller: _priceMaxCtrl,
-                                      focusNode: _maxFocus,
-                                      isFocused: _maxFocused,
-                                      label: 'الحد الأعلى',
-                                      hint: 'بلا حد',
-                                      isRight: false,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ],
@@ -2065,15 +2256,15 @@ class _FilterSheetState extends State<_FilterSheet> {
 
                       const SizedBox(height: 10),
 
-                      // Quick preset chips
+                      // Preset chips + على السوم
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         reverse: true,
                         child: Row(
-                          children: _pricePresets.map((p) {
-                            final sel = _isPresetSelected(p.min, p.max);
-                            return GestureDetector(
-                              onTap: () => _applyPreset(p.min, p.max),
+                          children: [
+                            // على السوم — special negotiable chip
+                            GestureDetector(
+                              onTap: _toggleNegotiable,
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 180),
                                 margin: const EdgeInsets.only(left: 8),
@@ -2082,20 +2273,20 @@ class _FilterSheetState extends State<_FilterSheet> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: sel
-                                      ? AppTheme.primaryBlue
+                                  color: _negotiable
+                                      ? AppTheme.accentGold
                                       : Colors.white,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: sel
-                                        ? AppTheme.primaryBlue
+                                    color: _negotiable
+                                        ? AppTheme.accentGold
                                         : AppTheme.neutralGray200,
                                   ),
-                                  boxShadow: sel
+                                  boxShadow: _negotiable
                                       ? [
                                           BoxShadow(
-                                            color: AppTheme.primaryBlue
-                                                .withValues(alpha: .25),
+                                            color: AppTheme.accentGold
+                                                .withValues(alpha: .30),
                                             blurRadius: 8,
                                             offset: const Offset(0, 3),
                                           ),
@@ -2110,21 +2301,90 @@ class _FilterSheetState extends State<_FilterSheet> {
                                           ),
                                         ],
                                 ),
-                                child: Text(
-                                  p.label,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: sel
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: sel
-                                        ? Colors.white
-                                        : AppTheme.neutralGray700,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.handshake_outlined,
+                                      size: 13,
+                                      color: _negotiable
+                                          ? Colors.white
+                                          : AppTheme.neutralGray500,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      'على السوم',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: _negotiable
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: _negotiable
+                                            ? Colors.white
+                                            : AppTheme.neutralGray700,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          }).toList(),
+                            ),
+                            // Numeric range presets
+                            ..._pricePresets.map((p) {
+                              final sel = _isPresetSelected(p.min, p.max);
+                              return GestureDetector(
+                                onTap: () => _applyPreset(p.min, p.max),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: sel
+                                        ? AppTheme.primaryBlue
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: sel
+                                          ? AppTheme.primaryBlue
+                                          : AppTheme.neutralGray200,
+                                    ),
+                                    boxShadow: sel
+                                        ? [
+                                            BoxShadow(
+                                              color: AppTheme.primaryBlue
+                                                  .withValues(alpha: .25),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: .04,
+                                              ),
+                                              blurRadius: 3,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                  ),
+                                  child: Text(
+                                    p.label,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: sel
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: sel
+                                          ? Colors.white
+                                          : AppTheme.neutralGray700,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                         ),
                       ),
 
@@ -2444,6 +2704,84 @@ class _NotifBell extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ── Search Suggestions Overlay ─────────────────────────────────────────────────
+
+class _SuggestionsPanel extends StatelessWidget {
+  final List<String> suggestions;
+  final String query;
+  final void Function(String) onSelect;
+
+  const _SuggestionsPanel({
+    required this.suggestions,
+    required this.query,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Material(
+        elevation: 6,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(12),
+          bottomRight: Radius.circular(12),
+        ),
+        color: Colors.white,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 300),
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            shrinkWrap: true,
+            itemCount: suggestions.length,
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, indent: 44, endIndent: 16),
+            itemBuilder: (context, i) {
+              final s = suggestions[i];
+              return InkWell(
+                onTap: () => onSelect(s),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.search_rounded,
+                        size: 18,
+                        color: AppTheme.neutralGray400,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          s,
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.neutralGray800,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.north_west_rounded,
+                        size: 14,
+                        color: AppTheme.neutralGray400,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

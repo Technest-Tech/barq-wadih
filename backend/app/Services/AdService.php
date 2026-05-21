@@ -6,6 +6,7 @@ use App\Enums\AdStatus;
 use App\Enums\CommissionStatus;
 use App\Enums\ModerationStatus;
 use App\Enums\PaymentStatus;
+use App\Jobs\SendSaleFeeNotificationJob;
 use App\Models\Ad;
 use App\Models\AdFieldValue;
 use App\Models\AdImage;
@@ -208,6 +209,9 @@ class AdService
                 \Illuminate\Support\Facades\Log::warning('unsearchable failed for ad', ['id' => $ad->id]);
             }
         })->afterResponse();
+
+        // Notify the seller to pay the sale commission fee.
+        SendSaleFeeNotificationJob::dispatch($ad->id)->onQueue('notifications');
     }
 
     // ── Commission ────────────────────────────────────────────────────────────

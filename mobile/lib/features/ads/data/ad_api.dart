@@ -266,6 +266,52 @@ class AdRepository {
     }
   }
 
+  /// GET /search/suggestions — autocomplete completions
+  Future<List<String>> getSearchSuggestions(String q) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/search/suggestions',
+        queryParameters: {'q': q},
+      );
+      final data = response.data!['data'] as List<dynamic>;
+      return data.cast<String>();
+    } on DioException catch (e) {
+      throw ApiException(
+        message:
+            e.response?.data?['message'] as String? ??
+            'فشل في تحميل الاقتراحات',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  /// GET /search/popular — top N most-viewed active ads
+  Future<List<AdListModel>> getPopularAds({
+    int limit = 3,
+    int? categoryId,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/search/popular',
+        queryParameters: {
+          'limit': limit,
+          if (categoryId != null) 'category_id': categoryId,
+        },
+      );
+      final data = response.data!['data'] as List<dynamic>;
+      return data
+          .map((e) => AdListModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(
+        message:
+            e.response?.data?['message'] as String? ??
+            'فشل في تحميل الإعلانات الشائعة',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   /// PATCH /ads/{id} — update existing ad (multipart)
   Future<AdDetailModel> updateAd(int id, FormData formData) async {
     try {
@@ -553,6 +599,16 @@ final searchProvider =
       AdsFilter
     >((ref, filter) {
       return ref.read(adRepositoryProvider).searchAds(filter);
+    });
+
+/// Popular ads — FutureProvider.family keyed by (limit, categoryId)
+typedef PopularAdsKey = ({int limit, int? categoryId});
+
+final popularAdsProvider =
+    FutureProvider.family<List<AdListModel>, PopularAdsKey>((ref, key) {
+      return ref
+          .read(adRepositoryProvider)
+          .getPopularAds(limit: key.limit, categoryId: key.categoryId);
     });
 
 /// Navigation bridge: categories screen writes here, feed screen reads & clears.

@@ -265,8 +265,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ── Sidebar screens ────────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.payments,
-        pageBuilder: (context, state) =>
-            _slidePage(key: state.pageKey, child: const PaymentsScreen()),
+        pageBuilder: (context, state) {
+          // extra is used when navigating in-app (SoldFeeSheet → payments).
+          // query param is used when opening from an FCM notification tap
+          // (terminated state loses extra, but query params survive).
+          final fromExtra = state.extra is double
+              ? state.extra as double
+              : null;
+          final fromQuery = double.tryParse(
+            state.uri.queryParameters['price'] ?? '',
+          );
+          return _slidePage(
+            key: state.pageKey,
+            child: PaymentsScreen(initialPrice: fromExtra ?? fromQuery),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.featuresServices,

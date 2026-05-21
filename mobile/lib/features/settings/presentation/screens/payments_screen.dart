@@ -112,31 +112,35 @@ class PaymentsNotifier extends AsyncNotifier<PaymentsState> {
   }
 }
 
-final paymentsProvider =
-    AsyncNotifierProvider<PaymentsNotifier, PaymentsState>(
+final paymentsProvider = AsyncNotifierProvider<PaymentsNotifier, PaymentsState>(
   PaymentsNotifier.new,
 );
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 class PaymentsScreen extends ConsumerWidget {
-  const PaymentsScreen({super.key});
+  final double? initialPrice;
+  const PaymentsScreen({super.key, this.initialPrice});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(paymentsProvider);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        title: const Text('المدفوعات والرسوم',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        title: const Text(
+          'المدفوعات والرسوم',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         elevation: 0,
         centerTitle: true,
       ),
-      body: const _FeeCalculatorBody(),
+      body: _FeeCalculatorBody(initialPrice: initialPrice),
     );
   }
 }
@@ -148,8 +152,9 @@ class _PaymentsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentPlan =
-        data.plans.firstWhere((p) => p.id == data.currentPlanId);
+    final currentPlan = data.plans.firstWhere(
+      (p) => p.id == data.currentPlanId,
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -161,10 +166,7 @@ class _PaymentsBody extends StatelessWidget {
           _buildSectionTitle('اختر الباقة المناسبة'),
           const SizedBox(height: 12),
           for (final plan in data.plans) ...[
-            _PlanCard(
-              plan: plan,
-              isCurrent: plan.id == data.currentPlanId,
-            ),
+            _PlanCard(plan: plan, isCurrent: plan.id == data.currentPlanId),
             const SizedBox(height: 10),
           ],
           if (data.history.isNotEmpty) ...[
@@ -200,24 +202,29 @@ class _PaymentsBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('باقتك الحالية',
-                    style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500)),
+                const Text(
+                  'باقتك الحالية',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'الباقة ${plan.nameAr}',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800),
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 if (plan.id != 'free') ...[
                   const SizedBox(height: 4),
-                  const Text('تنتهي في: ٣١ ديسمبر ٢٠٢٥',
-                      style:
-                          TextStyle(color: Colors.white60, fontSize: 11)),
+                  const Text(
+                    'تنتهي في: ٣١ ديسمبر ٢٠٢٥',
+                    style: TextStyle(color: Colors.white60, fontSize: 11),
+                  ),
                 ],
               ],
             ),
@@ -231,16 +238,20 @@ class _PaymentsBody extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  plan.price == 0 ? 'مجاناً' : '${plan.price.toStringAsFixed(0)} ر.س',
+                  plan.price == 0
+                      ? 'مجاناً'
+                      : '${plan.price.toStringAsFixed(0)} ر.س',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800),
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 if (plan.period.isNotEmpty)
-                  Text(plan.period,
-                      style: const TextStyle(
-                          color: Colors.white60, fontSize: 10)),
+                  Text(
+                    plan.period,
+                    style: const TextStyle(color: Colors.white60, fontSize: 10),
+                  ),
               ],
             ),
           ),
@@ -250,11 +261,14 @@ class _PaymentsBody extends StatelessWidget {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title,
-        style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.neutralGray800));
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: AppTheme.neutralGray800,
+      ),
+    );
   }
 
   Widget _buildHistorySection() {
@@ -291,8 +305,14 @@ class _PaymentsBody extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      title: Text(record.planName,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+      title: Text(
+        record.planName,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
       subtitle: Text(
         '${record.date.day}/${record.date.month}/${record.date.year}',
         style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500),
@@ -301,9 +321,14 @@ class _PaymentsBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('${record.amount.toStringAsFixed(0)} ر.س',
-              style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          Text(
+            '${record.amount.toStringAsFixed(0)} ر.س',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 3),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -311,11 +336,14 @@ class _PaymentsBody extends StatelessWidget {
               color: statusColor.withValues(alpha: .1),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(statusLabel,
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor)),
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -332,19 +360,26 @@ class _PaymentsBody extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 48, color: AppTheme.neutralGray300),
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 48,
+            color: AppTheme.neutralGray300,
+          ),
           SizedBox(height: 10),
-          Text('لا توجد مدفوعات سابقة',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.neutralGray500)),
+          Text(
+            'لا توجد مدفوعات سابقة',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.neutralGray500,
+            ),
+          ),
           SizedBox(height: 4),
-          Text('ستظهر هنا مدفوعاتك بعد الاشتراك في إحدى الباقات',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 12, color: AppTheme.neutralGray400)),
+          Text(
+            'ستظهر هنا مدفوعاتك بعد الاشتراك في إحدى الباقات',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: AppTheme.neutralGray400),
+          ),
         ],
       ),
     );
@@ -371,11 +406,13 @@ class _PlanCard extends StatelessWidget {
           color: isRecommended
               ? AppTheme.accentGold
               : isCurrent
-                  ? AppTheme.primaryBlue
-                  : AppTheme.neutralGray200,
+              ? AppTheme.primaryBlue
+              : AppTheme.neutralGray200,
           width: isRecommended || isCurrent ? 2 : 1,
         ),
-        boxShadow: isRecommended ? AppTheme.elevatedShadow : AppTheme.cardShadow,
+        boxShadow: isRecommended
+            ? AppTheme.elevatedShadow
+            : AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -387,26 +424,30 @@ class _PlanCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildFeatureRow(
-                    Icons.list_alt_rounded,
-                    'الإعلانات النشطة',
-                    plan.maxAds >= 999 ? 'غير محدود' : '${plan.maxAds} إعلان'),
+                  Icons.list_alt_rounded,
+                  'الإعلانات النشطة',
+                  plan.maxAds >= 999 ? 'غير محدود' : '${plan.maxAds} إعلان',
+                ),
                 _buildFeatureRow(
-                    Icons.trending_up_rounded,
-                    'رصيد التعزيز',
-                    plan.boostCredits > 0
-                        ? '${plan.boostCredits} مرة/شهر'
-                        : 'غير متاح',
-                    available: plan.boostCredits > 0),
+                  Icons.trending_up_rounded,
+                  'رصيد التعزيز',
+                  plan.boostCredits > 0
+                      ? '${plan.boostCredits} مرة/شهر'
+                      : 'غير متاح',
+                  available: plan.boostCredits > 0,
+                ),
                 _buildFeatureRow(
-                    Icons.verified_rounded,
-                    'الشراء الموثوق',
-                    plan.hasTrustedPurchase ? 'متاح' : 'غير متاح',
-                    available: plan.hasTrustedPurchase),
+                  Icons.verified_rounded,
+                  'الشراء الموثوق',
+                  plan.hasTrustedPurchase ? 'متاح' : 'غير متاح',
+                  available: plan.hasTrustedPurchase,
+                ),
                 _buildFeatureRow(
-                    Icons.support_agent_rounded,
-                    'دعم مميز',
-                    plan.hasPrioritySupport ? 'متاح' : 'الدعم العام',
-                    available: plan.hasPrioritySupport),
+                  Icons.support_agent_rounded,
+                  'دعم مميز',
+                  plan.hasPrioritySupport ? 'متاح' : 'الدعم العام',
+                  available: plan.hasPrioritySupport,
+                ),
                 const SizedBox(height: 12),
                 if (isCurrent)
                   Container(
@@ -416,11 +457,14 @@ class _PlanCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: const Center(
-                      child: Text('باقتك الحالية',
-                          style: TextStyle(
-                              color: AppTheme.primaryBlue,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14)),
+                      child: Text(
+                        'باقتك الحالية',
+                        style: TextStyle(
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   )
                 else if (plan.id != 'free')
@@ -435,7 +479,10 @@ class _PlanCard extends StatelessWidget {
                       minimumSize: const Size(double.infinity, 44),
                       shape: const StadiumBorder(),
                       textStyle: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                     child: Text('اشترك في الباقة ${plan.nameAr}'),
                   ),
@@ -468,25 +515,33 @@ class _PlanCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text('الباقة ${plan.nameAr}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800)),
+                    Text(
+                      'الباقة ${plan.nameAr}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     if (isRecommended) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: .25),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('الأكثر طلباً',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700)),
+                        child: const Text(
+                          'الأكثر طلباً',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -498,16 +553,20 @@ class _PlanCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                plan.price == 0 ? 'مجاناً' : '${plan.price.toStringAsFixed(0)} ر.س',
+                plan.price == 0
+                    ? 'مجاناً'
+                    : '${plan.price.toStringAsFixed(0)} ر.س',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800),
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               if (plan.period.isNotEmpty)
-                Text(plan.period,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 11)),
+                Text(
+                  plan.period,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                ),
             ],
           ),
         ],
@@ -515,28 +574,41 @@ class _PlanCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureRow(IconData icon, String label, String value,
-      {bool available = true}) {
+  Widget _buildFeatureRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool available = true,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(
         children: [
-          Icon(icon,
-              size: 16,
-              color: available ? AppTheme.primaryBlue : AppTheme.neutralGray400),
+          Icon(
+            icon,
+            size: 16,
+            color: available ? AppTheme.primaryBlue : AppTheme.neutralGray400,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppTheme.neutralGray700)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.neutralGray700,
+              ),
+            ),
           ),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: available
-                      ? AppTheme.neutralGray800
-                      : AppTheme.neutralGray400)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: available
+                  ? AppTheme.neutralGray800
+                  : AppTheme.neutralGray400,
+            ),
+          ),
         ],
       ),
     );
@@ -546,16 +618,26 @@ class _PlanCard extends StatelessWidget {
 // ── Fee Calculator ────────────────────────────────────────────────────────────
 
 class _FeeCalculatorBody extends StatefulWidget {
-  const _FeeCalculatorBody();
+  final double? initialPrice;
+  const _FeeCalculatorBody({this.initialPrice});
 
   @override
   State<_FeeCalculatorBody> createState() => _FeeCalculatorBodyState();
 }
 
 class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
-  final _priceController = TextEditingController();
-  double _itemPrice = 0;
+  late final TextEditingController _priceController;
+  late double _itemPrice;
   static const double _feeRate = 0.05;
+
+  @override
+  void initState() {
+    super.initState();
+    _itemPrice = widget.initialPrice ?? 0;
+    _priceController = TextEditingController(
+      text: _itemPrice > 0 ? _itemPrice.toStringAsFixed(0) : '',
+    );
+  }
 
   @override
   void dispose() {
@@ -582,7 +664,11 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
             const SnackBar(
               content: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text('تمت عملية الدفع بنجاح'),
                 ],
@@ -610,29 +696,36 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
               color: AppTheme.primaryBlue.withValues(alpha: .08),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: AppTheme.primaryBlue.withValues(alpha: .25)),
+                color: AppTheme.primaryBlue.withValues(alpha: .25),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    color: AppTheme.primaryBlue, size: 22),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppTheme.primaryBlue,
+                  size: 22,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('كيف تُحسب رسوم المنصة؟',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppTheme.primaryBlue)),
+                      const Text(
+                        'كيف تُحسب رسوم المنصة؟',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppTheme.primaryBlue,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان، وتُخصم من العمولة عند البيع. الرسوم غير مستردة.',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.primaryBlue
-                                .withValues(alpha: .75)),
+                          fontSize: 12,
+                          color: AppTheme.primaryBlue.withValues(alpha: .75),
+                        ),
                       ),
                     ],
                   ),
@@ -653,43 +746,53 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('أدخل سعر المنتج',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: AppTheme.neutralGray800)),
+                const Text(
+                  'أدخل سعر المنتج',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppTheme.neutralGray800,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _priceController,
                   keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true),
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d+\.?\d{0,2}')),
+                      RegExp(r'^\d+\.?\d{0,2}'),
+                    ),
                   ],
                   textAlign: TextAlign.start,
                   decoration: InputDecoration(
                     hintText: '0.00',
                     suffixText: 'ر.س',
                     suffixStyle: const TextStyle(
-                        color: AppTheme.neutralGray600,
-                        fontWeight: FontWeight.w600),
+                      color: AppTheme.neutralGray600,
+                      fontWeight: FontWeight.w600,
+                    ),
                     filled: true,
                     fillColor: AppTheme.neutralGray50,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                          color: AppTheme.neutralGray200),
+                        color: AppTheme.neutralGray200,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                          color: AppTheme.neutralGray200),
+                        color: AppTheme.neutralGray200,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                          color: AppTheme.primaryBlue, width: 2),
+                        color: AppTheme.primaryBlue,
+                        width: 2,
+                      ),
                     ),
                   ),
                   onChanged: (v) {
@@ -715,11 +818,14 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('ملخص الدفع',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AppTheme.neutralGray800)),
+                  const Text(
+                    'ملخص الدفع',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppTheme.neutralGray800,
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   _buildSummaryRow('سعر المنتج', _itemPrice),
                   const SizedBox(height: 10),
@@ -747,11 +853,14 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('طرق الدفع المتاحة',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppTheme.neutralGray800)),
+                const Text(
+                  'طرق الدفع المتاحة',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppTheme.neutralGray800,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -796,7 +905,10 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
               minimumSize: const Size(double.infinity, 54),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
               elevation: 0,
             ),
           ),
@@ -812,8 +924,11 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded,
-                    color: Colors.orange.shade700, size: 18),
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.orange.shade700,
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -835,30 +950,41 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
           Center(
             child: Column(
               children: [
-                Image.asset('assets/images/logo_nobg.png',
-                    height: 48,
-                    errorBuilder: (_, __, ___) => const Icon(
-                        Icons.bolt_rounded,
-                        size: 48,
-                        color: AppTheme.primaryBlue)),
+                Image.asset(
+                  'assets/images/logo_nobg.png',
+                  height: 48,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.bolt_rounded,
+                    size: 48,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                const Text(AppConstants.appNameEn,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: AppTheme.primaryBlue,
-                    )),
+                const Text(
+                  AppConstants.appNameEn,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                const Text(AppConstants.appName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      color: AppTheme.primaryBlue,
-                    )),
+                const Text(
+                  AppConstants.appName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('منصة الإعلانات الأولى في المملكة',
-                    style: TextStyle(
-                        fontSize: 12, color: AppTheme.neutralGray500)),
+                Text(
+                  'منصة الإعلانات الأولى في المملكة',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.neutralGray500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -868,27 +994,25 @@ class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount,
-      {bool isTotal = false}) {
+  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: isTotal ? 14 : 13,
-                fontWeight:
-                    isTotal ? FontWeight.w700 : FontWeight.w400,
-                color: isTotal
-                    ? AppTheme.neutralGray800
-                    : AppTheme.neutralGray600)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isTotal ? 14 : 13,
+            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+            color: isTotal ? AppTheme.neutralGray800 : AppTheme.neutralGray600,
+          ),
+        ),
         Text(
           '${amount.toStringAsFixed(2)} ر.س',
           style: TextStyle(
-              fontSize: isTotal ? 15 : 13,
-              fontWeight: FontWeight.w700,
-              color: isTotal
-                  ? AppTheme.primaryBlue
-                  : AppTheme.neutralGray700),
+            fontSize: isTotal ? 15 : 13,
+            fontWeight: FontWeight.w700,
+            color: isTotal ? AppTheme.primaryBlue : AppTheme.neutralGray700,
+          ),
         ),
       ],
     );
@@ -907,7 +1031,11 @@ class _ApplePaySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+        24,
+        16,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 32,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -925,29 +1053,35 @@ class _ApplePaySheet extends StatelessWidget {
           // Apple logo + title
           const Icon(Icons.apple, size: 44, color: Colors.black),
           const SizedBox(height: 2),
-          const Text('Apple Pay',
-              style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5, color: Colors.white)),
+          const Text(
+            'Apple Pay',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Payment details card
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: const Color(0xFFF5F5F7),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
-                _buildDetailRow('المبلغ',
-                    '${total.toStringAsFixed(2)} ر.س',
-                    valueStyle: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: Colors.black)),
+                _buildDetailRow(
+                  'المبلغ',
+                  '${total.toStringAsFixed(2)} ر.س',
+                  valueStyle: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: Colors.black,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 _buildDetailRow('الجهة', 'برق واضح'),
                 const SizedBox(height: 12),
@@ -966,7 +1100,10 @@ class _ApplePaySheet extends StatelessWidget {
               minimumSize: const Size(double.infinity, 54),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
               elevation: 0,
             ),
             child: const Row(
@@ -983,29 +1120,34 @@ class _ApplePaySheet extends StatelessWidget {
           // Cancel
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء',
-                style: TextStyle(
-                    color: AppTheme.neutralGray600, fontSize: 14)),
+            child: const Text(
+              'إلغاء',
+              style: TextStyle(color: AppTheme.neutralGray600, fontSize: 14),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value,
-      {TextStyle? valueStyle}) {
+  Widget _buildDetailRow(String label, String value, {TextStyle? valueStyle}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: const TextStyle(
-                color: AppTheme.neutralGray600, fontSize: 14)),
-        Text(value,
-            style: valueStyle ??
-                const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Colors.black)),
+        Text(
+          label,
+          style: const TextStyle(color: AppTheme.neutralGray600, fontSize: 14),
+        ),
+        Text(
+          value,
+          style:
+              valueStyle ??
+              const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.black,
+              ),
+        ),
       ],
     );
   }

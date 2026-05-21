@@ -12,7 +12,7 @@ import '../../features/notifications/data/notification_repository.dart';
 @pragma('vm:entry-point')
 Future<void> _onFcmBackgroundMessage(RemoteMessage message) async {}
 
-const _channelId   = 'barqwadih_main';
+const _channelId = 'barqwadih_main';
 const _channelName = 'إشعارات برق وديه';
 
 /// Singleton that wires together FCM push delivery and local notification
@@ -27,7 +27,7 @@ class FCMService {
   FCMService._();
   static final FCMService instance = FCMService._();
 
-  final _messaging          = FirebaseMessaging.instance;
+  final _messaging = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   StreamSubscription<String>? _tokenRefreshSub;
@@ -47,14 +47,17 @@ class FCMService {
     if (Platform.isAndroid) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(const AndroidNotificationChannel(
-        _channelId,
-        _channelName,
-        importance: Importance.high,
-        showBadge: true,
-        playSound: true,
-      ));
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(
+            const AndroidNotificationChannel(
+              _channelId,
+              _channelName,
+              importance: Importance.high,
+              showBadge: true,
+              playSound: true,
+            ),
+          );
     }
 
     // Initialise local-notifications plugin (foreground display + tap routing).
@@ -138,7 +141,7 @@ class FCMService {
   Future<void> _register(String token, NotificationRepository repo) async {
     try {
       await repo.registerDevice(
-        fcmToken:   token,
+        fcmToken: token,
         deviceType: Platform.isIOS ? 'ios' : 'android',
       );
       _isRegistered = true;
@@ -184,11 +187,17 @@ class FCMService {
         if (d['ad_id'] != null) return '/ads/${d['ad_id']}';
         return '/notifications';
       case 'chat':
-        if (d['conversation_id'] != null) return '/messages/${d['conversation_id']}';
+        if (d['conversation_id'] != null)
+          return '/messages/${d['conversation_id']}';
         return '/messages';
       case 'rating':
         if (d['ad_id'] != null) return '/ads/${d['ad_id']}';
         return '/notifications';
+      case 'sale_fee':
+        // Backend sends price as string in FCM data payload.
+        // Route to the fee calculator with the ad price pre-filled.
+        if (d['price'] != null) return '/payments?price=${d['price']}';
+        return '/payments';
       default:
         return '/notifications';
     }
