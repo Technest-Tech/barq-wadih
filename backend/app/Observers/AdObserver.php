@@ -28,7 +28,7 @@ class AdObserver
             return;
         }
 
-        $oldStatus = AdStatus::tryFrom((string) $ad->getOriginal('status'));
+        $oldStatus = AdStatus::tryFrom((string) $ad->getRawOriginal('status'));
         $newStatus = $ad->status;
 
         $wasActive = $oldStatus === AdStatus::Active;
