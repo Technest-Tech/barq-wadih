@@ -207,54 +207,40 @@ HTML,
                 'meta_description_en' => 'Learn about publishing fees, commissions, and payment methods on Barq Wadih.',
                 'content_ar'          => <<<'HTML'
 <h2>١. رسوم نشر الإعلانات</h2>
-<p>تختلف رسوم النشر بحسب فئة الإعلان ونوع البائع (فرد أو تاجر). تُعرض الرسوم بشكل واضح قبل تأكيد النشر.</p>
+<p>رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان وتختلف حسب القسم:</p>
 
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
-    <tr style="background:#f3f4f6;">
-      <th style="padding:10px 14px;text-align:right;border:1px solid #e5e7eb;">الفئة</th>
-      <th style="padding:10px 14px;text-align:right;border:1px solid #e5e7eb;">فرد</th>
-      <th style="padding:10px 14px;text-align:right;border:1px solid #e5e7eb;">تاجر</th>
+    <tr style="background:#1d4ed8;color:#fff;">
+      <th style="padding:12px 16px;text-align:right;border:1px solid #e5e7eb;">القسم</th>
+      <th style="padding:12px 16px;text-align:right;border:1px solid #e5e7eb;">رسوم النشر</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">السيارات والمركبات</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">مجاني</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">99 ر.س / شهر</td>
+    <tr style="background:#fafafa;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">🚗 السيارات والمركبات</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">99 ر.س</td>
     </tr>
     <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">العقارات</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">49 ر.س</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">149 ر.س / شهر</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">📱 الجوالات والأقسام الأخرى</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">10 ر.س</td>
     </tr>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">الإلكترونيات</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">مجاني</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">49 ر.س / شهر</td>
-    </tr>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">باقي الفئات</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">مجاني</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">يختلف حسب الفئة</td>
+    <tr style="background:#fafafa;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">💼 الوظائف</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#16a34a;">مجاني</td>
     </tr>
   </tbody>
 </table>
 
-<h2>٢. العمولات</h2>
-<p>تُطبَّق عمولة بيع على بعض الفئات تُستحق عند إتمام صفقة البيع:</p>
+<h2>٢. ملاحظات مهمة</h2>
 <ul>
-  <li><strong>الأفراد:</strong> 0.5% من قيمة البيع أو 90 ر.س (أيهما أقل).</li>
-  <li><strong>التجار:</strong> وفق الاتفاقية المبرمة عند التسجيل كتاجر.</li>
+  <li>رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان.</li>
+  <li>رسوم النشر <strong>غير مستردة</strong> بأي حال من الأحوال.</li>
+  <li>الإعلان ينتهي بعد 30 يومًا ويمكن تجديده.</li>
+  <li>يمكن تجديد الإعلان (رفعه للأعلى) مرة واحدة كل 24 ساعة.</li>
 </ul>
 
-<h2>٣. خيارات التمييز والتعزيز</h2>
-<ul>
-  <li><strong>تمييز الإعلان (Boost):</strong> يرفع إعلانك إلى أعلى نتائج البحث لمدة 7 أو 30 يوماً.</li>
-  <li><strong>بانر الواجهة:</strong> عرض إعلانك في البانر الرئيسي للصفحة الأولى.</li>
-</ul>
-
-<h2>٤. طرق الدفع</h2>
+<h2>٣. طرق الدفع</h2>
 <p>ندعم طرق الدفع التالية:</p>
 <ul>
   <li>بطاقة فيزا / ماستركارد</li>
@@ -263,61 +249,44 @@ HTML,
   <li>جميع المدفوعات تتم عبر بوابة موي الآمنة</li>
 </ul>
 
-<h2>٥. سياسة الاسترداد</h2>
-<p>يمكن طلب استرداد رسوم النشر خلال 24 ساعة من الدفع إذا لم يُنشر الإعلان بعد. للطلب، تواصل معنا عبر <a href="/ar/contact">صفحة التواصل</a>.</p>
-
-<p style="color:#888;font-size:0.85em;">آخر تحديث: يناير 2025</p>
+<p style="color:#888;font-size:0.85em;">آخر تحديث: يونيو 2026</p>
 HTML,
                 'content_en'          => <<<'HTML'
 <h2>1. Listing Fees</h2>
-<p>Listing fees vary by category and seller type (individual or dealer). Fees are clearly displayed before confirming a listing.</p>
+<p>Listing fees are paid upfront when creating an ad and vary by category:</p>
 
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
-    <tr style="background:#f3f4f6;">
-      <th style="padding:10px 14px;text-align:left;border:1px solid #e5e7eb;">Category</th>
-      <th style="padding:10px 14px;text-align:left;border:1px solid #e5e7eb;">Individual</th>
-      <th style="padding:10px 14px;text-align:left;border:1px solid #e5e7eb;">Dealer</th>
+    <tr style="background:#1d4ed8;color:#fff;">
+      <th style="padding:12px 16px;text-align:left;border:1px solid #e5e7eb;">Category</th>
+      <th style="padding:12px 16px;text-align:left;border:1px solid #e5e7eb;">Listing Fee</th>
     </tr>
   </thead>
   <tbody>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Cars & Vehicles</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Free</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">SAR 99 / month</td>
+    <tr style="background:#fafafa;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">🚗 Cars & Vehicles</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">SAR 99</td>
     </tr>
     <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Real Estate</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">SAR 49</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">SAR 149 / month</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">📱 Mobiles & Other Categories</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">SAR 10</td>
     </tr>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Electronics</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Free</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">SAR 49 / month</td>
-    </tr>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Other Categories</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Free</td>
-      <td style="padding:10px 14px;border:1px solid #e5e7eb;">Varies by category</td>
+    <tr style="background:#fafafa;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">💼 Jobs</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#16a34a;">Free</td>
     </tr>
   </tbody>
 </table>
 
-<h2>2. Commissions</h2>
-<p>A sales commission applies to some categories upon completing a sale:</p>
+<h2>2. Important Notes</h2>
 <ul>
-  <li><strong>Individuals:</strong> 0.5% of sale value or SAR 90 (whichever is lower).</li>
-  <li><strong>Dealers:</strong> Per the agreement made during dealer registration.</li>
+  <li>Listing fees are paid upfront when creating an ad.</li>
+  <li>Listing fees are <strong>non-refundable</strong> under any circumstances.</li>
+  <li>Listings expire after 30 days and can be renewed.</li>
+  <li>Listings can be refreshed (bumped up) once every 24 hours.</li>
 </ul>
 
-<h2>3. Boost & Promotion Options</h2>
-<ul>
-  <li><strong>Listing Boost:</strong> Push your listing to the top of search results for 7 or 30 days.</li>
-  <li><strong>Homepage Banner:</strong> Display your listing on the main banner of the homepage.</li>
-</ul>
-
-<h2>4. Payment Methods</h2>
+<h2>3. Payment Methods</h2>
 <p>We support the following payment methods:</p>
 <ul>
   <li>Visa / Mastercard</li>
@@ -326,10 +295,7 @@ HTML,
   <li>All payments are processed through the secure Moyasar gateway</li>
 </ul>
 
-<h2>5. Refund Policy</h2>
-<p>Listing fee refunds can be requested within 24 hours of payment if the listing has not yet been published. To request a refund, contact us via the <a href="/en/contact">Contact page</a>.</p>
-
-<p style="color:#888;font-size:0.85em;">Last updated: January 2025</p>
+<p style="color:#888;font-size:0.85em;">Last updated: June 2026</p>
 HTML,
                 'is_published' => true,
             ],

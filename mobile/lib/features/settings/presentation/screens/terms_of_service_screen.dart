@@ -12,8 +12,14 @@ class TermsOfServiceScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        title: const Text('شروط الاستخدام',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        title: const Text(
+          'شروط الاستخدام',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         elevation: 0,
         centerTitle: true,
       ),
@@ -38,15 +44,20 @@ class TermsOfServiceScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.gavel_rounded, color: Colors.white, size: 36),
                   SizedBox(height: 10),
-                  Text('شروط وأحكام برق واضح',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800)),
+                  Text(
+                    'شروط وأحكام برق واضح',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   SizedBox(height: 6),
-                  Text('يُرجى قراءة هذه الشروط بعناية قبل استخدام المنصة.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    'يُرجى قراءة هذه الشروط بعناية قبل استخدام المنصة.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -67,11 +78,11 @@ class TermsOfServiceScreen extends StatelessWidget {
               title: 'رسوم النشر والعمولة',
               color: const Color(0xFF0D9488),
               content:
+                  '• السيارات والمركبات: 99 ر.س للإعلان.\n'
+                  '• الجوالات والأقسام الأخرى: 10 ر.س للإعلان.\n'
+                  '• الوظائف: مجاني.\n'
                   '• رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان.\n'
-                  '• رسوم النشر غير مستردة بأي حال من الأحوال.\n'
-                  '• عند إتمام البيع، تُستحق عمولة المنصة المحددة حسب القسم.\n'
-                  '• رسوم النشر تُخصم من إجمالي العمولة عند البيع.\n'
-                  '• يجب سداد العمولة خلال 10 أيام من استلام المبلغ من المشتري.',
+                  '• رسوم النشر غير مستردة بأي حال من الأحوال.',
             ),
             const SizedBox(height: 12),
 
@@ -135,9 +146,10 @@ class TermsOfServiceScreen extends StatelessWidget {
               child: Text(
                 'آخر تحديث: مايو 2026',
                 style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.neutralGray400,
-                    fontStyle: FontStyle.italic),
+                  fontSize: 12,
+                  color: AppTheme.neutralGray400,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
             const SizedBox(height: 32),
