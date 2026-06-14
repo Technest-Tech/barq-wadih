@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             CategoryFieldSeeder::class,
             SystemSettingSeeder::class,
+            StaticPagesSeeder::class,
         ]);
 
         // ── Dev/Staging only — demo data ─────────────────────────────────────

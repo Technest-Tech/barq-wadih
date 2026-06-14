@@ -961,6 +961,18 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
           child: Column(
             children: [
               _HarajDrawerItem(
+                icon: Icons.shopping_bag_outlined,
+                title: 'كيف تشتري؟',
+                onTap: () => _closeAndNavigate('/how-to-buy'),
+              ),
+              const _Divider(),
+              _HarajDrawerItem(
+                icon: Icons.sell_outlined,
+                title: 'كيف تبيع؟',
+                onTap: () => _closeAndNavigate('/how-to-sell'),
+              ),
+              const _Divider(),
+              _HarajDrawerItem(
                 icon: Icons.payments_outlined,
                 title: 'سداد الرسوم والاشتراكات',
                 onTap: () => _closeAndNavigate('/payments'),

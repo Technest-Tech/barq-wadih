@@ -12,7 +12,16 @@ class NotificationRepository {
       '/notifications',
       queryParameters: {'page': page},
     );
-    final data = res.data?['data'] as List<dynamic>? ?? [];
+    final raw = res.data?['data'];
+    final List<dynamic> data;
+    if (raw is List) {
+      data = raw;
+    } else if (raw is Map) {
+      // Paginated wrapper: { data: { data: [...], meta: {...} } }
+      data = raw['data'] as List<dynamic>? ?? [];
+    } else {
+      data = [];
+    }
     return data
         .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -42,17 +51,18 @@ class NotificationRepository {
     required String deviceType, // 'ios', 'android', 'web'
     String? deviceName,
   }) async {
-    await _dio.post<void>('/devices', data: {
-      'fcm_token':   fcmToken,
-      'device_type': deviceType,
-      'device_name': deviceName,
-    });
+    await _dio.post<void>(
+      '/devices',
+      data: {
+        'fcm_token': fcmToken,
+        'device_type': deviceType,
+        'device_name': deviceName,
+      },
+    );
   }
 
   /// Deactivate device token on logout.
   Future<void> deactivateDevice(String fcmToken) async {
-    await _dio.delete<void>('/devices', data: {
-      'fcm_token': fcmToken,
-    });
+    await _dio.delete<void>('/devices', data: {'fcm_token': fcmToken});
   }
 }

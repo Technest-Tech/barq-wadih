@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../ads/data/ad_api.dart';
 import '../../../ratings/presentation/screens/ratings_list_screen.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/auth_user.dart';
@@ -64,6 +65,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final myAdsAsync = ref.watch(myAdsProvider);
 
     if (authState is! AuthAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/login'));
@@ -74,6 +76,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
 
     final user = authState.user;
+    final adsCount = myAdsAsync.asData?.value.length ?? user.totalAdsCount;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -145,7 +148,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   children: [
                     // ── Stats row ─────────────────────────────────────────────
-                    _StatsRow(user: user),
+                    _StatsRow(user: user, adsCount: adsCount),
                     const SizedBox(height: 16),
 
                     // ── Account info card ──────────────────────────────────────
@@ -331,7 +334,8 @@ class _AvatarWidget extends ConsumerWidget {
 
 class _StatsRow extends StatelessWidget {
   final AuthUser user;
-  const _StatsRow({required this.user});
+  final int adsCount;
+  const _StatsRow({required this.user, required this.adsCount});
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +350,7 @@ class _StatsRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          _StatCell(value: '${user.totalAdsCount}', label: 'إعلان'),
+          _StatCell(value: '$adsCount', label: 'إعلان'),
           _StatDivider(),
           _StatCell(value: user.avgRating, label: 'التقييم'),
           _StatDivider(),

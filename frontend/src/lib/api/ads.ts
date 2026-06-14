@@ -209,9 +209,14 @@ export interface CommissionPreview {
 /**
  * Fetch commission preview for a given price.
  */
-export async function fetchCommissionPreview(price: number, isFree: boolean = false): Promise<CommissionPreview> {
+export async function fetchCommissionPreview(
+  price: number,
+  isFree: boolean = false
+): Promise<CommissionPreview> {
   const params = new URLSearchParams({ price: String(price), is_free: isFree ? '1' : '0' });
-  const res = await apiClient.get<CommissionPreview>(`${ENDPOINTS.COMMISSION_PREVIEW}?${params.toString()}`);
+  const res = await apiClient.get<CommissionPreview>(
+    `${ENDPOINTS.COMMISSION_PREVIEW}?${params.toString()}`
+  );
   return res.data!;
 }
 
@@ -230,10 +235,35 @@ export interface SearchFilters {
 }
 
 /**
+ * Autocomplete query completions from the search-log history.
+ * Returns up to 8 popular queries that start with the given prefix.
+ */
+export async function fetchSearchSuggestions(q: string): Promise<string[]> {
+  if (q.trim().length < 2) return [];
+  const res = await apiClient.get<string[]>(
+    `${ENDPOINTS.SEARCH_SUGGESTIONS}?q=${encodeURIComponent(q.trim())}`
+  );
+  return res.data ?? [];
+}
+
+/**
+ * Top N most-viewed active ads, optionally scoped to a category.
+ * Used as a "ربما يعجبك" fallback when a search returns zero results.
+ */
+export async function fetchPopularAds(limit = 3, categoryId?: number): Promise<AdListItem[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (categoryId !== undefined) params.set('category_id', String(categoryId));
+  const res = await apiClient.get<AdListItem[]>(`${ENDPOINTS.SEARCH_POPULAR}?${params.toString()}`);
+  return res.data ?? [];
+}
+
+/**
  * Full-text search with Meilisearch (falls back to MySQL LIKE on server).
  * Logs the search query for analytics via SearchLog.
  */
-export async function searchAds(filters: SearchFilters = {}): Promise<PaginatedResponse<AdListItem>> {
+export async function searchAds(
+  filters: SearchFilters = {}
+): Promise<PaginatedResponse<AdListItem>> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') {

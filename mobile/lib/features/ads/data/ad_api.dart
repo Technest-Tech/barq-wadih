@@ -458,6 +458,7 @@ final adsFeedProvider =
 class AdsFeedNotifier
     extends AsyncNotifier<({List<AdListModel> ads, bool hasMore, int total})> {
   AdsFilter _filter = const AdsFilter();
+  int _requestId = 0;
 
   @override
   Future<({List<AdListModel> ads, bool hasMore, int total})> build() {
@@ -467,14 +468,15 @@ class AdsFeedNotifier
   void applyFilter(AdsFilter filter) {
     _filter = filter.copyWith(page: 1);
     state = const AsyncLoading();
+    final id = ++_requestId;
     ref
         .read(adRepositoryProvider)
         .getAds(_filter)
         .then((result) {
-          state = AsyncData(result);
+          if (id == _requestId) state = AsyncData(result);
         })
         .catchError((Object e) {
-          state = AsyncError(e, StackTrace.current);
+          if (id == _requestId) state = AsyncError(e, StackTrace.current);
         });
   }
 
