@@ -30,6 +30,7 @@ import '../../features/settings/presentation/screens/trusted_purchase_screen.dar
 import '../../features/settings/presentation/screens/terms_of_service_screen.dart';
 import '../../features/settings/presentation/screens/how_to_buy_screen.dart';
 import '../../features/settings/presentation/screens/how_to_sell_screen.dart';
+import '../../features/settings/presentation/screens/about_screen.dart';
 import '../shell/main_shell.dart';
 
 // ── Route paths ───────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ abstract class AppRoutes {
   static const termsOfService = '/terms-of-service';
   static const howToBuy = '/how-to-buy';
   static const howToSell = '/how-to-sell';
+  static const about = '/about';
 
   /// Helper to build ad detail path with actual id
   static String adDetailPath(int id) => '/ads/$id';
@@ -328,6 +330,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.howToSell,
         pageBuilder: (context, state) =>
             _slidePage(key: state.pageKey, child: const HowToSellScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const AboutScreen()),
       ),
     ],
 

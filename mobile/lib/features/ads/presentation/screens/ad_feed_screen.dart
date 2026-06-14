@@ -998,6 +998,12 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
               ),
               const _Divider(),
               _HarajDrawerItem(
+                icon: Icons.info_outline_rounded,
+                title: 'من نحن',
+                onTap: () => _closeAndNavigate('/about'),
+              ),
+              const _Divider(),
+              _HarajDrawerItem(
                 icon: Icons.description_outlined,
                 title: 'سياسة موقع برق واضح',
                 onTap: () => _closeAndNavigate('/privacy-policy'),

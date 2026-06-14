@@ -565,6 +565,82 @@ HTML,
 HTML,
                 'is_published' => true,
             ],
+
+            // ── About Us ─────────────────────────────────────────────────────
+            [
+                'slug'                => 'about',
+                'title_ar'            => 'من نحن',
+                'title_en'            => 'About Us',
+                'meta_description_ar' => 'تعرّف على منصة برق واضح — منصة إعلانات مبوبة سعودية مملوكة ومدارة من مؤسسة برق واضح.',
+                'meta_description_en' => 'Learn about Barq Wadih — a Saudi classifieds platform owned and operated by Barq Wadih Est.',
+                'content_ar'          => <<<'HTML'
+<h2>من نحن</h2>
+<p>
+  تطبيق وموقع <strong>برق واضح</strong> هو منصة إلكترونية سعودية متخصصة في مجال الإعلانات المبوبة،
+  مملوك ومدار بالكامل من قِبل <strong>مؤسسة برق واضح</strong> المسجلة رسمياً في المملكة العربية السعودية.
+</p>
+<p>
+  نهدف إلى تقديم تجربة سهلة وسريعة وموثوقة للمستخدمين لبيع وشراء السلع والمركبات بكل وضوح وأمان.
+</p>
+
+<h2>المعلومات التجارية</h2>
+<table style="width:100%;border-collapse:collapse;margin:16px 0;">
+  <tbody>
+    <tr style="background:#f9fafb;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;width:40%;">اسم المنشأة</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;">مؤسسة برق واضح</td>
+    </tr>
+    <tr>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">رقم السجل التجاري</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">7054134502</td>
+    </tr>
+    <tr style="background:#f9fafb;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">بلد التسجيل</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;">المملكة العربية السعودية 🇸🇦</td>
+    </tr>
+    <tr>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">النشاط التجاري</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;">منصة إعلانات مبوبة إلكترونية</td>
+    </tr>
+  </tbody>
+</table>
+HTML,
+                'content_en'          => <<<'HTML'
+<h2>About Us</h2>
+<p>
+  <strong>Barq Wadih</strong> (برق واضح) is a Saudi electronic platform specializing in classified ads,
+  fully owned and operated by <strong>Barq Wadih Establishment</strong>, officially registered in the
+  Kingdom of Saudi Arabia.
+</p>
+<p>
+  Our mission is to provide users with a simple, fast, and trustworthy experience for buying and selling
+  goods and vehicles — with full transparency and security.
+</p>
+
+<h2>Business Information</h2>
+<table style="width:100%;border-collapse:collapse;margin:16px 0;">
+  <tbody>
+    <tr style="background:#f9fafb;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;width:40%;">Entity Name</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;">Barq Wadih Establishment</td>
+    </tr>
+    <tr>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">Commercial Registration</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">7054134502</td>
+    </tr>
+    <tr style="background:#f9fafb;">
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">Country</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;">Kingdom of Saudi Arabia 🇸🇦</td>
+    </tr>
+    <tr>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">Business Activity</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;">Online Classifieds Platform</td>
+    </tr>
+  </tbody>
+</table>
+HTML,
+                'is_published' => true,
+            ],
         ];
 
         foreach ($pages as $data) {
