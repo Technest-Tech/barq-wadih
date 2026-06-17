@@ -15,7 +15,7 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name'                  => ['required', 'string', 'min:2', 'max:100'],
-            'phone'                 => ['required', 'string', 'regex:/^\+(?:966[0-9]{9}|20(10|11|12|15)[0-9]{8})$/', 'unique:users,phone'],
+            'phone'                 => ['nullable', 'string', 'regex:/^\+(?:966[0-9]{9}|20(10|11|12|15)[0-9]{8})$/', 'unique:users,phone'],
             'email'                 => ['required', 'email', 'unique:users,email', 'max:191'],
             'password'              => ['nullable', 'string', 'min:8', 'confirmed'],
             'region_id'             => ['nullable', 'integer', 'exists:regions,id'],
