@@ -207,7 +207,7 @@ HTML,
                 'meta_description_en' => 'Learn about publishing fees, commissions, and payment methods on Barq Wadih.',
                 'content_ar'          => <<<'HTML'
 <h2>١. رسوم نشر الإعلانات</h2>
-<p>رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان وتختلف حسب القسم:</p>
+<p>رسوم النشر هي لإنشاء الإعلان وتختلف حسب القسم:</p>
 
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
@@ -246,14 +246,13 @@ HTML,
   <li>بطاقة فيزا / ماستركارد</li>
   <li>مدى</li>
   <li>Apple Pay</li>
-  <li>جميع المدفوعات تتم عبر بوابة موي الآمنة</li>
 </ul>
 
 <p style="color:#888;font-size:0.85em;">آخر تحديث: يونيو 2026</p>
 HTML,
                 'content_en'          => <<<'HTML'
 <h2>1. Listing Fees</h2>
-<p>Listing fees are paid upfront when creating an ad and vary by category:</p>
+<p>Listing fees are for creating an ad and vary by category:</p>
 
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
@@ -292,7 +291,6 @@ HTML,
   <li>Visa / Mastercard</li>
   <li>Mada</li>
   <li>Apple Pay</li>
-  <li>All payments are processed through the secure Moyasar gateway</li>
 </ul>
 
 <p style="color:#888;font-size:0.85em;">Last updated: June 2026</p>
