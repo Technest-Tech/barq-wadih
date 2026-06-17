@@ -19,18 +19,18 @@ import styles from './page.module.css';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function relativeTime(dateStr: string | null): string {
   if (!dateStr) return '';
-  const diffMs  = Date.now() - new Date(dateStr).getTime();
+  const diffMs = Date.now() - new Date(dateStr).getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1)  return 'الآن';
+  if (diffMin < 1) return 'الآن';
   if (diffMin < 60) return `منذ ${diffMin} د`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24)  return `منذ ${diffHr} س`;
+  if (diffHr < 24) return `منذ ${diffHr} س`;
   return `منذ ${Math.floor(diffHr / 24)} ي`;
 }
 
 const SORT_OPTS: { val: AdsFilters['sort']; label: string }[] = [
-  { val: 'newest',     label: '⬇ الأحدث' },
-  { val: 'price_asc',  label: '⬆ أقل سعر' },
+  { val: 'newest', label: '⬇ الأحدث' },
+  { val: 'price_asc', label: '⬆ أقل سعر' },
   { val: 'price_desc', label: '⬇ أعلى سعر' },
 ];
 
@@ -54,20 +54,22 @@ function findNearestCity(cities: City[], lat: number, lng: number): City | null 
   for (const c of cities) {
     if (c.latitude == null || c.longitude == null) continue;
     const d = haversineKm(lat, lng, c.latitude, c.longitude);
-    if (d < bestDist) { bestDist = d; best = c; }
+    if (d < bestDist) {
+      bestDist = d;
+      best = c;
+    }
   }
   return best;
 }
 
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   // Location — flat searchable city list
-  const [allCities, setAllCities]         = useState<City[]>([]);
-  const [citySearch, setCitySearch]       = useState('');
-  const [selectedCity, setSelectedCity]   = useState<City | null>(null);
+  const [allCities, setAllCities] = useState<City[]>([]);
+  const [citySearch, setCitySearch] = useState('');
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [citiesLoading, setCitiesLoading] = useState(true);
-  const [locationOpen, setLocationOpen]   = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
   // Keep selectedRegion for feed filtering compatibility
   const [selectedRegion, setSelectedRegion] = useState<SelectedRegion | null>(null);
   const locationRef = useRef<HTMLDivElement>(null);
@@ -76,19 +78,19 @@ export default function HomePage() {
   const params = useParams<{ locale?: string }>();
   const searchParams = useSearchParams();
   const locale = params?.locale ?? 'ar';
-  const urlQuery    = (searchParams?.get('q') ?? '').trim();
+  const urlQuery = (searchParams?.get('q') ?? '').trim();
   const urlCategory = (searchParams?.get('category') ?? '').trim();
 
   // Feed
-  const [ads, setAds]             = useState<AdListItem[]>([]);
+  const [ads, setAds] = useState<AdListItem[]>([]);
   const [adsLoading, setAdsLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [sort, setSort]           = useState<AdsFilters['sort']>('newest');
+  const [sort, setSort] = useState<AdsFilters['sort']>('newest');
   const [currentPage, setCurrentPage] = useState(1);
-  const [lastPage, setLastPage]   = useState(1);
-  const [total, setTotal]         = useState(0);
-  const [viewMode, setViewMode]   = useState<'list' | 'grid'>('list');
-  const [nearMe, setNearMe]     = useState(false);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [nearMe, setNearMe] = useState(false);
   const [feedError, setFeedError] = useState(false);
   const [citiesError, setCitiesError] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -100,10 +102,10 @@ export default function HomePage() {
   const [showMoreCats, setShowMoreCats] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [authOpen, setAuthOpen]     = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   // Sidebar searchable category dropdown
-  const [sbDropOpen, setSbDropOpen]       = useState(false);
+  const [sbDropOpen, setSbDropOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const sbDropRef = useRef<HTMLDivElement>(null);
 
@@ -113,7 +115,10 @@ export default function HomePage() {
     setCitiesError(false);
     fetchAllCities()
       .then(setAllCities)
-      .catch((e) => { console.error(e); setCitiesError(true); })
+      .catch((e) => {
+        console.error(e);
+        setCitiesError(true);
+      })
       .finally(() => setCitiesLoading(false));
   }, []);
 
@@ -129,7 +134,7 @@ export default function HomePage() {
       setSelectedCategory(null);
       return;
     }
-    const match = categories.find(c => c.slug === urlCategory) ?? null;
+    const match = categories.find((c) => c.slug === urlCategory) ?? null;
     setSelectedCategory(match);
   }, [urlCategory, categories]);
 
@@ -151,13 +156,15 @@ export default function HomePage() {
   // Uses searchAds when q is present (search term came from header bar / ?q=),
   // otherwise the standard fetchAds feed.
   const loadAds = useCallback(async (filters: AdsFilters, reset = true) => {
-    if (reset) setAdsLoading(true); else setLoadingMore(true);
+    if (reset) setAdsLoading(true);
+    else setLoadingMore(true);
     setFeedError(false);
     try {
-      const res = filters.q && filters.q.trim().length > 0
-        ? await searchAds(filters)
-        : await fetchAds(filters);
-      setAds(prev => reset ? res.data : [...prev, ...res.data]);
+      const res =
+        filters.q && filters.q.trim().length > 0
+          ? await searchAds(filters)
+          : await fetchAds(filters);
+      setAds((prev) => (reset ? res.data : [...prev, ...res.data]));
       setCurrentPage(res.meta?.current_page ?? 1);
       setLastPage(res.meta?.last_page ?? 1);
       setTotal(res.meta?.total ?? res.data.length);
@@ -172,75 +179,97 @@ export default function HomePage() {
   }, []);
 
   // ── Near-me: geolocation → nearest city ────────────────────────────────────
-  const handleNearMeToggle = useCallback((next: boolean) => {
-    setGeoError(null);
-    if (!next) {
-      setNearMe(false);
-      return;
-    }
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGeoError('المتصفح لا يدعم تحديد الموقع');
-      return;
-    }
-    if (allCities.length === 0) {
-      setGeoError('لم يتم تحميل المدن بعد');
-      return;
-    }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const nearest = findNearestCity(allCities, pos.coords.latitude, pos.coords.longitude);
-        setGeoLoading(false);
-        if (!nearest) { setGeoError('تعذّر إيجاد مدينة قريبة'); return; }
-        setSelectedCity(nearest);
-        setSelectedRegion(nearest.region ?? null);
-        setNearMe(true);
-      },
-      (err) => {
-        setGeoLoading(false);
-        setGeoError(
-          err.code === err.PERMISSION_DENIED
-            ? 'يجب السماح بالوصول للموقع'
-            : 'تعذّر تحديد موقعك'
-        );
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60_000 }
-    );
-  }, [allCities]);
+  const handleNearMeToggle = useCallback(
+    (next: boolean) => {
+      setGeoError(null);
+      if (!next) {
+        setNearMe(false);
+        return;
+      }
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        setGeoError('المتصفح لا يدعم تحديد الموقع');
+        return;
+      }
+      if (allCities.length === 0) {
+        setGeoError('لم يتم تحميل المدن بعد');
+        return;
+      }
+      setGeoLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const nearest = findNearestCity(allCities, pos.coords.latitude, pos.coords.longitude);
+          setGeoLoading(false);
+          if (!nearest) {
+            setGeoError('تعذّر إيجاد مدينة قريبة');
+            return;
+          }
+          setSelectedCity(nearest);
+          setSelectedRegion(nearest.region ?? null);
+          setNearMe(true);
+        },
+        (err) => {
+          setGeoLoading(false);
+          setGeoError(
+            err.code === err.PERMISSION_DENIED ? 'يجب السماح بالوصول للموقع' : 'تعذّر تحديد موقعك'
+          );
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60_000 }
+      );
+    },
+    [allCities]
+  );
 
   const retryLoad = useCallback(() => {
-    loadAds({
-      sort,
-      q:         urlQuery || undefined,
-      city_id:   selectedCity?.id,
-      region_id: selectedCity ? undefined : selectedRegion?.id,
-      category_id: selectedCategory?.id,
-      page: 1,
-    }, true);
+    loadAds(
+      {
+        sort,
+        q: urlQuery || undefined,
+        city_id: selectedCity?.id,
+        region_id: selectedCity ? undefined : selectedRegion?.id,
+        category_id: selectedCategory?.id,
+        page: 1,
+      },
+      true
+    );
     if (citiesError) loadCities();
-  }, [loadAds, sort, urlQuery, selectedCity, selectedRegion, selectedCategory, citiesError, loadCities]);
+  }, [
+    loadAds,
+    sort,
+    urlQuery,
+    selectedCity,
+    selectedRegion,
+    selectedCategory,
+    citiesError,
+    loadCities,
+  ]);
 
   useEffect(() => {
-    loadAds({
-      sort,
-      q:         urlQuery || undefined,
-      city_id:   selectedCity?.id,
-      region_id: selectedCity ? undefined : selectedRegion?.id,
-      category_id: selectedCategory?.id,
-      page: 1,
-    }, true);
+    loadAds(
+      {
+        sort,
+        q: urlQuery || undefined,
+        city_id: selectedCity?.id,
+        region_id: selectedCity ? undefined : selectedRegion?.id,
+        category_id: selectedCategory?.id,
+        page: 1,
+      },
+      true
+    );
   }, [sort, urlQuery, selectedCity, selectedRegion, selectedCategory, loadAds]);
 
   const handleLoadMore = () => {
     if (currentPage >= lastPage) return;
-    loadAds({
-      sort,
-      q:         urlQuery || undefined,
-      city_id:   selectedCity?.id,
-      region_id: selectedCity ? undefined : selectedRegion?.id,
-      category_id: selectedCategory?.id,
-      page: currentPage + 1,
-    }, false);
+    loadAds(
+      {
+        sort,
+        q: urlQuery || undefined,
+        city_id: selectedCity?.id,
+        region_id: selectedCity ? undefined : selectedRegion?.id,
+        category_id: selectedCategory?.id,
+        page: currentPage + 1,
+      },
+      false
+    );
   };
 
   const locationLabel = selectedCity
@@ -257,86 +286,101 @@ export default function HomePage() {
       {/* ── Search hero bar ────────────────────────────────────────────── */}
       <div className={styles.heroBar} dir="rtl">
         <div className={styles.heroInner}>
-
           {/* Location & Near Me Group */}
           <div className={styles.locGroup}>
             {/* Location dropdown — flat searchable city list */}
             <div className={styles.locWrap} ref={locationRef}>
               <button
-              id="location-dropdown-btn"
-              className={styles.locBtn}
-              onClick={() => { setLocationOpen(o => !o); setCitySearch(''); }}
-            >
-              <span className={styles.locIcon}>📍</span>
-              <span className={styles.locLabel}>{locationLabel}</span>
-              <span className={`${styles.locChevron} ${locationOpen ? styles.locChevronOpen : ''}`}>▾</span>
-            </button>
+                id="location-dropdown-btn"
+                className={styles.locBtn}
+                onClick={() => {
+                  setLocationOpen((o) => !o);
+                  setCitySearch('');
+                }}
+              >
+                <span className={styles.locIcon}>📍</span>
+                <span className={styles.locLabel}>{locationLabel}</span>
+                <span
+                  className={`${styles.locChevron} ${locationOpen ? styles.locChevronOpen : ''}`}
+                >
+                  ▾
+                </span>
+              </button>
 
-            {locationOpen && (
-              <div className={styles.locDropdown}>
-                {/* Search input */}
-                <div className={styles.locSearchWrap}>
-                  <span className={styles.locSearchIcon}>🔍</span>
-                  <input
-                    className={styles.locSearchInput}
-                    placeholder="ابحث عن مدينة..."
-                    value={citySearch}
-                    onChange={e => setCitySearch(e.target.value)}
-                    autoFocus
-                    dir="rtl"
-                  />
-                  {citySearch && (
-                    <button className={styles.locSearchClear} onClick={() => setCitySearch('')}>✕</button>
-                  )}
-                </div>
+              {locationOpen && (
+                <div className={styles.locDropdown}>
+                  {/* Search input */}
+                  <div className={styles.locSearchWrap}>
+                    <span className={styles.locSearchIcon}>🔍</span>
+                    <input
+                      className={styles.locSearchInput}
+                      placeholder="ابحث عن مدينة..."
+                      value={citySearch}
+                      onChange={(e) => setCitySearch(e.target.value)}
+                      autoFocus
+                      dir="rtl"
+                    />
+                    {citySearch && (
+                      <button className={styles.locSearchClear} onClick={() => setCitySearch('')}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
 
-                {/* City list */}
-                <div className={styles.locScrollable}>
-                  {/* "All cities" option */}
-                  {!citySearch && (
-                    <button
-                      className={`${styles.locItem} ${!selectedCity ? styles.locItemActive : ''}`}
-                      onClick={() => { setSelectedCity(null); setSelectedRegion(null); setLocationOpen(false); }}
-                    >
-                      🌍 كل المدن
-                    </button>
-                  )}
-
-                  {citiesLoading && [1,2,3,4,5,6].map(i => (
-                    <div key={i} className={styles.locSkeleton} />
-                  ))}
-
-                  {!citiesLoading && (() => {
-                    const q = citySearch.trim();
-                    const filtered = q
-                      ? allCities.filter(c =>
-                          c.name_ar.includes(q) || c.name_en?.toLowerCase().includes(q.toLowerCase())
-                        )
-                      : allCities;
-                    
-                    if (filtered.length === 0) return (
-                      <div className={styles.locEmpty}>لا توجد مدينة بهذا الاسم</div>
-                    );
-
-                    return filtered.map(c => (
+                  {/* City list */}
+                  <div className={styles.locScrollable}>
+                    {/* "All cities" option */}
+                    {!citySearch && (
                       <button
-                        key={c.id}
-                        className={`${styles.locItem} ${selectedCity?.id === c.id ? styles.locItemActive : ''}`}
+                        className={`${styles.locItem} ${!selectedCity ? styles.locItemActive : ''}`}
                         onClick={() => {
-                          setSelectedCity(c);
-                          setSelectedRegion(c.region ?? null);
+                          setSelectedCity(null);
+                          setSelectedRegion(null);
                           setLocationOpen(false);
-                          setCitySearch('');
                         }}
                       >
-                        <span className={styles.locCityName}>{c.name_ar}</span>
-                        {c.region && <span className={styles.locCityRegion}>{c.region.name_ar}</span>}
+                        🌍 كل المدن
                       </button>
-                    ));
-                  })()}
+                    )}
+
+                    {citiesLoading &&
+                      [1, 2, 3, 4, 5, 6].map((i) => <div key={i} className={styles.locSkeleton} />)}
+
+                    {!citiesLoading &&
+                      (() => {
+                        const q = citySearch.trim();
+                        const filtered = q
+                          ? allCities.filter(
+                              (c) =>
+                                c.name_ar.includes(q) ||
+                                c.name_en?.toLowerCase().includes(q.toLowerCase())
+                            )
+                          : allCities;
+
+                        if (filtered.length === 0)
+                          return <div className={styles.locEmpty}>لا توجد مدينة بهذا الاسم</div>;
+
+                        return filtered.map((c) => (
+                          <button
+                            key={c.id}
+                            className={`${styles.locItem} ${selectedCity?.id === c.id ? styles.locItemActive : ''}`}
+                            onClick={() => {
+                              setSelectedCity(c);
+                              setSelectedRegion(c.region ?? null);
+                              setLocationOpen(false);
+                              setCitySearch('');
+                            }}
+                          >
+                            <span className={styles.locCityName}>{c.name_ar}</span>
+                            {c.region && (
+                              <span className={styles.locCityRegion}>{c.region.name_ar}</span>
+                            )}
+                          </button>
+                        ));
+                      })()}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
 
             {/* Near Me Toggle — uses browser geolocation to snap feed to nearest city */}
@@ -350,18 +394,14 @@ export default function HomePage() {
               {geoLoading ? '…جارٍ تحديد الموقع' : '📍 القريب مني'}
             </button>
           </div>
-
-
         </div>
       </div>
 
       {/* ── Main layout ────────────────────────────────────────────────── */}
       <main className={styles.main} dir="rtl">
         <div className={styles.layout}>
-
           {/* ── Sidebar (desktop) ──────────────────────────────────────── */}
           <aside className={styles.sidebar}>
-
             {/* ① Category custom searchable dropdown */}
             <div className={`${styles.sbCard} ${styles.sbCardOverflowVisible}`}>
               {/* Custom dropdown trigger */}
@@ -369,13 +409,20 @@ export default function HomePage() {
                 <button
                   id="sidebar-category-btn"
                   className={styles.sbDropTrigger}
-                  onClick={() => { setSbDropOpen(o => !o); setCategorySearch(''); }}
+                  onClick={() => {
+                    setSbDropOpen((o) => !o);
+                    setCategorySearch('');
+                  }}
                   type="button"
                 >
                   <span className={styles.sbDropValue}>
                     {selectedCategory ? selectedCategory.name_ar : 'كل الأقسام'}
                   </span>
-                  <span className={`${styles.sbDropArrow} ${sbDropOpen ? styles.sbDropArrowOpen : ''}`}>▾</span>
+                  <span
+                    className={`${styles.sbDropArrow} ${sbDropOpen ? styles.sbDropArrowOpen : ''}`}
+                  >
+                    ▾
+                  </span>
                 </button>
 
                 {sbDropOpen && (
@@ -389,10 +436,15 @@ export default function HomePage() {
                         className={styles.sbDropSearchInput}
                         placeholder="ابحث عن قسم..."
                         value={categorySearch}
-                        onChange={e => setCategorySearch(e.target.value)}
+                        onChange={(e) => setCategorySearch(e.target.value)}
                       />
                       {categorySearch && (
-                        <button className={styles.sbDropSearchClear} onClick={() => setCategorySearch('')}>✕</button>
+                        <button
+                          className={styles.sbDropSearchClear}
+                          onClick={() => setCategorySearch('')}
+                        >
+                          ✕
+                        </button>
                       )}
                     </div>
 
@@ -400,19 +452,23 @@ export default function HomePage() {
                     <div className={styles.sbDropList}>
                       <button
                         className={`${styles.sbDropItem} ${!selectedCategory ? styles.sbDropItemActive : ''}`}
-                        onClick={() => { setSelectedCategory(null); setSbDropOpen(false); }}
+                        onClick={() => {
+                          setSelectedCategory(null);
+                          setSbDropOpen(false);
+                        }}
                       >
                         📦 كل الأقسام
                       </button>
 
-                      {categories.length === 0 && [1,2,3,4,5].map(i => (
-                        <div key={i} className={styles.sbDropSkeleton} />
-                      ))}
+                      {categories.length === 0 &&
+                        [1, 2, 3, 4, 5].map((i) => (
+                          <div key={i} className={styles.sbDropSkeleton} />
+                        ))}
 
-                      {categories.length > 0 && (
+                      {categories.length > 0 &&
                         categories
-                          .filter(c => !categorySearch || c.name_ar.includes(categorySearch))
-                          .map(c => (
+                          .filter((c) => !categorySearch || c.name_ar.includes(categorySearch))
+                          .map((c) => (
                             <button
                               key={c.id}
                               id={`sidebar-category-${c.slug}`}
@@ -426,12 +482,12 @@ export default function HomePage() {
                               <CategoryIcon icon={c.icon} name={c.name_ar} />
                               <span>{c.name_ar}</span>
                             </button>
-                          ))
-                      )}
+                          ))}
 
-                      {categories.length > 0 && categorySearch && categories.filter(c => c.name_ar.includes(categorySearch)).length === 0 && (
-                        <div className={styles.sbDropEmpty}>لا توجد نتائج</div>
-                      )}
+                      {categories.length > 0 &&
+                        categorySearch &&
+                        categories.filter((c) => c.name_ar.includes(categorySearch)).length ===
+                          0 && <div className={styles.sbDropEmpty}>لا توجد نتائج</div>}
                     </div>
                   </div>
                 )}
@@ -440,10 +496,7 @@ export default function HomePage() {
 
             {/* ② +تصفية collapsible */}
             <div className={styles.sbCard}>
-              <button
-                className={styles.sbFilterToggle}
-                onClick={() => setFilterOpen(o => !o)}
-              >
+              <button className={styles.sbFilterToggle} onClick={() => setFilterOpen((o) => !o)}>
                 <span className={styles.sbFilterIcon}>{filterOpen ? '−' : '+'}</span>
                 <span>تصفية</span>
               </button>
@@ -452,7 +505,7 @@ export default function HomePage() {
                   {/* Sort */}
                   <div className={styles.sbFilterSection}>
                     <div className={styles.sbFilterLabel}>الترتيب</div>
-                    {SORT_OPTS.map(opt => (
+                    {SORT_OPTS.map((opt) => (
                       <label key={opt.val} className={styles.radioItem}>
                         <input
                           type="radio"
@@ -469,11 +522,24 @@ export default function HomePage() {
                   <div className={styles.sbFilterSection}>
                     <div className={styles.sbFilterLabel}>المسافة</div>
                     <label className={styles.radioItem}>
-                      <input type="radio" name="condition-sb" className={styles.radio} checked={!nearMe} onChange={() => handleNearMeToggle(false)} />
+                      <input
+                        type="radio"
+                        name="condition-sb"
+                        className={styles.radio}
+                        checked={!nearMe}
+                        onChange={() => handleNearMeToggle(false)}
+                      />
                       الكل
                     </label>
                     <label className={styles.radioItem}>
-                      <input type="radio" name="condition-sb" className={styles.radio} checked={nearMe} onChange={() => handleNearMeToggle(true)} disabled={geoLoading || citiesLoading} />
+                      <input
+                        type="radio"
+                        name="condition-sb"
+                        className={styles.radio}
+                        checked={nearMe}
+                        onChange={() => handleNearMeToggle(true)}
+                        disabled={geoLoading || citiesLoading}
+                      />
                       القريب مني {geoLoading && '…'}
                     </label>
                     {geoError && <div className={styles.sbFilterError}>{geoError}</div>}
@@ -488,20 +554,21 @@ export default function HomePage() {
                       >
                         كل {selectedRegion.name_ar}
                       </button>
-                      {citiesLoading && [1,2,3].map(i => <div key={i} className={styles.sbCitySkeleton} />)}
-                      {!citiesLoading && allCities
-                        .filter(c => c.region?.slug === selectedRegion.slug)
-                        .map(c => (
-                          <button
-                            key={c.id}
-                            id={`sidebar-city-${c.slug}`}
-                            className={`${styles.sbCityBtn} ${selectedCity?.id === c.id ? styles.sbCityActive : ''}`}
-                            onClick={() => setSelectedCity(c)}
-                          >
-                            {c.name_ar}
-                          </button>
-                        ))
-                      }
+                      {citiesLoading &&
+                        [1, 2, 3].map((i) => <div key={i} className={styles.sbCitySkeleton} />)}
+                      {!citiesLoading &&
+                        allCities
+                          .filter((c) => c.region?.slug === selectedRegion.slug)
+                          .map((c) => (
+                            <button
+                              key={c.id}
+                              id={`sidebar-city-${c.slug}`}
+                              className={`${styles.sbCityBtn} ${selectedCity?.id === c.id ? styles.sbCityActive : ''}`}
+                              onClick={() => setSelectedCity(c)}
+                            >
+                              {c.name_ar}
+                            </button>
+                          ))}
                     </div>
                   )}
                 </div>
@@ -513,7 +580,7 @@ export default function HomePage() {
               <div className={styles.sbCardFlat}>
                 <h3 className={styles.sbNavTitleFlat}>تنقل السريع</h3>
                 <div className={styles.sbNavListFlat}>
-                  {(showMoreCats ? categories : categories.slice(0, 6)).map(cat => {
+                  {(showMoreCats ? categories : categories.slice(0, 6)).map((cat) => {
                     const active = selectedCategory?.id === cat.id;
                     return (
                       <button
@@ -524,7 +591,11 @@ export default function HomePage() {
                         title={cat.name_ar}
                         onClick={() => setSelectedCategory(active ? null : cat)}
                       >
-                        <CategoryIcon icon={cat.icon} name={cat.name_ar} className={styles.sbNavEmojiFlat} />
+                        <CategoryIcon
+                          icon={cat.icon}
+                          name={cat.name_ar}
+                          className={styles.sbNavEmojiFlat}
+                        />
                         <span className={styles.sbNavLabelFlat}>{cat.name_ar}</span>
                         <span className={styles.sbNavArrowFlat}>{active ? '✓' : '←'}</span>
                       </button>
@@ -535,7 +606,7 @@ export default function HomePage() {
                 {categories.length > 6 && (
                   <button
                     className={styles.sbShowMoreFlat}
-                    onClick={() => setShowMoreCats(s => !s)}
+                    onClick={() => setShowMoreCats((s) => !s)}
                   >
                     {showMoreCats ? 'عرض أقل' : 'عرض المزيد'}
                     <span className={styles.sbShowMoreIconFlat}>{showMoreCats ? '▲' : '▾'}</span>
@@ -547,9 +618,6 @@ export default function HomePage() {
 
           {/* ── Feed ───────────────────────────────────────────────────── */}
           <div className={styles.feed}>
-
-
-
             {/* Active filter chip */}
             {(selectedRegion || selectedCity) && (
               <div className={styles.activeBreadcrumb}>
@@ -558,7 +626,11 @@ export default function HomePage() {
                 </span>
                 <button
                   className={styles.breadcrumbClear}
-                  onClick={() => { setSelectedRegion(null); setSelectedCity(null); setNearMe(false); }}
+                  onClick={() => {
+                    setSelectedRegion(null);
+                    setSelectedCity(null);
+                    setNearMe(false);
+                  }}
                 >
                   ✕ إلغاء
                 </button>
@@ -590,7 +662,6 @@ export default function HomePage() {
                 </button>
               </div>
             )}
-
 
             {/* Banner */}
             <BannerCarousel position="home_top" />
@@ -637,27 +708,32 @@ export default function HomePage() {
             {/* Skeletons */}
             {adsLoading && (
               <div className={viewMode === 'list' ? styles.adList : styles.adGrid}>
-                {Array.from({ length: 8 }).map((_, i) => (
-                  viewMode === 'list'
-                    ? <div key={i} className={styles.adListSkeleton} />
-                    : <div key={i} className={styles.adCardSkeleton} />
-                ))}
+                {Array.from({ length: 8 }).map((_, i) =>
+                  viewMode === 'list' ? (
+                    <div key={i} className={styles.adListSkeleton} />
+                  ) : (
+                    <div key={i} className={styles.adCardSkeleton} />
+                  )
+                )}
               </div>
             )}
 
             {/* Results */}
-            {!adsLoading && ads.length > 0 && (
-              viewMode === 'list'
-                ? (
-                  <div className={styles.adList}>
-                    {ads.map(ad => <AdListRow key={ad.id} ad={ad} locale={locale} />)}
-                  </div>
-                ) : (
-                  <div className={styles.adGrid}>
-                    {ads.map(ad => <AdCard key={ad.id} ad={ad} locale={locale} />)}
-                  </div>
-                )
-            )}
+            {!adsLoading &&
+              ads.length > 0 &&
+              (viewMode === 'list' ? (
+                <div className={styles.adList}>
+                  {ads.map((ad) => (
+                    <AdListRow key={ad.id} ad={ad} locale={locale} />
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.adGrid}>
+                  {ads.map((ad) => (
+                    <AdCard key={ad.id} ad={ad} locale={locale} />
+                  ))}
+                </div>
+              ))}
 
             {/* Empty */}
             {!adsLoading && ads.length === 0 && (
@@ -665,14 +741,20 @@ export default function HomePage() {
                 <span className={styles.emptyFeedIcon}>🔍</span>
                 <h3>لا توجد إعلانات</h3>
                 <p>لم يتم العثور على إعلانات بالفلاتر المحددة. جرّب تغيير المدينة أو التصنيف.</p>
-                <Link href={`/${locale}/post-ad`} className={styles.emptyFeedCta}>+ نشر أول إعلان</Link>
+                <Link href={`/${locale}/post-ad`} className={styles.emptyFeedCta}>
+                  + نشر أول إعلان
+                </Link>
               </div>
             )}
 
             {/* Load more */}
             {!adsLoading && currentPage < lastPage && (
               <div className={styles.loadMore}>
-                <button className={styles.loadMoreBtn} onClick={handleLoadMore} disabled={loadingMore}>
+                <button
+                  className={styles.loadMoreBtn}
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                >
                   {loadingMore ? 'جارٍ التحميل...' : 'تحميل المزيد'}
                 </button>
               </div>
@@ -716,8 +798,14 @@ function CategoryIcon({
   className?: string;
 }) {
   if (icon?.startsWith('http')) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={icon} alt={name} className={className} style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }} />;
+    return (
+      <img
+        src={icon}
+        alt={name}
+        className={className}
+        style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }}
+      />
+    );
   }
   return <span className={className}>{icon ?? '📦'}</span>;
 }
@@ -735,7 +823,7 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
       {/* 1) Info on Right Side (RTL Start) */}
       <div className={styles.adListInfoRight}>
         <h3 className={styles.adListTitleHaraj}>{ad.title}</h3>
-        
+
         <div className={styles.adListBottomRow}>
           <div className={styles.adListMetaGroup}>
             <div className={styles.adListMetaItem}>
@@ -743,7 +831,9 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
               <span className={styles.metaIcon}>📍</span>
             </div>
             <div className={styles.adListMetaItem} dir="rtl">
-              <span className={styles.metaText}>{relativeTime(ad.published_at ?? ad.created_at)}</span>
+              <span className={styles.metaText}>
+                {relativeTime(ad.published_at ?? ad.created_at)}
+              </span>
               <span className={styles.metaIcon}>🕐</span>
             </div>
           </div>
@@ -767,7 +857,13 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
         <div className={styles.adListImgWrapper}>
           {ad.primary_image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={ad.primary_image.thumbnail_url} alt={ad.title} className={styles.adListImgReal} />
+            <img
+              src={ad.primary_image.thumbnail_url}
+              alt={ad.title}
+              className={styles.adListImgReal}
+              loading="lazy"
+              decoding="async"
+            />
           ) : (
             <div className={styles.adImgPlaceholder}>
               <CategoryIcon icon={ad.category?.icon} name={ad.category?.name_ar ?? ''} />
@@ -794,7 +890,13 @@ function AdCard({ ad, locale }: { ad: AdListItem; locale: string }) {
       <div className={styles.adImg}>
         {ad.primary_image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ad.primary_image.thumbnail_url} alt={ad.title} className={styles.adImgReal} />
+          <img
+            src={ad.primary_image.thumbnail_url}
+            alt={ad.title}
+            className={styles.adImgReal}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <div className={styles.adImgPlaceholder}>
             <CategoryIcon icon={ad.category?.icon} name={ad.category?.name_ar ?? ''} />
@@ -805,8 +907,11 @@ function AdCard({ ad, locale }: { ad: AdListItem; locale: string }) {
       </div>
       <div className={styles.adBody}>
         <h3 className={styles.adTitle}>{ad.title}</h3>
-        <p className={styles.adPrice}>{priceText}
-          {ad.is_negotiable && !ad.is_free && <span className={styles.negText}> · قابل للتفاوض</span>}
+        <p className={styles.adPrice}>
+          {priceText}
+          {ad.is_negotiable && !ad.is_free && (
+            <span className={styles.negText}> · قابل للتفاوض</span>
+          )}
         </p>
         <div className={styles.adMeta}>
           <span className={styles.adCity}>📍 {ad.city?.name_ar ?? '—'}</span>

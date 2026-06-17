@@ -1,8 +1,14 @@
 # Barq Wadih — Production Deployment Documentation
 
-> **Last updated:** 2026-04-25  
+> **Last updated:** 2026-06-17  
 > **Deployed by:** Antigravity AI  
 > **Status:** ✅ LIVE
+
+> ⚠️ **SECURITY:** This file is committed to git. **Never** put real secrets here
+> (APP_KEY, DB/Meilisearch passwords, API secrets). Keep them only in the server
+> `.env` files and a password manager. The placeholders below replaced secrets
+> that were previously committed — those values must be treated as compromised and
+> rotated, and scrubbed from git history.
 
 ---
 
@@ -79,8 +85,8 @@ Path on server: /var/www/barq-wadih/
 Host:          127.0.0.1:3306
 Database:      barq_wadih
 User:          barq_user
-Password:      ***REMOVED***
-Root Password: ***REMOVED***
+Password:      <in server .env + password manager — ROTATE (was committed)>
+Root Password: <in password manager — ROTATE (was committed)>
 Container:     barq_mysql
 ```
 
@@ -96,7 +102,7 @@ Container: barq_redis
 
 ```
 Host:       http://127.0.0.1:7700
-Master Key: ***REMOVED***
+Master Key: <in server .env + password manager — ROTATE (was committed)>
 Container:  barq_meilisearch
 ```
 
@@ -106,7 +112,7 @@ Container:  barq_meilisearch
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://api.barqwadih.com
-APP_KEY=***REMOVED***
+APP_KEY=<in server .env only — ROTATE (was committed); never commit this value>
 REDIS_CLIENT=phpredis
 SANCTUM_STATEFUL_DOMAINS=barqwadih.com,www.barqwadih.com
 DB_DATABASE=barq_wadih / DB_USERNAME=barq_user / DB_PASSWORD=***REMOVED***
@@ -204,6 +210,7 @@ cd backend
 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=ext-redis
 php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
+systemctl reload php8.3-fpm          # clears OPcache so new code is live for web requests
 supervisorctl restart barq-worker:*
 ```
 
@@ -225,6 +232,43 @@ supervisorctl restart barq-worker:*
 systemctl restart php8.3-fpm nginx
 docker compose -f /var/www/barq-wadih/docker-compose.yml restart
 ```
+
+---
+
+## 🖼️ Image Pipeline (thumbnails / WebP)
+
+Ad images are resized into **WebP variants** on upload so clients download ~25 KB
+thumbnails instead of multi-MB camera originals — this is the main driver of how
+fast ad images appear.
+
+**Server requirement:** the `imagick` PHP extension (with WebP). Install once:
+```bash
+apt-get install -y php8.3-imagick
+systemctl reload php8.3-fpm
+# verify WebP is available:
+php8.3 -r 'echo empty(\Imagick::queryFormats("WEBP")) ? "NO WEBP\n" : "WEBP OK\n";'
+```
+If Imagick is absent the code falls back to GD (needs `imagewebp`).
+
+**Variants generated** (`app/Services/ImageService.php`):
+| Variant | Max width | Used by | API field |
+|---------|-----------|---------|-----------|
+| thumbnail | 400px | feed / listing cards | `thumbnail_url` |
+| image | 1280px | detail carousel (web + mobile) | `image_url` |
+
+Files are uploaded with `Cache-Control: public, max-age=31536000, immutable`.
+
+**Backfill existing ads** (one-time, after deploy — re-processes old full-size images):
+```bash
+cd /var/www/barq-wadih/backend
+php artisan ads:regenerate-images               # regenerate + delete originals
+php artisan ads:regenerate-images --keep-originals   # safer: keep originals
+```
+Resumable and idempotent (skips images already converted to `_image.webp`).
+
+**CDN:** enable CDN on the `barq-wadih-media` Space in the DigitalOcean panel, then
+set `DO_SPACES_URL` to the `.cdn.digitaloceanspaces.com` host (see config section) so
+images are served from the edge.
 
 ---
 
@@ -333,10 +377,18 @@ The debug keystore fingerprints above **will not work** for a production/Play St
    ```bash
    scp backend/storage/firebase-service-account.json root@192.81.212.150:/var/www/barq-wadih/backend/storage/
    ```
-2. **DigitalOcean Spaces** — Add to `/var/www/barq-wadih/backend/.env`:
+2. **DigitalOcean Spaces** — set these in `/var/www/barq-wadih/backend/.env`. The
+   variable names **must match** `config/filesystems.php` → `do_spaces` (the disk
+   reads `DO_SPACES_*`, NOT `AWS_*`):
    ```
-   AWS_ACCESS_KEY_ID=your_key
-   AWS_SECRET_ACCESS_KEY=your_secret
+   FILESYSTEM_DISK=do_spaces
+   DO_SPACES_KEY=<key>
+   DO_SPACES_SECRET=<secret>
+   DO_SPACES_REGION=sgp1
+   DO_SPACES_BUCKET=barq-wadih-media
+   DO_SPACES_ENDPOINT=https://sgp1.digitaloceanspaces.com
+   # Use the CDN edge (.cdn) for fast image delivery — enable CDN on the Space first:
+   DO_SPACES_URL=https://barq-wadih-media.sgp1.cdn.digitaloceanspaces.com
    ```
    Then run `php artisan config:cache`
 3. **Seed data** — Run `php artisan db:seed` for initial categories/regions

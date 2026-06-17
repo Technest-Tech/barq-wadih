@@ -271,18 +271,19 @@ class AdService
         $currentMax = (int) ($ad->images()->max('sort_order') ?? -1);
 
         foreach ($files as $index => $file) {
-            $path       = $this->imageService->store($file, "ads/{$ad->id}");
-            $url        = $this->imageService->url($path);
-            $dimensions = $this->imageService->dimensions($file);
+            // Generate resized WebP variants (thumbnail + detail image) instead
+            // of serving the multi-MB camera original. This is the single biggest
+            // factor in how fast ad images appear for clients.
+            $variants = $this->imageService->storeVariants($file->getRealPath(), "ads/{$ad->id}");
 
             AdImage::create([
                 'ad_id'         => $ad->id,
-                'image_url'     => $url,
-                'thumbnail_url' => $url, // Same URL for now — Sprint 11 will add thumbnails
+                'image_url'     => $variants['image_url'],
+                'thumbnail_url' => $variants['thumbnail_url'],
                 'sort_order'    => $currentMax + 1 + $index,
-                'file_size'     => $file->getSize(),
-                'width'         => $dimensions['width'],
-                'height'        => $dimensions['height'],
+                'file_size'     => $variants['file_size'],
+                'width'         => $variants['width'],
+                'height'        => $variants['height'],
             ]);
         }
     }
