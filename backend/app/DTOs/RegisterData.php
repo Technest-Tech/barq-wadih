@@ -8,7 +8,7 @@ readonly class RegisterData
 {
     public function __construct(
         public string  $name,
-        public string  $phone,
+        public ?string $phone,
         public ?string $email,
         public ?string $password,
         public ?int    $regionId,
@@ -20,7 +20,7 @@ readonly class RegisterData
     {
         return new self(
             name:     $data['name'],
-            phone:    $data['phone'],
+            phone:    $data['phone'] ?? null,
             email:    $data['email'] ?? null,
             password: $data['password'] ?? null,
             regionId: $data['region_id'] ?? null,
