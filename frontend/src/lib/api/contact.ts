@@ -18,7 +18,7 @@ export interface ContactSubmitPayload {
   name: string;
   email: string;
   phone?: string;
-  category: string;
+  category?: string;
   message: string;
 }
 

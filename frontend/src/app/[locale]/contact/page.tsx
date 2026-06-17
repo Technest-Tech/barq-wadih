@@ -46,10 +46,6 @@ export default function ContactPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected) {
-      setError('الرجاء اختيار سبب التواصل');
-      return;
-    }
     setError('');
     setSubmitting(true);
     try {
@@ -57,7 +53,7 @@ export default function ContactPage() {
         name,
         email,
         phone: phone || undefined,
-        category: selected.slug,
+        category: selected?.slug || undefined,
         message,
       });
       setSubmitted(true);
