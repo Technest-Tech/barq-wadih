@@ -143,8 +143,9 @@ class ContactController extends Controller
             'message'  => 'required|string|min:10|max:2000',
         ]);
 
-        $cat = $data['category']
-            ? collect(self::CATEGORIES)->firstWhere('slug', $data['category'])
+        $category = $data['category'] ?? null;
+        $cat = $category
+            ? collect(self::CATEGORIES)->firstWhere('slug', $category)
             : null;
 
         ContactSubmission::create([
@@ -152,8 +153,8 @@ class ContactController extends Controller
             'name'           => $data['name'],
             'email'          => $data['email'],
             'phone'          => $data['phone'] ?? null,
-            'category'       => $data['category'] ?? null,
-            'category_label' => $cat['label'] ?? $data['category'] ?? null,
+            'category'       => $category,
+            'category_label' => $cat['label'] ?? $category,
             'message'        => $data['message'],
         ]);
 
