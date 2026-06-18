@@ -201,7 +201,7 @@ class HowToSellScreen extends StatelessWidget {
               ),
               SizedBox(width: 8),
               Text(
-                'الرسوم والعمولات',
+                'عمولات المنصة ⚖️',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -209,6 +209,16 @@ class HowToSellScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'تُستحق العمولة في ذمة المعلن فور إتمام عملية البيع.',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF555555),
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 14),
           for (final fee in _fees)
@@ -350,12 +360,13 @@ class HowToSellScreen extends StatelessWidget {
   ];
 
   static const _fees = [
-    '🚗 السيارات والمركبات: رسوم النشر 99 ر.س للإعلان.',
-    '📱 الجوالات والأقسام الأخرى: رسوم النشر 10 ر.س للإعلان.',
-    '💼 الوظائف: النشر مجاني.',
-    'رسوم النشر هي لإنشاء الإعلان وتختلف حسب القسم وهي غير مستردة.',
-    'يمكن تجديد الإعلان (رفعه للأعلى) مرة واحدة كل 24 ساعة.',
-    'الإعلانات النشطة تنتهي صلاحيتها بعد 30 يومًا من تاريخ النشر.',
+    '🚗 السيارات والمركبات: 99 ر.س (تُدفع بعد البيع)',
+    '📱 الجوالات والأقسام الأخرى: 10 ر.س (تُدفع بعد البيع)',
+    '💼 الوظائف: مجاني بالكامل',
+    '📌 جميع الأسعار تشمل ضريبة القيمة المضافة 15%.',
+    '✅ نشر الإعلان مجاني تماماً لجميع الأقسام.',
+    '🔄 الإعلان ينتهي بعد 30 يوماً ويمكن تجديده مجاناً.',
+    '⬆️ يمكن تحديث الإعلان ورفعه للأعلى مرة واحدة كل 24 ساعة.',
   ];
 
   static const _tips = [

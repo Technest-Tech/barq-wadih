@@ -206,43 +206,44 @@ HTML,
                 'meta_description_ar' => 'تعرّف على رسوم النشر والعمولات وطرق الدفع على منصة برق واضح.',
                 'meta_description_en' => 'Learn about publishing fees, commissions, and payment methods on Barq Wadih.',
                 'content_ar'          => <<<'HTML'
-<h2>١. رسوم نشر الإعلانات</h2>
-<p>رسوم النشر هي لإنشاء الإعلان وتختلف حسب القسم:</p>
+<h2>١. عمولات المنصة ⚖️</h2>
+<p style="color:#555;margin-bottom:16px;">تُستحق العمولة في ذمة المعلن فور إتمام عملية البيع.</p>
 
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
     <tr style="background:#1d4ed8;color:#fff;">
       <th style="padding:12px 16px;text-align:right;border:1px solid #e5e7eb;">القسم</th>
-      <th style="padding:12px 16px;text-align:right;border:1px solid #e5e7eb;">رسوم النشر</th>
+      <th style="padding:12px 16px;text-align:right;border:1px solid #e5e7eb;">العمولة</th>
     </tr>
   </thead>
   <tbody>
     <tr style="background:#fafafa;">
       <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">🚗 السيارات والمركبات</td>
-      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">99 ر.س</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">99 ر.س <span style="font-size:0.85em;font-weight:400;color:#555;">(تُدفع بعد البيع)</span></td>
     </tr>
     <tr>
       <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">📱 الجوالات والأقسام الأخرى</td>
-      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">10 ر.س</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">10 ر.س <span style="font-size:0.85em;font-weight:400;color:#555;">(تُدفع بعد البيع)</span></td>
     </tr>
     <tr style="background:#fafafa;">
       <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">💼 الوظائف</td>
-      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#16a34a;">مجاني</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#16a34a;">مجاني بالكامل</td>
     </tr>
   </tbody>
 </table>
+<p style="color:#888;font-size:0.85em;margin-top:8px;">جميع الأسعار أعلاه تشمل ضريبة القيمة المضافة 15%.</p>
 
-<h2>٢. ملاحظات مهمة</h2>
+<h2>٢. ملاحظات هامة 📝</h2>
 <ul>
-  <li>رسوم النشر هي لإنشاء الإعلان وتختلف حسب القسم.</li>
-  <li>رسوم النشر <strong>غير مستردة</strong> بأي حال من الأحوال.</li>
-  <li>الإعلان ينتهي بعد 30 يومًا ويمكن تجديده.</li>
-  <li>يمكن تجديد الإعلان (رفعه للأعلى) مرة واحدة كل 24 ساعة.</li>
+  <li>نشر الإعلان في التطبيق <strong>مجاني تماماً</strong> لجميع الأقسام.</li>
+  <li>الإعلان ينتهي تلقائياً بعد 30 يوماً ويمكن للمعلن تجديده مجاناً.</li>
+  <li>يمكن تجديد الإعلان (تحديثه ورفعه للأعلى) مرة واحدة كل 24 ساعة.</li>
 </ul>
 
-<h2>٣. طرق الدفع</h2>
+<h2>٣. طرق دفع العمولة 💳</h2>
 <p>ندعم طرق الدفع التالية:</p>
 <ul>
+  <li>تحويل لحساب مؤسسة برق واضح</li>
   <li>بطاقة فيزا / ماستركارد</li>
   <li>مدى</li>
   <li>Apple Pay</li>
@@ -251,43 +252,44 @@ HTML,
 <p style="color:#888;font-size:0.85em;">آخر تحديث: يونيو 2026</p>
 HTML,
                 'content_en'          => <<<'HTML'
-<h2>1. Listing Fees</h2>
-<p>Listing fees are for creating an ad and vary by category:</p>
+<h2>1. Platform Commissions ⚖️</h2>
+<p style="color:#555;margin-bottom:16px;">Commission becomes due from the seller upon completing a sale.</p>
 
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
     <tr style="background:#1d4ed8;color:#fff;">
       <th style="padding:12px 16px;text-align:left;border:1px solid #e5e7eb;">Category</th>
-      <th style="padding:12px 16px;text-align:left;border:1px solid #e5e7eb;">Listing Fee</th>
+      <th style="padding:12px 16px;text-align:left;border:1px solid #e5e7eb;">Commission</th>
     </tr>
   </thead>
   <tbody>
     <tr style="background:#fafafa;">
       <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">🚗 Cars & Vehicles</td>
-      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">SAR 99</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">SAR 99 <span style="font-size:0.85em;font-weight:400;color:#555;">(paid after sale)</span></td>
     </tr>
     <tr>
       <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">📱 Mobiles & Other Categories</td>
-      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">SAR 10</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#1d4ed8;">SAR 10 <span style="font-size:0.85em;font-weight:400;color:#555;">(paid after sale)</span></td>
     </tr>
     <tr style="background:#fafafa;">
       <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;">💼 Jobs</td>
-      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#16a34a;">Free</td>
+      <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:700;color:#16a34a;">Completely Free</td>
     </tr>
   </tbody>
 </table>
+<p style="color:#888;font-size:0.85em;margin-top:8px;">All prices above include 15% VAT.</p>
 
-<h2>2. Important Notes</h2>
+<h2>2. Important Notes 📝</h2>
 <ul>
-  <li>Listing fees are paid upfront when creating an ad.</li>
-  <li>Listing fees are <strong>non-refundable</strong> under any circumstances.</li>
-  <li>Listings expire after 30 days and can be renewed.</li>
-  <li>Listings can be refreshed (bumped up) once every 24 hours.</li>
+  <li>Posting an ad on the platform is <strong>completely free</strong> for all categories.</li>
+  <li>Ads expire automatically after 30 days and can be renewed for free.</li>
+  <li>Ads can be refreshed (bumped up) once every 24 hours.</li>
 </ul>
 
-<h2>3. Payment Methods</h2>
+<h2>3. Commission Payment Methods 💳</h2>
 <p>We support the following payment methods:</p>
 <ul>
+  <li>Bank transfer to Barq Wadih Establishment account</li>
   <li>Visa / Mastercard</li>
   <li>Mada</li>
   <li>Apple Pay</li>
