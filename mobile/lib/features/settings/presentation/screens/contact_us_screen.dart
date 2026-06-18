@@ -15,7 +15,11 @@ class _Category {
   final String slug;
   final String label;
   final List<_FaqItem> faqs;
-  const _Category({required this.slug, required this.label, required this.faqs});
+  const _Category({
+    required this.slug,
+    required this.label,
+    required this.faqs,
+  });
 }
 
 const _kCategories = [
@@ -23,71 +27,105 @@ const _kCategories = [
     slug: 'fees',
     label: 'الرسوم (طرق الدفع - حساب الرسوم)',
     faqs: [
-      _FaqItem('ما هي طرق الدفع المتاحة؟',
-          'يمكنك الدفع عن طريق بطاقة الائتمان (فيزا / ماستركارد) أو مدى أو Apple Pay عبر بوابة موي.'),
-      _FaqItem('كيف يتم حساب رسوم النشر؟',
-          'تُحتسب الرسوم بناءً على فئة الإعلان والمنطقة، ويمكنك معاينة الرسوم قبل تأكيد نشر إعلانك.'),
-      _FaqItem('هل توجد رسوم إضافية على الإعلان المميز؟',
-          'نعم، تتوفر خيارات لتمييز الإعلان بتكاليف إضافية تظهر أثناء خطوات النشر.'),
+      _FaqItem(
+        'ما هي طرق الدفع المتاحة؟',
+        'يمكنك الدفع عن طريق بطاقة الائتمان (فيزا / ماستركارد) أو مدى أو Apple Pay عبر بوابة موي.',
+      ),
+      _FaqItem(
+        'كيف يتم حساب رسوم النشر؟',
+        'تُحتسب الرسوم بناءً على فئة الإعلان والمنطقة، ويمكنك معاينة الرسوم قبل تأكيد نشر إعلانك.',
+      ),
+      _FaqItem(
+        'هل توجد رسوم إضافية على الإعلان المميز؟',
+        'نعم، تتوفر خيارات لتمييز الإعلان بتكاليف إضافية تظهر أثناء خطوات النشر.',
+      ),
     ],
   ),
   _Category(
     slug: 'refund',
     label: 'طلب استرجاع مبلغ مدفوع بالخطأ',
     faqs: [
-      _FaqItem('كيف أطلب استرجاع مبلغ؟',
-          'تواصل معنا عبر هذه الصفحة مع ذكر رقم الطلب وسبب الاسترجاع وسيتم مراجعة طلبك خلال يوم عمل.'),
-      _FaqItem('متى يتم استرجاع المبلغ؟',
-          'تستغرق عملية الاسترجاع من 3 إلى 7 أيام عمل بعد الموافقة، وذلك حسب البنك الذي تتعامل معه.'),
-      _FaqItem('هل يمكن استرجاع المبلغ إذا تم نشر الإعلان؟',
-          'يتم دراسة كل حالة على حدة. في حال نُشر الإعلان وتم تفعيله لن يتم الاسترجاع بشكل مبدئي.'),
+      _FaqItem(
+        'كيف أطلب استرجاع مبلغ؟',
+        'تواصل معنا عبر هذه الصفحة مع ذكر رقم الطلب وسبب الاسترجاع وسيتم مراجعة طلبك خلال يوم عمل.',
+      ),
+      _FaqItem(
+        'متى يتم استرجاع المبلغ؟',
+        'تستغرق عملية الاسترجاع من 3 إلى 7 أيام عمل بعد الموافقة، وذلك حسب البنك الذي تتعامل معه.',
+      ),
+      _FaqItem(
+        'هل يمكن استرجاع المبلغ إذا تم نشر الإعلان؟',
+        'يتم دراسة كل حالة على حدة. في حال نُشر الإعلان وتم تفعيله لن يتم الاسترجاع بشكل مبدئي.',
+      ),
     ],
   ),
   _Category(
     slug: 'subscriptions',
     label: 'الاشتراكات السنوية',
     faqs: [
-      _FaqItem('ما هي مزايا الاشتراك السنوي؟',
-          'يتيح الاشتراك نشر إعلانات غير محدودة وأولوية في نتائج البحث ودعماً مميزاً وميزة إيقاف الردود.'),
-      _FaqItem('كيف أشترك في الباقة السنوية؟',
-          'انتقل إلى ملفك الشخصي ثم اضغط على "الاشتراكات" واختر الباقة المناسبة وأكمل عملية الدفع.'),
-      _FaqItem('هل يتجدد الاشتراك تلقائياً؟',
-          'لا يتجدد الاشتراك تلقائياً؛ ستتلقى تنبيهاً قبل انتهائه لتجديده يدوياً.'),
+      _FaqItem(
+        'ما هي مزايا الاشتراك السنوي؟',
+        'يتيح الاشتراك نشر إعلانات غير محدودة وأولوية في نتائج البحث ودعماً مميزاً وميزة إيقاف الردود.',
+      ),
+      _FaqItem(
+        'كيف أشترك في الباقة السنوية؟',
+        'انتقل إلى ملفك الشخصي ثم اضغط على "الاشتراكات" واختر الباقة المناسبة وأكمل عملية الدفع.',
+      ),
+      _FaqItem(
+        'هل يتجدد الاشتراك تلقائياً؟',
+        'لا يتجدد الاشتراك تلقائياً؛ ستتلقى تنبيهاً قبل انتهائه لتجديده يدوياً.',
+      ),
     ],
   ),
   _Category(
     slug: 'members',
     label: 'الأعضاء',
     faqs: [
-      _FaqItem('كيف أُفعّل حسابي؟',
-          'يتم تفعيل الحساب تلقائياً عند التسجيل. إذا واجهت مشكلة تواصل معنا مع ذكر رقم الجوال المسجل.'),
-      _FaqItem('كيف أغيّر معلوماتي الشخصية؟',
-          'من ملفك الشخصي اضغط على "تعديل الملف الشخصي" وقم بتحديث بياناتك ثم احفظ التغييرات.'),
-      _FaqItem('كيف أحذف حسابي؟',
-          'تواصل مع فريق الدعم لطلب حذف الحساب مع توضيح السبب. لن يمكن التراجع عن حذف الحساب.'),
+      _FaqItem(
+        'كيف أُفعّل حسابي؟',
+        'يتم تفعيل الحساب تلقائياً عند التسجيل. إذا واجهت مشكلة تواصل معنا مع ذكر رقم الجوال المسجل.',
+      ),
+      _FaqItem(
+        'كيف أغيّر معلوماتي الشخصية؟',
+        'من ملفك الشخصي اضغط على "تعديل الملف الشخصي" وقم بتحديث بياناتك ثم احفظ التغييرات.',
+      ),
+      _FaqItem(
+        'كيف أحذف حسابي؟',
+        'تواصل مع فريق الدعم لطلب حذف الحساب مع توضيح السبب. لن يمكن التراجع عن حذف الحساب.',
+      ),
     ],
   ),
   _Category(
     slug: 'replies',
     label: 'الردود (إيقاف الردود - حذف الردود - المنع من الرد)',
     faqs: [
-      _FaqItem('لماذا تم منعي من الرد؟',
-          'عند وجود بلاغات كثيرة على ردودك من الأعضاء سوف يقوم النظام بمنعك. نرجو منك الاطلاع على قائمة الردود الممنوعة.'),
+      _FaqItem(
+        'لماذا تم منعي من الرد؟',
+        'عند وجود بلاغات كثيرة على ردودك من الأعضاء سوف يقوم النظام بمنعك. نرجو منك الاطلاع على قائمة الردود الممنوعة.',
+      ),
       _FaqItem('هل يمكنني حذف ردودي؟', 'لا يمكن حذف الرد بعد نشره.'),
-      _FaqItem('كيف أمنع الردود على إعلاني؟',
-          'تستطيع إيقاف الردود عن طريق الضغط على زر الإعدادات في صفحة العرض الخاص بك. هذه الميزة متاحة للمشتركين الذين وصل مجموع رسومهم المدفوعة لـ 101 ريال أو أكثر.'),
+      _FaqItem(
+        'كيف أمنع الردود على إعلاني؟',
+        'تستطيع إيقاف الردود عن طريق الضغط على زر الإعدادات في صفحة العرض الخاص بك. هذه الميزة متاحة للمشتركين الذين وصل مجموع رسومهم المدفوعة لـ 101 ريال أو أكثر.',
+      ),
     ],
   ),
   _Category(
     slug: 'ads',
     label: 'الإعلانات (نشر - تعديل - حذف)',
     faqs: [
-      _FaqItem('كيف أنشر إعلاناً؟',
-          'اضغط على زر "نشر إعلان" وأدخل التفاصيل المطلوبة ثم أكمل عملية الدفع لتفعيل الإعلان.'),
-      _FaqItem('كيف أعدّل إعلاني؟',
-          'من صفحة "إعلاناتي" اختر الإعلان المراد تعديله واضغط على "تعديل" وأجرِ التغييرات واحفظها.'),
-      _FaqItem('كيف أحذف إعلاني؟',
-          'من صفحة "إعلاناتي" اختر الإعلان واضغط على "حذف". تنبيه: لا يمكن التراجع عن الحذف.'),
+      _FaqItem(
+        'كيف أنشر إعلاناً؟',
+        'اضغط على زر "نشر إعلان" وأدخل التفاصيل المطلوبة ثم أكمل عملية الدفع لتفعيل الإعلان.',
+      ),
+      _FaqItem(
+        'كيف أعدّل إعلاني؟',
+        'من صفحة "إعلاناتي" اختر الإعلان المراد تعديله واضغط على "تعديل" وأجرِ التغييرات واحفظها.',
+      ),
+      _FaqItem(
+        'كيف أحذف إعلاني؟',
+        'من صفحة "إعلاناتي" اختر الإعلان واضغط على "حذف". تنبيه: لا يمكن التراجع عن الحذف.',
+      ),
     ],
   ),
 ];
@@ -127,17 +165,28 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
-      await ApiClient().dio.post('/contact', data: {
-        'name':     _nameCtrl.text.trim(),
-        'email':    _emailCtrl.text.trim(),
-        'phone':    _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        'category': _selected!.slug,
-        'message':  _msgCtrl.text.trim(),
-      });
+      await ApiClient().dio.post(
+        '/contact',
+        data: {
+          'name': _nameCtrl.text.trim(),
+          'email': _emailCtrl.text.trim(),
+          'phone': _phoneCtrl.text.trim().isEmpty
+              ? null
+              : _phoneCtrl.text.trim(),
+          'category': _selected?.slug,
+          'message': _msgCtrl.text.trim(),
+        },
+      );
       if (!mounted) return;
       _formKey.currentState!.reset();
-      _nameCtrl.clear(); _emailCtrl.clear(); _phoneCtrl.clear(); _msgCtrl.clear();
-      setState(() { _selected = null; _submitting = false; });
+      _nameCtrl.clear();
+      _emailCtrl.clear();
+      _phoneCtrl.clear();
+      _msgCtrl.clear();
+      setState(() {
+        _selected = null;
+        _submitting = false;
+      });
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -225,7 +274,9 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
                       if (_showAll) _selected = null;
                     }),
                     child: Text(
-                      _showAll ? 'إخفاء الأسئلة الشائعة' : 'عرض جميع الأسئلة الشائعة',
+                      _showAll
+                          ? 'إخفاء الأسئلة الشائعة'
+                          : 'عرض جميع الأسئلة الشائعة',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14,
@@ -259,10 +310,8 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
             ),
 
             // ── Contact form ───────────────────────────────────────────────
-            if (_selected != null) ...[
-              const SizedBox(height: 20),
-              _buildContactForm(),
-            ],
+            const SizedBox(height: 20),
+            _buildContactForm(),
 
             const SizedBox(height: 32),
           ],
@@ -330,7 +379,8 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
                 bottom: BorderSide(color: AppTheme.neutralGray300),
               ),
               borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(12)),
+                bottom: Radius.circular(12),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: .06),
@@ -351,7 +401,9 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 13),
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
                       decoration: BoxDecoration(
                         color: _selected?.slug == cat.slug
                             ? AppTheme.primaryBlue.withValues(alpha: .06)
@@ -405,12 +457,17 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildField(_nameCtrl, 'الاسم الكامل', Icons.person_outline,
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'الاسم مطلوب' : null),
+            _buildField(
+              _nameCtrl,
+              'الاسم الكامل',
+              Icons.person_outline,
+              validator: (v) => (v ?? '').trim().isEmpty ? 'الاسم مطلوب' : null,
+            ),
             const SizedBox(height: 12),
             _buildField(
-              _emailCtrl, 'البريد الإلكتروني', Icons.email_outlined,
+              _emailCtrl,
+              'البريد الإلكتروني',
+              Icons.email_outlined,
               keyboard: TextInputType.emailAddress,
               validator: (v) {
                 final e = (v ?? '').trim();
@@ -420,15 +477,21 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
               },
             ),
             const SizedBox(height: 12),
-            _buildField(_phoneCtrl, 'رقم الجوال (اختياري)', Icons.phone_outlined,
-                keyboard: TextInputType.phone),
+            _buildField(
+              _phoneCtrl,
+              'رقم الجوال (اختياري)',
+              Icons.phone_outlined,
+              keyboard: TextInputType.phone,
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _msgCtrl,
               maxLines: 5,
               textAlign: TextAlign.right,
-              decoration:
-                  _inputDecoration('اكتب رسالتك هنا...', Icons.message_outlined),
+              decoration: _inputDecoration(
+                'اكتب رسالتك هنا...',
+                Icons.message_outlined,
+              ),
               validator: (v) {
                 final t = (v ?? '').trim();
                 if (t.isEmpty) return 'الرسالة مطلوبة';
@@ -444,18 +507,26 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: _submitting
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
-                  : const Text('إرسال الرسالة',
+                  : const Text(
+                      'إرسال الرسالة',
                       style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -482,13 +553,11 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
   InputDecoration _inputDecoration(String hint, IconData icon) {
     return InputDecoration(
       hintText: hint,
-      hintStyle:
-          const TextStyle(color: AppTheme.neutralGray400, fontSize: 13),
+      hintStyle: const TextStyle(color: AppTheme.neutralGray400, fontSize: 13),
       prefixIcon: Icon(icon, color: AppTheme.neutralGray500, size: 20),
       filled: true,
       fillColor: AppTheme.neutralGray50,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppTheme.neutralGray200),
@@ -499,8 +568,7 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide:
-            const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
       ),
     );
   }
