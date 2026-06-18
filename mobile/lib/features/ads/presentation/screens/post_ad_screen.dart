@@ -28,6 +28,12 @@ enum _PriceOption { fixed, negotiable, callForPrice }
 /// A Saudi mobile number in canonical local form: 05 followed by 8 digits.
 bool isValidSaudiPhone(String raw) => RegExp(r'^05\d{8}$').hasMatch(raw.trim());
 
+// Ad title/description length bounds — must match the backend (StoreAdRequest).
+const int kTitleMinLen = 3;
+const int kTitleMaxLen = 100;
+const int kDescMinLen = 10;
+const int kDescMaxLen = 5000;
+
 class PostAdScreen extends ConsumerStatefulWidget {
   final int? adId;
   const PostAdScreen({super.key, this.adId});
@@ -76,8 +82,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   bool get _isEditMode => widget.adId != null;
 
   bool get _step2Valid =>
-      _titleCtrl.text.trim().isNotEmpty &&
-      _descCtrl.text.trim().isNotEmpty &&
+      _titleCtrl.text.trim().length >= kTitleMinLen &&
+      _descCtrl.text.trim().length >= kDescMinLen &&
       (!_showPhonePublicly || isValidSaudiPhone(_phoneCtrl.text)) &&
       (_priceOption != _PriceOption.fixed || _priceCtrl.text.trim().isNotEmpty);
 
@@ -1347,12 +1353,23 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
   Widget build(BuildContext context) {
     // Compute validity here (not via a parent prop) so the Next button updates
     // live as the user types — text changes only rebuild this child widget.
+    final titleText = widget.titleCtrl.text.trim();
+    final descText = widget.descCtrl.text.trim();
     final phoneText = widget.phoneCtrl.text.trim();
     final phoneValid =
         !widget.showPhonePublicly || isValidSaudiPhone(phoneText);
+
+    // Inline per-field errors shown before the user can leave this step.
+    final titleError = titleText.isNotEmpty && titleText.length < kTitleMinLen
+        ? 'العنوان يجب أن يكون $kTitleMinLen أحرف على الأقل'
+        : widget.errors['title'];
+    final descError = descText.isNotEmpty && descText.length < kDescMinLen
+        ? 'الوصف يجب أن يكون $kDescMinLen أحرف على الأقل'
+        : widget.errors['description'];
+
     final isValid =
-        widget.titleCtrl.text.trim().isNotEmpty &&
-        widget.descCtrl.text.trim().isNotEmpty &&
+        titleText.length >= kTitleMinLen &&
+        descText.length >= kDescMinLen &&
         phoneValid &&
         (widget.priceOption != _PriceOption.fixed ||
             widget.priceCtrl.text.trim().isNotEmpty);
@@ -1375,11 +1392,13 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
             child: TextField(
               controller: widget.titleCtrl,
               textDirection: TextDirection.rtl,
+              maxLength: kTitleMaxLen,
+              inputFormatters: [LengthLimitingTextInputFormatter(kTitleMaxLen)],
               style: const TextStyle(color: AppTheme.neutralGray900),
               onChanged: (_) => setState(() {}),
               decoration: _inputDecoration(
                 hint: 'مثال: عنوان واضح ومختصر يصف الإعلان',
-                error: widget.errors['title'],
+                error: titleError,
               ),
             ),
           ),
@@ -1391,12 +1410,14 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               controller: widget.descCtrl,
               textDirection: TextDirection.rtl,
               maxLines: 5,
+              maxLength: kDescMaxLen,
+              inputFormatters: [LengthLimitingTextInputFormatter(kDescMaxLen)],
               style: const TextStyle(color: AppTheme.neutralGray900),
               onChanged: (_) => setState(() {}),
               decoration: _inputDecoration(
                 hint:
-                    'صف السلعة بتفاصيل كافية — الحالة، المواصفات، سبب البيع...',
-                error: widget.errors['description'],
+                    'صف السلعة بتفاصيل كافية — الحالة، المواصفات، سبب البيع... (10 أحرف على الأقل)',
+                error: descError,
               ),
             ),
           ),

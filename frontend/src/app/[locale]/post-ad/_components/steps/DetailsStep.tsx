@@ -62,7 +62,8 @@ export function DetailsStep() {
             ref={textareaRef}
             className={`${pm.pmInput} ${pm.pmTextarea}`}
             rows={1}
-            placeholder="اكتب وصفاً دقيقاً للإعلان..."
+            maxLength={5000}
+            placeholder="اكتب وصفاً دقيقاً للإعلان... (10 أحرف على الأقل)"
             value={d.description}
             onChange={(e) => {
               patch({ description: e.target.value });
