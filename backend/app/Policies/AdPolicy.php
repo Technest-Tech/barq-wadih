@@ -18,6 +18,16 @@ class AdPolicy
     }
 
     /**
+     * Owner can pay/settle the after-sale commission. Allowed regardless of
+     * status — the commission is owed precisely once the ad is Sold, so this
+     * must not be gated like `update` (which forbids editing sold ads).
+     */
+    public function payCommission(User $user, Ad $ad): bool
+    {
+        return $user->id === $ad->user_id;
+    }
+
+    /**
      * Owner can delete any of their own ads (except already deleted).
      */
     public function delete(User $user, Ad $ad): bool

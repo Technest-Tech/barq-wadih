@@ -41,24 +41,32 @@ class CategoryModel {
   double publishFee(String sellerType) =>
       sellerType == 'dealer' ? publishFeeDealer : publishFeeIndividual;
 
+  /// Tolerant numeric parse — the API encodes decimals as strings ("0.00").
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id:            json['id'] as int,
-      nameAr:        json['name_ar'] as String,
-      nameEn:        json['name_en'] as String,
-      slug:          json['slug'] as String,
-      icon:          json['icon'] as String?,
-      image:         json['image'] as String?,
+      id: json['id'] as int,
+      nameAr: json['name_ar'] as String,
+      nameEn: json['name_en'] as String,
+      slug: json['slug'] as String,
+      icon: json['icon'] as String?,
+      image: json['image'] as String?,
       descriptionAr: json['description_ar'] as String?,
       descriptionEn: json['description_en'] as String?,
-      sortOrder:     json['sort_order'] as int? ?? 0,
-      isActive:      json['is_active'] as bool? ?? true,
-      isFree:        json['is_free'] as bool? ?? false,
-      adsCount:      json['ads_count'] as int? ?? 0,
-      fieldsCount:   json['fields_count'] as int? ?? 0,
-      publishFeeIndividual: (json['publish_fee_individual'] as num?)?.toDouble() ?? 0.0,
-      publishFeeDealer:     (json['publish_fee_dealer'] as num?)?.toDouble() ?? 0.0,
-      children: (json['children'] as List<dynamic>?)
+      sortOrder: json['sort_order'] as int? ?? 0,
+      isActive: json['is_active'] as bool? ?? true,
+      isFree: json['is_free'] as bool? ?? false,
+      adsCount: json['ads_count'] as int? ?? 0,
+      fieldsCount: json['fields_count'] as int? ?? 0,
+      publishFeeIndividual: _toDouble(json['publish_fee_individual']),
+      publishFeeDealer: _toDouble(json['publish_fee_dealer']),
+      children:
+          (json['children'] as List<dynamic>?)
               ?.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
               .toList() ??
           [],

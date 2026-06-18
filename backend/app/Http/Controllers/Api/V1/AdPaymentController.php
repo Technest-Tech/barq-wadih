@@ -37,7 +37,7 @@ class AdPaymentController extends BaseController
      */
     public function uploadProof(Request $request, Ad $ad): JsonResponse
     {
-        $this->authorize('update', $ad);
+        $this->authorize('payCommission', $ad);
 
         if ($ad->payment_status === PaymentStatus::Paid->value) {
             return $this->errorResponse(__('Payment already completed for this ad.'), 422);

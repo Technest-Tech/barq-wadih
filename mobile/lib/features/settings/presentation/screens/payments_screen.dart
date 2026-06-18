@@ -38,9 +38,16 @@ class PaymentsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
       ),
+      // Bounded content laid out eagerly. A lazy ListView lays its children out
+      // incrementally (insertAndLayoutChild / cache region); when the commission
+      // provider flips loading↔data the child list changes, and if that happens
+      // while the screen is offstage during a route transition the SliverList
+      // crashes with "RenderBox was not laid out". SingleChildScrollView lays
+      // the whole Column out in one pass, sidestepping that failure mode.
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _HowItWorksCard(),
@@ -59,11 +66,53 @@ class PaymentsScreen extends ConsumerWidget {
             if (!isAuthed)
               const _Hint('سجّل الدخول لعرض العمولات المستحقة على إعلاناتك.')
             else
-              const _CommissionDuesList(),
+              ..._commissionDues(ref),
             const SizedBox(height: 32),
           ],
         ),
       ),
+    );
+  }
+
+  /// Flat list of dues widgets (loading / error / empty / tiles) for the
+  /// "عمولات إعلاناتك" section, spread directly into the screen's ListView.
+  List<Widget> _commissionDues(WidgetRef ref) {
+    final myAds = ref.watch(myAdsProvider);
+
+    return myAds.when(
+      loading: () => const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 28),
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppTheme.primaryBlue,
+              strokeWidth: 2.5,
+            ),
+          ),
+        ),
+      ],
+      error: (_, __) => const [_Hint('تعذّر تحميل العمولات. حاول لاحقاً.')],
+      data: (ads) {
+        // Sold ads that carry a commission (owed, under review, or paid).
+        final dues = ads
+            .where((a) => a.status == 'sold' && (a.paymentAmount ?? 0) > 0)
+            .toList();
+
+        if (dues.isEmpty) {
+          return const [
+            _Hint(
+              'لا توجد عمولات مستحقة حالياً. تظهر هنا بعد تحديد إعلان كمُباع.',
+            ),
+          ];
+        }
+
+        return [
+          for (final ad in dues) ...[
+            _DueTile(ad: ad),
+            const SizedBox(height: 10),
+          ],
+        ];
+      },
     );
   }
 }
@@ -137,11 +186,30 @@ class _BankAccountCard extends StatelessWidget {
         boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Image.asset(BankAccount.qrAsset, width: 220, fit: BoxFit.contain),
+          Center(
+            child: Image.asset(
+              BankAccount.qrAsset,
+              width: 220,
+              height: 220,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox(
+                width: 220,
+                height: 220,
+                child: Icon(
+                  Icons.qr_code_2_rounded,
+                  size: 120,
+                  color: AppTheme.neutralGray300,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           const Text(
             'امسح رمز QR من تطبيق البنك للتحويل المباشر',
+            textAlign: TextAlign.center,
             textDirection: TextDirection.rtl,
             style: TextStyle(fontSize: 12, color: AppTheme.neutralGray500),
           ),
@@ -240,50 +308,7 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-// ── Commission dues list ──────────────────────────────────────────────────────
-
-class _CommissionDuesList extends ConsumerWidget {
-  const _CommissionDuesList();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final myAds = ref.watch(myAdsProvider);
-
-    return myAds.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 28),
-        child: Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-            strokeWidth: 2.5,
-          ),
-        ),
-      ),
-      error: (_, __) => const _Hint('تعذّر تحميل العمولات. حاول لاحقاً.'),
-      data: (ads) {
-        // Sold ads that carry a commission (owed, under review, or paid).
-        final dues = ads
-            .where((a) => a.status == 'sold' && (a.paymentAmount ?? 0) > 0)
-            .toList();
-
-        if (dues.isEmpty) {
-          return const _Hint(
-            'لا توجد عمولات مستحقة حالياً. تظهر هنا بعد تحديد إعلان كمُباع.',
-          );
-        }
-
-        return Column(
-          children: [
-            for (final ad in dues) ...[
-              _DueTile(ad: ad),
-              const SizedBox(height: 10),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
+// ── Commission due tile ───────────────────────────────────────────────────────
 
 class _DueTile extends StatelessWidget {
   final AdListModel ad;
@@ -308,6 +333,7 @@ class _DueTile extends StatelessWidget {
         boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -345,12 +371,15 @@ class _DueTile extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'العمولة: ${amount.toStringAsFixed(0)} ر.س',
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.primaryBlue,
+              Flexible(
+                child: Text(
+                  'العمولة: ${amount.toStringAsFixed(0)} ر.س',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryBlue,
+                  ),
                 ),
               ),
               if (payable)
