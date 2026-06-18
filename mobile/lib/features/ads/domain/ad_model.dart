@@ -142,6 +142,9 @@ class AdListModel {
   final DateTime? expiresAt;
   final bool? canRefresh;
   final DateTime? nextRefreshAt;
+  // Owner-only: flat commission owed after sale + its payment status.
+  final double? paymentAmount;
+  final String? paymentStatus;
 
   const AdListModel({
     required this.id,
@@ -165,6 +168,8 @@ class AdListModel {
     this.expiresAt,
     this.canRefresh,
     this.nextRefreshAt,
+    this.paymentAmount,
+    this.paymentStatus,
   });
 
   factory AdListModel.fromJson(Map<String, dynamic> json) {
@@ -234,6 +239,10 @@ class AdListModel {
       nextRefreshAt: json['next_refresh_at'] != null
           ? DateTime.tryParse(json['next_refresh_at'] as String)
           : null,
+      paymentAmount: json['payment_amount'] != null
+          ? double.tryParse(json['payment_amount'].toString())
+          : null,
+      paymentStatus: json['payment_status'] as String?,
     );
   }
 

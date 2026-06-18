@@ -67,6 +67,9 @@ class AdListResource extends JsonResource
             ] : null,
             'published_at' => $ad->published_at,
             'created_at'   => $ad->created_at,
+            // Owner-only: drives the "pay commission after sale" CTA in My Ads.
+            'payment_status' => $request->user()?->id === $ad->user_id ? $ad->payment_status : null,
+            'payment_amount' => $request->user()?->id === $ad->user_id ? $ad->payment_amount : null,
         ];
     }
 }

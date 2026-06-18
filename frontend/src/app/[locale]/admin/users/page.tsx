@@ -34,19 +34,22 @@ export default function AdminUsersPage() {
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
   const router = useRouter();
 
-  const loadUsers = useCallback(async (overrideFilters?: AdminUserFilters) => {
-    setLoading(true);
-    try {
-      const activeFilters = overrideFilters || filters;
-      const response = await fetchAdminUsers(activeFilters);
-      setUsers(response.data);
-      setMeta(response.meta);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'فشل تحميل المستخدمين', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  const loadUsers = useCallback(
+    async (overrideFilters?: AdminUserFilters) => {
+      setLoading(true);
+      try {
+        const activeFilters = overrideFilters || filters;
+        const response = await fetchAdminUsers(activeFilters);
+        setUsers(response.data);
+        setMeta(response.meta);
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'فشل تحميل المستخدمين', 'error');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters]
+  );
 
   useEffect(() => {
     loadUsers();
@@ -125,7 +128,10 @@ export default function AdminUsersPage() {
   };
 
   const activeFiltersCount = [
-    filters.q, filters.role, filters.is_active, filters.is_verified, filters.is_dealer,
+    filters.q,
+    filters.role,
+    filters.is_active,
+    filters.is_verified,
   ].filter(Boolean).length;
 
   const getSortArrow = (field: string) => {
@@ -146,9 +152,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* Toast */}
-      {toast && (
-        <div className={`${styles.toast} ${styles[toast.type]}`}>{toast.message}</div>
-      )}
+      {toast && <div className={`${styles.toast} ${styles[toast.type]}`}>{toast.message}</div>}
 
       {/* Confirm Modal */}
       {modal && (
@@ -186,8 +190,19 @@ export default function AdminUsersPage() {
       <div className={styles.filterBar}>
         <div className={styles.searchRow}>
           <div className={styles.searchWrap}>
-            <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <svg
+              className={styles.searchIcon}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
               className={styles.searchInput}
@@ -233,15 +248,11 @@ export default function AdminUsersPage() {
 
           <button
             className={`${styles.chip} ${filters.is_verified === '1' ? styles.active : ''}`}
-            onClick={() => handleFilterChange('is_verified', filters.is_verified === '1' ? '' : '1')}
+            onClick={() =>
+              handleFilterChange('is_verified', filters.is_verified === '1' ? '' : '1')
+            }
           >
             🛡️ موثق
-          </button>
-          <button
-            className={`${styles.chip} ${filters.is_dealer === '1' ? styles.active : ''}`}
-            onClick={() => handleFilterChange('is_dealer', filters.is_dealer === '1' ? '' : '1')}
-          >
-            🏬 تاجر
           </button>
 
           {activeFiltersCount > 0 && (
@@ -269,20 +280,33 @@ export default function AdminUsersPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('name')} className={filters.sort === 'name' ? styles.sorted : ''}>
+                  <th
+                    onClick={() => handleSort('name')}
+                    className={filters.sort === 'name' ? styles.sorted : ''}
+                  >
                     <span className={styles.sortArrow}>{getSortArrow('name')}</span> الاسم
                   </th>
                   <th>رقم الهاتف</th>
                   <th>الدور</th>
                   <th>الحالة</th>
                   <th>الموقع</th>
-                  <th onClick={() => handleSort('total_ads_count')} className={filters.sort === 'total_ads_count' ? styles.sorted : ''}>
-                    <span className={styles.sortArrow}>{getSortArrow('total_ads_count')}</span> الإعلانات
+                  <th
+                    onClick={() => handleSort('total_ads_count')}
+                    className={filters.sort === 'total_ads_count' ? styles.sorted : ''}
+                  >
+                    <span className={styles.sortArrow}>{getSortArrow('total_ads_count')}</span>{' '}
+                    الإعلانات
                   </th>
-                  <th onClick={() => handleSort('avg_rating')} className={filters.sort === 'avg_rating' ? styles.sorted : ''}>
+                  <th
+                    onClick={() => handleSort('avg_rating')}
+                    className={filters.sort === 'avg_rating' ? styles.sorted : ''}
+                  >
                     <span className={styles.sortArrow}>{getSortArrow('avg_rating')}</span> التقييم
                   </th>
-                  <th onClick={() => handleSort('created_at')} className={filters.sort === 'created_at' ? styles.sorted : ''}>
+                  <th
+                    onClick={() => handleSort('created_at')}
+                    className={filters.sort === 'created_at' ? styles.sorted : ''}
+                  >
                     <span className={styles.sortArrow}>{getSortArrow('created_at')}</span> التسجيل
                   </th>
                   <th>إجراءات</th>
@@ -304,7 +328,9 @@ export default function AdminUsersPage() {
                         </span>
                       </div>
                     </td>
-                    <td><span className={styles.phoneValue}>{user.phone || '—'}</span></td>
+                    <td>
+                      <span className={styles.phoneValue}>{user.phone || '—'}</span>
+                    </td>
                     <td>
                       <span className={`${styles.roleBadge} ${styles[user.role]}`}>
                         {user.role_label}
@@ -312,7 +338,9 @@ export default function AdminUsersPage() {
                     </td>
                     <td>
                       <span className={styles.statusDot}>
-                        <span className={`${styles.dot} ${user.is_active ? styles.green : styles.red}`} />
+                        <span
+                          className={`${styles.dot} ${user.is_active ? styles.green : styles.red}`}
+                        />
                         {user.is_active ? 'نشط' : 'معطل'}
                       </span>
                     </td>
@@ -357,7 +385,8 @@ export default function AdminUsersPage() {
           {/* Pagination */}
           <div className={styles.pagination}>
             <span className={styles.paginationInfo}>
-              عرض {(meta.current_page - 1) * meta.per_page + 1} - {Math.min(meta.current_page * meta.per_page, meta.total)} من {meta.total}
+              عرض {(meta.current_page - 1) * meta.per_page + 1} -{' '}
+              {Math.min(meta.current_page * meta.per_page, meta.total)} من {meta.total}
             </span>
             <div className={styles.paginationBtns}>
               <button

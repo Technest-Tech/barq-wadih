@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Enums\AdStatus;
 use App\Enums\CommissionStatus;
 use App\Enums\ModerationStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Jobs\SendSaleFeeNotificationJob;
 use App\Models\Ad;
 use App\Models\AdFieldValue;
 use App\Models\AdImage;
 use App\Models\Category;
+use App\Models\CommissionPayment;
 use App\Models\CategoryField;
 use App\Models\Region;
 use App\Models\User;
@@ -40,10 +42,6 @@ class AdService
             $categoryId = (int) $data['category_id'];
             $commission = $this->calculateCommission($categoryId, (float) ($data['price'] ?? 0), false, $sellerType);
 
-            // Resolve publish fee from category × seller tier.
-            $publishFee = $this->resolvePublishFee($categoryId, $sellerType);
-            $hasFee     = $publishFee > 0;
-
             /** @var Ad $ad */
             $ad = $user->ads()->create([
                 'seller_type'         => $sellerType,
@@ -64,15 +62,14 @@ class AdService
                 'contact_whatsapp'    => $data['contact_whatsapp'] ?? null,
                 'show_phone_publicly' => $data['show_phone_publicly'] ?? true,
                 'pledge_accepted'     => true,
+                // Publishing is free for every category. The flat commission is
+                // only owed AFTER the sale — see markAsSold().
                 'commission_amount'   => $commission,
                 'commission_status'   => CommissionStatus::Pending,
-                // Branch on fee: paid categories sit in pending_payment until the
-                // wizard's Pay step confirms; free categories publish immediately.
-                'status'              => $hasFee ? AdStatus::PendingPayment : AdStatus::Active,
+                'status'              => AdStatus::Active,
                 'moderation_status'   => ModerationStatus::Approved,
-                'payment_status'      => $hasFee ? PaymentStatus::Pending->value : PaymentStatus::NotRequired->value,
-                'payment_amount'      => $hasFee ? $publishFee : null,
-                'published_at'        => $hasFee ? null : now(),
+                'payment_status'      => PaymentStatus::NotRequired->value,
+                'published_at'        => now(),
                 'expires_at'          => now()->addDays(30),
             ]);
 
@@ -112,21 +109,51 @@ class AdService
     }
 
     /**
-     * Pick the upfront publish fee for this category × seller tier.
-     * Falls back to 0 when columns are null so older seeded categories stay free.
+     * Settle the after-sale commission once an admin approves the transfer
+     * receipt. Unlike markPaid(), this does NOT republish the ad — it stays
+     * Sold. Idempotent.
+     */
+    public function markCommissionPaid(Ad $ad, array $payload = []): Ad
+    {
+        if ($ad->payment_status === PaymentStatus::Paid->value) {
+            return $ad;
+        }
+
+        $ad->update([
+            'payment_status'     => PaymentStatus::Paid->value,
+            'payment_reference'  => $payload['provider_reference'] ?? $payload['reference'] ?? $ad->payment_reference,
+            'paid_at'            => now(),
+            'commission_status'  => CommissionStatus::Paid,
+        ]);
+
+        // Record the settled commission in the financial ledger so it shows in
+        // the admin Commissions page and revenue analytics. Keyed by ad so a
+        // re-approval doesn't create duplicates.
+        CommissionPayment::updateOrCreate(
+            ['ad_id' => $ad->id],
+            [
+                'user_id'                => $ad->user_id,
+                'sale_price'             => (float) ($ad->price ?? 0),
+                'commission_rate'        => 0,
+                'commission_amount'      => (float) ($ad->payment_amount ?? $ad->commission_amount ?? 0),
+                'is_flat_fee'            => true,
+                'payment_status'         => CommissionStatus::Paid->value,
+                'payment_method'         => PaymentMethod::BankTransfer->value,
+                'gateway_transaction_id' => $payload['provider_reference'] ?? $payload['reference'] ?? null,
+                'paid_at'                => now(),
+            ],
+        );
+
+        return $ad->fresh(['user', 'category', 'city']);
+    }
+
+    /**
+     * Publishing is free for every category — there is no upfront publish fee.
+     * Kept for backward compatibility with callers/tests; always returns 0.
      */
     public function resolvePublishFee(int $categoryId, string $sellerType = 'individual'): float
     {
-        $cat = Category::find($categoryId);
-        if (! $cat) {
-            return 0.0;
-        }
-
-        $fee = $sellerType === 'dealer'
-            ? (float) ($cat->publish_fee_dealer ?? 0)
-            : (float) ($cat->publish_fee_individual ?? 0);
-
-        return max(0.0, $fee);
+        return 0.0;
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -191,12 +218,29 @@ class AdService
 
     public function markAsSold(Ad $ad): void
     {
+        // The flat commission becomes due now that the sale is declared. We park
+        // the owed amount on the ad's payment_* columns so the seller can settle
+        // it via the bank-transfer receipt flow (uploadProof → admin approval).
+        $commission = $this->calculateCommission(
+            $ad->category_id,
+            (float) ($ad->price ?? 0),
+            (bool) $ad->is_free,
+            $ad->seller_type ?? 'individual',
+        );
+        $owesCommission = $commission > 0
+            && $ad->payment_status !== PaymentStatus::Paid->value;
+
         // Bypass Scout sync during update to avoid search-engine connection issues.
         // The sold ad will be removed from the index asynchronously via the queue.
-        Ad::withoutSyncingToSearch(function () use ($ad) {
+        Ad::withoutSyncingToSearch(function () use ($ad, $commission, $owesCommission) {
             $ad->update([
                 'status'           => AdStatus::Sold,
                 'sale_declared_at' => now(),
+                'commission_amount' => $commission,
+                'payment_amount'   => $owesCommission ? $commission : $ad->payment_amount,
+                'payment_status'   => $owesCommission
+                    ? PaymentStatus::Pending->value
+                    : $ad->payment_status,
             ]);
         });
 
@@ -216,47 +260,38 @@ class AdService
 
     // ── Commission ────────────────────────────────────────────────────────────
 
+    /** Default flat commission (VAT-incl.) for paid categories that have no explicit amount. */
+    public const DEFAULT_COMMISSION = 10.0;
+
     /**
-     * Deferred commission = fixed SAR amount from category config.
-     * Falls back to max(90 SAR, 0.5% of price) for unconfigured categories.
+     * Flat commission owed AFTER the sale completes. There is no percentage and
+     * no price dependency — each category has a fixed SAR amount (VAT-inclusive):
+     * cars 99, phones & other sections 10, free categories (e.g. jobs) 0.
+     *
+     * The $price argument is kept for signature compatibility but unused.
      */
-    public function calculateCommission(int $categoryId, float $price, bool $isFree = false, string $sellerType = 'individual'): float
+    public function calculateCommission(int $categoryId, float $price = 0, bool $isFree = false, string $sellerType = 'individual'): float
     {
-        if ($isFree || $price <= 0) {
+        $cat = Category::find($categoryId);
+        if (! $cat || $isFree || $cat->is_free) {
             return 0.0;
         }
 
-        $cat = Category::find($categoryId);
-        if ($cat) {
-            $fixed = $sellerType === 'dealer'
-                ? (float) ($cat->deferred_commission_dealer ?? 0)
-                : (float) ($cat->deferred_commission_individual ?? 0);
+        $fixed = (float) ($cat->deferred_commission_individual ?? 0);
 
-            if ($fixed > 0) {
-                return $fixed;
-            }
-        }
-
-        // Legacy fallback for categories without explicit deferred amounts
-        return max(90.0, $price * 0.005);
+        // Paid category without an explicit amount falls back to the standard flat fee.
+        return $fixed > 0 ? $fixed : self::DEFAULT_COMMISSION;
     }
 
     /**
-     * Returns true when the category has an explicit fixed deferred commission,
-     * meaning the commission icon should show an exact amount (no ~ approximation).
+     * Commission is always a flat per-category amount now (no percentage tiers),
+     * so this is true for every paid category.
      */
     public function isFlatFeeCategory(int $categoryId, string $sellerType = 'individual'): bool
     {
         $cat = Category::find($categoryId);
-        if (! $cat) {
-            return false;
-        }
 
-        $fixed = $sellerType === 'dealer'
-            ? (float) ($cat->deferred_commission_dealer ?? 0)
-            : (float) ($cat->deferred_commission_individual ?? 0);
-
-        return $fixed > 0;
+        return $cat !== null && ! $cat->is_free;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

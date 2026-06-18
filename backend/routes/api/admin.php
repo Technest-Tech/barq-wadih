@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCommissionController;
 use App\Http\Controllers\Api\V1\Admin\AdminContactController;
 use App\Http\Controllers\Api\V1\Admin\AdminNotificationController;
+use App\Http\Controllers\Api\V1\Admin\AdminPaymentProofController;
 use App\Http\Controllers\Api\V1\Admin\AdminRegionController;
 use App\Http\Controllers\Api\V1\Admin\AdminReportController;
 use App\Http\Controllers\Api\V1\Admin\AdminSettingsController;
@@ -88,6 +89,12 @@ Route::prefix('v1/admin')
         Route::get('commissions',                      [AdminCommissionController::class, 'index'])->name('commissions.index');
         Route::get('commissions/{commission}',          [AdminCommissionController::class, 'show'])->name('commissions.show');
         Route::patch('commissions/{commission}/status', [AdminCommissionController::class, 'updateStatus'])->name('commissions.status');
+
+        // ── Bank-transfer payment proof review (until PSP is live) ───────
+        Route::get('payment-proofs',                   [AdminPaymentProofController::class, 'index'])->name('payment-proofs.index');
+        Route::get('payment-proofs/pending-count',     [AdminPaymentProofController::class, 'pendingCount'])->name('payment-proofs.pending-count');
+        Route::post('payment-proofs/{ad}/approve',     [AdminPaymentProofController::class, 'approve'])->name('payment-proofs.approve');
+        Route::post('payment-proofs/{ad}/reject',      [AdminPaymentProofController::class, 'reject'])->name('payment-proofs.reject');
 
         // ── Sprint 16: Analytics ─────────────────────────────────────────
         Route::get('analytics/revenue',       [AdminAnalyticsController::class, 'revenue'])->name('analytics.revenue');

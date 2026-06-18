@@ -4,34 +4,41 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 
 /// Bottom sheet shown after a seller marks an ad as sold.
-/// Displays the 5% fee breakdown and lets the seller navigate
-/// to the payments calculator with the ad price pre-filled.
+///
+/// Publishing is free; a flat commission (VAT-inclusive) is owed only after the
+/// sale. This sheet shows the owed commission and sends the seller to the
+/// bank-transfer screen to pay it (gateways aren't live yet). When the category
+/// is free (commission = 0) it's a simple congratulations sheet.
 class SoldFeeSheet extends StatelessWidget {
+  final int adId;
   final String adTitle;
-  final double? adPrice;
+  final double commission;
 
-  const SoldFeeSheet({super.key, required this.adTitle, required this.adPrice});
+  const SoldFeeSheet({
+    super.key,
+    required this.adId,
+    required this.adTitle,
+    required this.commission,
+  });
 
   static Future<void> show(
     BuildContext context, {
+    required int adId,
     required String adTitle,
-    required double? adPrice,
+    required double commission,
   }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => SoldFeeSheet(adTitle: adTitle, adPrice: adPrice),
+      builder: (_) =>
+          SoldFeeSheet(adId: adId, adTitle: adTitle, commission: commission),
     );
   }
 
-  static const double _feeRate = 0.05;
-
-  double get _fee => (adPrice ?? 0) * _feeRate;
-
   @override
   Widget build(BuildContext context) {
-    final hasPrice = adPrice != null && adPrice! > 0;
+    final hasCommission = commission > 0;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -76,7 +83,6 @@ class SoldFeeSheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // Title
             const Text(
               'تم البيع بنجاح!',
               style: TextStyle(
@@ -87,7 +93,6 @@ class SoldFeeSheet extends StatelessWidget {
             ),
             const SizedBox(height: 6),
 
-            // Ad title
             Text(
               adTitle,
               textAlign: TextAlign.center,
@@ -100,60 +105,41 @@ class SoldFeeSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Fee breakdown card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.neutralGray50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.neutralGray200),
-              ),
-              child: Column(
-                children: [
-                  // Header
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        size: 16,
-                        color: AppTheme.primaryBlue,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'رسوم المنصة المستحقة',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.primaryBlue,
+            if (hasCommission) ...[
+              // Commission card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.neutralGray50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.neutralGray200),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'عمولة المنصة المستحقة',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryBlue,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  if (hasPrice) ...[
-                    _FeeRow(
-                      label: 'سعر البيع',
-                      value: '${adPrice!.toStringAsFixed(0)} ر.س',
+                        Text(
+                          '${commission.toStringAsFixed(0)} ر.س',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    _FeeRow(
-                      label: 'رسوم المنصة (5%)',
-                      value: '${_fee.toStringAsFixed(2)} ر.س',
-                      valueColor: const Color(0xFFEA580C),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Divider(height: 1, color: AppTheme.neutralGray200),
-                    ),
-                    _FeeRow(
-                      label: 'الإجمالي المستحق',
-                      value: '${_fee.toStringAsFixed(2)} ر.س',
-                      isTotal: true,
-                    ),
-                  ] else
                     const Text(
-                      'سيتم احتساب الرسوم بنسبة 5% من سعر البيع عند الدفع.',
+                      'عمولة ثابتة شاملة ضريبة القيمة المضافة، تُدفع عبر تحويل بنكي ثم تُراجَع من الإدارة.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.neutralGray600,
@@ -161,91 +147,83 @@ class SoldFeeSheet extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Pay now button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.push('/payments', extra: adPrice);
-                },
-                icon: const Icon(Icons.calculate_outlined, size: 20),
-                label: const Text(
-                  'احسب الرسوم وادفع الآن',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.push('/ads/$adId/pay', extra: commission);
+                  },
+                  icon: const Icon(Icons.account_balance_rounded, size: 20),
+                  label: const Text(
+                    'دفع العمولة الآن',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    elevation: 0,
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue,
-                  foregroundColor: Colors.white,
-                  shape: const StadiumBorder(),
-                  elevation: 0,
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'لاحقاً',
+                  style: TextStyle(
+                    color: AppTheme.neutralGray500,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // Later button
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'لاحقاً',
-                style: TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
+            ] else ...[
+              const Text(
+                'هذا القسم مجاني بالكامل — لا توجد عمولة مستحقة.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.neutralGray600,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'تم',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _FeeRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool isTotal;
-
-  const _FeeRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-    this.isTotal = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: isTotal ? 13 : 12,
-            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
-            color: isTotal ? AppTheme.neutralGray800 : AppTheme.neutralGray600,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: isTotal ? 14 : 13,
-            fontWeight: FontWeight.w700,
-            color:
-                valueColor ??
-                (isTotal ? AppTheme.primaryBlue : AppTheme.neutralGray800),
-          ),
-        ),
-      ],
     );
   }
 }

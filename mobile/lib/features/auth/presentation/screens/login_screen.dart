@@ -40,6 +40,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _loginWithFingerprint() async {
+    await ref.read(authProvider.notifier).loginWithBiometrics();
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState is AuthAuthenticated) {
+      context.go('/');
+    } else if (authState is AuthError) {
+      _showError(authState.message);
+      ref.read(authProvider.notifier).clearError();
+    }
+  }
+
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -64,9 +76,76 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Widget _buildFingerprintButton(bool loading) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        // "or" divider
+        Row(
+          children: [
+            const Expanded(child: Divider(color: AppTheme.neutralGray200)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'أو',
+                style: TextStyle(color: AppTheme.neutralGray500, fontSize: 13),
+              ),
+            ),
+            const Expanded(child: Divider(color: AppTheme.neutralGray200)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: GestureDetector(
+            onTap: loading ? null : _loginWithFingerprint,
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryBlue.withValues(alpha: .25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.fingerprint_rounded,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'الدخول بالبصمة',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.neutralGray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loading = ref.watch(authProvider) is AuthLoading;
+    // Whether the device can do biometrics at all → show the fingerprint button.
+    final biometricSupported =
+        ref.watch(biometricSupportedProvider).value ?? false;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -174,6 +253,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                 ),
+
+                // Fingerprint login — shown whenever the device supports it.
+                if (biometricSupported) _buildFingerprintButton(loading),
 
                 const SizedBox(height: 24),
 

@@ -26,6 +26,7 @@ class Ad extends Model
         'contact_phone', 'contact_whatsapp', 'show_phone_publicly',
         'commission_amount', 'commission_status', 'sale_declared_at',
         'payment_status', 'payment_amount', 'payment_provider', 'payment_reference', 'paid_at',
+        'payment_proof_url', 'payment_proof_uploaded_at', 'payment_review_note',
         'is_boosted', 'boosted_until',
         'pledge_accepted', 'expires_at', 'expiry_notified_at', 'published_at',
     ];
@@ -39,6 +40,7 @@ class Ad extends Model
         'commission_amount'   => 'decimal:2',
         'payment_amount'      => 'decimal:2',
         'paid_at'             => 'datetime',
+        'payment_proof_uploaded_at' => 'datetime',
         'is_negotiable'       => 'boolean',
         'is_free'             => 'boolean',
         'is_boosted'          => 'boolean',

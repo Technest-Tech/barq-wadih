@@ -19,9 +19,11 @@ export type CategoryChild = {
   is_free: boolean;
   ads_count: number;
   fields_count: number;
-  /** Per-category publish fee (added in the post-ad wizard sprint). */
+  /** Per-category publish fee (now always 0 — publishing is free). */
   publish_fee_individual: string | number | null;
   publish_fee_dealer: string | number | null;
+  /** Flat after-sale commission (VAT-inclusive) owed when the ad is sold. */
+  deferred_commission_individual: string | number | null;
   fee_deductible_from_commission: boolean;
 };
 
@@ -37,5 +39,5 @@ export type Category = CategoryChild & {
  */
 export async function fetchCategories(): Promise<Category[]> {
   const response = await apiClient.get<Category[]>(ENDPOINTS.CATEGORIES);
-  return response.data.filter(cat => cat.slug !== 'real-estate');
+  return response.data.filter((cat) => cat.slug !== 'real-estate');
 }

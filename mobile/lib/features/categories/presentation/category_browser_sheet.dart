@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../data/category_api.dart';
 import '../domain/category_model.dart';
+import 'category_icons.dart';
 
 Future<CategoryModel?> showCategoryBrowserSheet(
   BuildContext context,
@@ -44,8 +45,7 @@ class CategoryBrowserSheet extends ConsumerStatefulWidget {
       _CategoryBrowserSheetState();
 }
 
-class _CategoryBrowserSheetState
-    extends ConsumerState<CategoryBrowserSheet> {
+class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
   CategoryModel? _selected;
   final _searchCtrl = TextEditingController();
   String _query = '';
@@ -97,8 +97,7 @@ class _CategoryBrowserSheetState
         return Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
@@ -120,8 +119,11 @@ class _CategoryBrowserSheetState
                   children: [
                     if (_selected != null)
                       IconButton(
-                        onPressed: () =>
-                            setState(() { _selected = null; _query = ''; _searchCtrl.clear(); }),
+                        onPressed: () => setState(() {
+                          _selected = null;
+                          _query = '';
+                          _searchCtrl.clear();
+                        }),
                         icon: const Icon(Icons.arrow_forward_ios, size: 16),
                         style: IconButton.styleFrom(
                           backgroundColor: AppTheme.neutralGray100,
@@ -172,20 +174,30 @@ class _CategoryBrowserSheetState
                       color: AppTheme.neutralGray500,
                       fontSize: 14,
                     ),
-                    prefixIcon: const Icon(Icons.search_rounded,
-                        color: AppTheme.neutralGray400, size: 20),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppTheme.neutralGray400,
+                      size: 20,
+                    ),
                     suffixIcon: _query.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear_rounded,
-                                size: 18, color: AppTheme.neutralGray400),
-                            onPressed: () =>
-                                setState(() { _query = ''; _searchCtrl.clear(); }),
+                            icon: const Icon(
+                              Icons.clear_rounded,
+                              size: 18,
+                              color: AppTheme.neutralGray400,
+                            ),
+                            onPressed: () => setState(() {
+                              _query = '';
+                              _searchCtrl.clear();
+                            }),
                           )
                         : null,
                     filled: true,
                     fillColor: AppTheme.neutralGray50,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -193,12 +205,16 @@ class _CategoryBrowserSheetState
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                          color: AppTheme.neutralGray200, width: 1),
+                        color: AppTheme.neutralGray200,
+                        width: 1,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                          color: AppTheme.primaryBlue, width: 1.5),
+                        color: AppTheme.primaryBlue,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -223,8 +239,7 @@ class _CategoryBrowserSheetState
                         query: _query,
                         controller: scrollCtrl,
                         onSelect: (c) => Navigator.pop(context, c),
-                        onSelectParent: () =>
-                            Navigator.pop(context, _selected),
+                        onSelectParent: () => Navigator.pop(context, _selected),
                       );
                     }
 
@@ -310,6 +325,7 @@ class _TopLevelListView extends StatelessWidget {
         final color = _kAccentColors[i % _kAccentColors.length];
         return _CategoryTile(
           name: cat.nameAr,
+          slug: cat.slug,
           color: color,
           childCount: cat.children.length,
           onTap: () => onTap(cat),
@@ -363,6 +379,7 @@ class _ChildrenListView extends StatelessWidget {
               children: [
                 _CategoryTile(
                   name: e.value.nameAr,
+                  slug: e.value.slug,
                   color: color,
                   childCount: 0,
                   onTap: () => onSelect(e.value),
@@ -401,10 +418,16 @@ class _SearchResultsView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: const [
-            Icon(Icons.search_off_rounded, size: 48, color: AppTheme.neutralGray300),
+            Icon(
+              Icons.search_off_rounded,
+              size: 48,
+              color: AppTheme.neutralGray300,
+            ),
             SizedBox(height: 12),
-            Text('لا توجد نتائج',
-                style: TextStyle(color: AppTheme.neutralGray500, fontSize: 15)),
+            Text(
+              'لا توجد نتائج',
+              style: TextStyle(color: AppTheme.neutralGray500, fontSize: 15),
+            ),
           ],
         ),
       );
@@ -436,12 +459,14 @@ class _SearchResultsView extends StatelessWidget {
 
 class _CategoryTile extends StatelessWidget {
   final String name;
+  final String slug;
   final Color color;
   final int childCount;
   final VoidCallback onTap;
 
   const _CategoryTile({
     required this.name,
+    required this.slug,
     required this.color,
     required this.childCount,
     required this.onTap,
@@ -452,16 +477,20 @@ class _CategoryTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
             Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(categoryIcon(slug), color: color, size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 name,
@@ -475,8 +504,7 @@ class _CategoryTile extends StatelessWidget {
             ),
             if (childCount > 0) ...[
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -491,7 +519,11 @@ class _CategoryTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.arrow_back_ios, size: 12, color: AppTheme.neutralGray400),
+              Icon(
+                Icons.arrow_back_ios,
+                size: 12,
+                color: AppTheme.neutralGray400,
+              ),
             ],
           ],
         ),
@@ -537,14 +569,21 @@ class _AllParentTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(Icons.arrow_back_ios,
-                    size: 12, color: AppTheme.primaryBlue),
+                Icon(
+                  Icons.arrow_back_ios,
+                  size: 12,
+                  color: AppTheme.primaryBlue,
+                ),
               ],
             ),
           ),
         ),
-        const Divider(height: 1, indent: 52, endIndent: 16,
-            color: AppTheme.neutralGray100),
+        const Divider(
+          height: 1,
+          indent: 52,
+          endIndent: 16,
+          color: AppTheme.neutralGray100,
+        ),
       ],
     );
   }
@@ -568,16 +607,20 @@ class _SearchResultTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
             Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(categoryIcon(hit.cat.slug), color: color, size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -608,8 +651,7 @@ class _SearchResultTile extends StatelessWidget {
             ),
             if (isParentWithChildren) ...[
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -624,8 +666,11 @@ class _SearchResultTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.arrow_back_ios,
-                  size: 12, color: AppTheme.neutralGray400),
+              Icon(
+                Icons.arrow_back_ios,
+                size: 12,
+                color: AppTheme.neutralGray400,
+              ),
             ],
           ],
         ),
@@ -647,7 +692,11 @@ class _Skeleton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: 10,
       separatorBuilder: (_, __) => const Divider(
-          height: 1, indent: 52, endIndent: 16, color: AppTheme.neutralGray100),
+        height: 1,
+        indent: 52,
+        endIndent: 16,
+        color: AppTheme.neutralGray100,
+      ),
       itemBuilder: (_, i) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
@@ -657,7 +706,9 @@ class _Skeleton extends StatelessWidget {
               width: 10,
               height: 10,
               decoration: const BoxDecoration(
-                  color: AppTheme.neutralGray200, shape: BoxShape.circle),
+                color: AppTheme.neutralGray200,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 14),
             Container(
@@ -689,8 +740,10 @@ class _ErrorView extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, size: 48, color: Colors.red),
           const SizedBox(height: 12),
-          const Text('فشل تحميل الأقسام',
-              style: TextStyle(color: AppTheme.neutralGray600)),
+          const Text(
+            'فشل تحميل الأقسام',
+            style: TextStyle(color: AppTheme.neutralGray600),
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: onRetry,

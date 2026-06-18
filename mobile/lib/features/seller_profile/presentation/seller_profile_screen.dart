@@ -20,7 +20,8 @@ class SellerProfileScreen extends ConsumerStatefulWidget {
   const SellerProfileScreen({super.key, required this.userId});
 
   @override
-  ConsumerState<SellerProfileScreen> createState() => _SellerProfileScreenState();
+  ConsumerState<SellerProfileScreen> createState() =>
+      _SellerProfileScreenState();
 }
 
 class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
@@ -52,17 +53,35 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
           foregroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_forward, color: Colors.white, textDirection: TextDirection.ltr),
+            icon: const Icon(
+              Icons.arrow_forward,
+              color: Colors.white,
+              textDirection: TextDirection.ltr,
+            ),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: const Text('ملف البائع', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+          title: const Text(
+            'ملف البائع',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.share, color: Colors.white),
               onPressed: () {
-                Clipboard.setData(ClipboardData(text: 'برق واضح — ملف البائع #${widget.userId}'));
+                Clipboard.setData(
+                  ClipboardData(
+                    text: 'برق واضح — ملف البائع #${widget.userId}',
+                  ),
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم نسخ رابط البائع'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                    content: Text('تم نسخ رابط البائع'),
+                    duration: Duration(seconds: 2),
+                  ),
                 );
               },
             ),
@@ -74,7 +93,9 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
             tabController: _tabController,
             userId: widget.userId,
           ),
-          loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF0075C4))),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF0075C4)),
+          ),
           error: (_, __) => Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -84,7 +105,8 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
                 const Text('تعذر تحميل ملف البائع'),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: () => ref.invalidate(sellerProfileProvider(widget.userId)),
+                  onPressed: () =>
+                      ref.invalidate(sellerProfileProvider(widget.userId)),
                   child: const Text('إعادة المحاولة'),
                 ),
               ],
@@ -122,7 +144,11 @@ class _ProfileBody extends ConsumerWidget {
               unselectedLabelColor: AppTheme.neutralGray500,
               indicatorColor: const Color(0xFF0075C4),
               indicatorWeight: 3,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.white),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: Colors.white,
+              ),
               tabs: [
                 Tab(text: 'الإعلانات (${profile.activeAdsCount})'),
                 Tab(text: 'التقييمات (${profile.ratingCount})'),
@@ -167,8 +193,11 @@ class _Header extends StatelessWidget {
               CircleAvatar(
                 radius: 44,
                 backgroundColor: AppTheme.neutralGray200,
-                backgroundImage: profile.avatar != null && profile.avatar!.isNotEmpty
-                    ? CachedNetworkImageProvider(AppConstants.normalizeImageUrl(profile.avatar!))
+                backgroundImage:
+                    profile.avatar != null && profile.avatar!.isNotEmpty
+                    ? CachedNetworkImageProvider(
+                        AppConstants.normalizeImageUrl(profile.avatar!),
+                      )
                     : null,
                 child: profile.avatar == null || profile.avatar!.isEmpty
                     ? const Icon(Icons.person, size: 50, color: Colors.grey)
@@ -177,36 +206,37 @@ class _Header extends StatelessWidget {
               if (profile.isVerified)
                 Container(
                   padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  child: const Icon(Icons.verified_rounded, color: Color(0xFF0075C4), size: 22),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.verified_rounded,
+                    color: Color(0xFF0075C4),
+                    size: 22,
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             profile.name,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.neutralGray900),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.neutralGray900,
+            ),
           ),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (profile.isDealer)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF159787).withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'معرض موثوق',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF159787), fontWeight: FontWeight.w700),
-                  ),
-                ),
-              if (profile.isDealer) const SizedBox(width: 8),
               Text(
                 'عضو منذ ${_memberSinceText()}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.neutralGray500),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.neutralGray500,
+                ),
               ),
             ],
           ),
@@ -215,7 +245,11 @@ class _Header extends StatelessWidget {
             Text(
               profile.bio!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppTheme.neutralGray700, height: 1.6),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppTheme.neutralGray700,
+                height: 1.6,
+              ),
             ),
           ],
         ],
@@ -244,7 +278,11 @@ class _StatsRow extends StatelessWidget {
           _Divider(),
           _StatCell(label: 'تقييم', value: '${profile.ratingCount}'),
           _Divider(),
-          _StatCell(label: 'متوسط', value: profile.avgRating.toStringAsFixed(1), suffix: '★'),
+          _StatCell(
+            label: 'متوسط',
+            value: profile.avgRating.toStringAsFixed(1),
+            suffix: '★',
+          ),
         ],
       ),
     );
@@ -265,15 +303,34 @@ class _StatCell extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.neutralGray900)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.neutralGray900,
+                ),
+              ),
               if (suffix != null) ...[
                 const SizedBox(width: 2),
-                Text(suffix!, style: const TextStyle(fontSize: 14, color: Color(0xFFFFC107))),
+                Text(
+                  suffix!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFFFFC107),
+                  ),
+                ),
               ],
             ],
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppTheme.neutralGray500,
+            ),
+          ),
         ],
       ),
     );
@@ -295,7 +352,10 @@ class _RatingSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (profile.ratingCount == 0) return const SizedBox.shrink();
-    final maxCount = profile.ratingDistribution.values.fold<int>(0, (a, b) => b > a ? b : a);
+    final maxCount = profile.ratingDistribution.values.fold<int>(
+      0,
+      (a, b) => b > a ? b : a,
+    );
     return Container(
       color: Colors.white,
       margin: const EdgeInsets.only(top: 2),
@@ -305,8 +365,14 @@ class _RatingSummary extends StatelessWidget {
         children: [
           const Align(
             alignment: Alignment.centerRight,
-            child: Text('توزيع التقييمات',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.neutralGray800)),
+            child: Text(
+              'توزيع التقييمات',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppTheme.neutralGray800,
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           for (final star in [5, 4, 3, 2, 1])
@@ -319,8 +385,18 @@ class _RatingSummary extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Text('$star', style: const TextStyle(fontSize: 12, color: AppTheme.neutralGray700)),
-                        const Icon(Icons.star_rounded, size: 12, color: Color(0xFFFFC107)),
+                        Text(
+                          '$star',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.neutralGray700,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 12,
+                          color: Color(0xFFFFC107),
+                        ),
                       ],
                     ),
                   ),
@@ -330,9 +406,14 @@ class _RatingSummary extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         minHeight: 6,
-                        value: maxCount == 0 ? 0 : (profile.ratingDistribution[star] ?? 0) / maxCount,
+                        value: maxCount == 0
+                            ? 0
+                            : (profile.ratingDistribution[star] ?? 0) /
+                                  maxCount,
                         backgroundColor: AppTheme.neutralGray100,
-                        valueColor: const AlwaysStoppedAnimation(Color(0xFFFFC107)),
+                        valueColor: const AlwaysStoppedAnimation(
+                          Color(0xFFFFC107),
+                        ),
                       ),
                     ),
                   ),
@@ -342,7 +423,10 @@ class _RatingSummary extends StatelessWidget {
                     child: Text(
                       '${profile.ratingDistribution[star] ?? 0}',
                       textAlign: TextAlign.end,
-                      style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.neutralGray500,
+                      ),
                     ),
                   ),
                 ],
@@ -366,7 +450,11 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height + 2;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: Colors.white,
       margin: const EdgeInsets.only(top: 2),
@@ -375,7 +463,8 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
+      false;
 }
 
 // ── Ads tab ────────────────────────────────────────────────────────────────────
@@ -396,7 +485,11 @@ class _SellerAdsTab extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey),
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 56,
+                    color: Colors.grey,
+                  ),
                   SizedBox(height: 12),
                   Text('لا توجد إعلانات نشطة لهذا البائع'),
                 ],
@@ -417,7 +510,9 @@ class _SellerAdsTab extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF0075C4))),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0075C4)),
+      ),
       error: (_, __) => Center(
         child: TextButton(
           onPressed: () => ref.invalidate(sellerAdsProvider(userId)),
@@ -484,11 +579,18 @@ class _SellerReviewsTab extends ConsumerWidget {
                       CircleAvatar(
                         radius: 18,
                         backgroundColor: AppTheme.neutralGray200,
-                        backgroundImage: r.rater.avatar != null && r.rater.avatar!.isNotEmpty
-                            ? NetworkImage(AppConstants.normalizeImageUrl(r.rater.avatar!))
+                        backgroundImage:
+                            r.rater.avatar != null && r.rater.avatar!.isNotEmpty
+                            ? NetworkImage(
+                                AppConstants.normalizeImageUrl(r.rater.avatar!),
+                              )
                             : null,
                         child: r.rater.avatar == null || r.rater.avatar!.isEmpty
-                            ? const Icon(Icons.person, size: 20, color: Colors.grey)
+                            ? const Icon(
+                                Icons.person,
+                                size: 20,
+                                color: Colors.grey,
+                              )
                             : null,
                       ),
                       const SizedBox(width: 10),
@@ -498,19 +600,33 @@ class _SellerReviewsTab extends ConsumerWidget {
                           children: [
                             Text(
                               r.rater.name,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.neutralGray900),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: AppTheme.neutralGray900,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                ...List.generate(5, (idx) => Icon(
-                                  idx < r.stars ? Icons.star_rounded : Icons.star_border_rounded,
-                                  size: 14,
-                                  color: const Color(0xFFFFC107),
-                                )),
+                                ...List.generate(
+                                  5,
+                                  (idx) => Icon(
+                                    idx < r.stars
+                                        ? Icons.star_rounded
+                                        : Icons.star_border_rounded,
+                                    size: 14,
+                                    color: const Color(0xFFFFC107),
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                Text(_timeAgo(r.createdAt),
-                                    style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500)),
+                                Text(
+                                  _timeAgo(r.createdAt),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.neutralGray500,
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -522,7 +638,11 @@ class _SellerReviewsTab extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Text(
                       r.comment!,
-                      style: const TextStyle(fontSize: 13, color: AppTheme.neutralGray800, height: 1.6),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.neutralGray800,
+                        height: 1.6,
+                      ),
                     ),
                   ],
                   if (r.ad != null) ...[
@@ -530,7 +650,10 @@ class _SellerReviewsTab extends ConsumerWidget {
                     GestureDetector(
                       onTap: () => context.push('/ads/${r.ad!.id}'),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0075C4).withValues(alpha: .08),
                           borderRadius: BorderRadius.circular(8),
@@ -538,14 +661,22 @@ class _SellerReviewsTab extends ConsumerWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.tag, size: 12, color: Color(0xFF0075C4)),
+                            const Icon(
+                              Icons.tag,
+                              size: 12,
+                              color: Color(0xFF0075C4),
+                            ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 r.ad!.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF0075C4), fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF0075C4),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -559,7 +690,9 @@ class _SellerReviewsTab extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF0075C4))),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0075C4)),
+      ),
       error: (_, __) => Center(
         child: TextButton(
           onPressed: () => ref.invalidate(sellerReviewsProvider(userId)),

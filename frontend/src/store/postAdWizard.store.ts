@@ -22,7 +22,15 @@ export type WizardStep =
   | 'review';
 
 export const STEP_ORDER: WizardStep[] = [
-  'category', 'pledge', 'region', 'city', 'district', 'map', 'images', 'details', 'review',
+  'category',
+  'pledge',
+  'region',
+  'city',
+  'district',
+  'map',
+  'images',
+  'details',
+  'review',
 ];
 
 export type WizardImage = {
@@ -39,12 +47,11 @@ export type WizardImage = {
 export type WizardDetails = {
   title: string;
   description: string;
-  price: string;          // Keep as string for the input; cast on submit.
-  isFree: boolean;        // مجاني — no price at all.
-  isNegotiable: boolean;  // قابل للتفاوض.
-  priceHidden: boolean;   // اتصل للسعر — distinct from is_free.
+  price: string; // Keep as string for the input; cast on submit.
+  isFree: boolean; // مجاني — no price at all.
+  isNegotiable: boolean; // قابل للتفاوض.
+  priceHidden: boolean; // اتصل للسعر — distinct from is_free.
   phone: string;
-  whatsapp: string;
   showPhonePublicly: boolean;
   /** Dynamic category fields keyed by field_key. */
   fields: Record<string, string>;
@@ -101,7 +108,6 @@ const INITIAL_DETAILS: WizardDetails = {
   isNegotiable: false,
   priceHidden: false,
   phone: '',
-  whatsapp: '',
   showPhonePublicly: true,
   fields: {},
 };
@@ -110,7 +116,7 @@ const INITIAL_STATE = {
   step: 'category' as WizardStep,
   parentCategory: null,
   category: null,
-  sellerType: null as 'individual' | 'dealer' | null,
+  sellerType: 'individual' as 'individual' | 'dealer' | null,
   pledgeAccepted: false,
   region: null,
   city: null,
@@ -142,7 +148,8 @@ export const usePostAdWizard = create<WizardState>()(
       setSellerType: (sellerType) => set({ sellerType }),
       setPledgeAccepted: (pledgeAccepted) => set({ pledgeAccepted }),
 
-      setRegion: (region) => set({ region, city: null, district: null, districtFreeText: '', latLng: null }),
+      setRegion: (region) =>
+        set({ region, city: null, district: null, districtFreeText: '', latLng: null }),
       setCity: (city) => set({ city, district: null, districtFreeText: '', latLng: null }),
       setDistrict: (district) => set({ district, districtFreeText: '' }),
       setDistrictFreeText: (districtFreeText) => set({ districtFreeText, district: null }),
@@ -150,13 +157,14 @@ export const usePostAdWizard = create<WizardState>()(
 
       setImages: (images) => set({ images }),
       addImages: (imgs) => set({ images: [...get().images, ...imgs] }),
-      removeImage: (id) => set({
-        images: get().images.map(img =>
-          img.id === id
-            ? (img.existingId ? { ...img, removed: true } : null)
-            : img
-        ).filter((x): x is WizardImage => x !== null),
-      }),
+      removeImage: (id) =>
+        set({
+          images: get()
+            .images.map((img) =>
+              img.id === id ? (img.existingId ? { ...img, removed: true } : null) : img
+            )
+            .filter((x): x is WizardImage => x !== null),
+        }),
       reorderImages: (from, to) => {
         const next = [...get().images];
         const [moved] = next.splice(from, 1);
@@ -196,7 +204,7 @@ export const usePostAdWizard = create<WizardState>()(
         district: s.district,
         districtFreeText: s.districtFreeText,
         latLng: s.latLng,
-        images: s.images.filter(img => img.existingId), // only persist existing images
+        images: s.images.filter((img) => img.existingId), // only persist existing images
         details: s.details,
       }),
     }
@@ -211,7 +219,7 @@ export const usePostAdWizard = create<WizardState>()(
 // and the FormData submit both speak the same canonical form.
 
 const ARABIC_INDIC = '٠١٢٣٤٥٦٧٨٩';
-const PERSIAN     = '۰۱۲۳۴۵۶۷۸۹';
+const PERSIAN = '۰۱۲۳۴۵۶۷۸۹';
 
 export function normalizePhone(raw: string): string {
   if (!raw) return '';
@@ -219,9 +227,15 @@ export function normalizePhone(raw: string): string {
   let s = '';
   for (const ch of raw) {
     const a = ARABIC_INDIC.indexOf(ch);
-    if (a >= 0) { s += String(a); continue; }
+    if (a >= 0) {
+      s += String(a);
+      continue;
+    }
     const p = PERSIAN.indexOf(ch);
-    if (p >= 0) { s += String(p); continue; }
+    if (p >= 0) {
+      s += String(p);
+      continue;
+    }
     s += ch;
   }
   // Strip everything that isn't a digit or a leading +
@@ -249,22 +263,32 @@ export function isValidSaudiPhone(raw: string): boolean {
 
 export function canAdvance(state: WizardState, step: WizardStep): boolean {
   switch (step) {
-    case 'category':  return !!state.category && !!state.sellerType;
-    case 'pledge':    return state.pledgeAccepted;
-    case 'region':    return !!state.region;
-    case 'city':      return !!state.city;
-    case 'district':  return !!state.district || state.districtFreeText.trim().length > 0;
-    case 'map':       return !!state.latLng;
-    case 'images':    return state.images.filter(i => !i.removed).length >= 1;
+    case 'category':
+      return !!state.category;
+    case 'pledge':
+      return state.pledgeAccepted;
+    case 'region':
+      return !!state.region;
+    case 'city':
+      return !!state.city;
+    case 'district':
+      return !!state.district || state.districtFreeText.trim().length > 0;
+    case 'map':
+      return !!state.latLng;
+    case 'images':
+      return state.images.filter((i) => !i.removed).length >= 1;
     case 'details': {
       const d = state.details;
       const phoneOk = !d.showPhonePublicly || isValidSaudiPhone(d.phone);
-      return d.title.trim().length >= 3
-        && d.description.trim().length >= 10
-        && phoneOk
-        && (d.isFree || d.priceHidden || d.price.trim().length > 0);
+      return (
+        d.title.trim().length >= 3 &&
+        d.description.trim().length >= 10 &&
+        phoneOk &&
+        (d.isFree || d.priceHidden || d.price.trim().length > 0)
+      );
     }
-    case 'review':    return true;
+    case 'review':
+      return true;
   }
 }
 

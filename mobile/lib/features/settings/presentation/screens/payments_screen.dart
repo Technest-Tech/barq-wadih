@@ -1,136 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/bank_account.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../ads/data/ad_api.dart';
+import '../../../ads/domain/ad_model.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-// ── Local models ──────────────────────────────────────────────────────────────
-
-class SubscriptionPlan {
-  final String id;
-  final String nameAr;
-  final double price;
-  final String period;
-  final int maxAds;
-  final int boostCredits;
-  final bool hasTrustedPurchase;
-  final bool hasPrioritySupport;
-  final bool isRecommended;
-
-  const SubscriptionPlan({
-    required this.id,
-    required this.nameAr,
-    required this.price,
-    required this.period,
-    required this.maxAds,
-    required this.boostCredits,
-    required this.hasTrustedPurchase,
-    required this.hasPrioritySupport,
-    this.isRecommended = false,
-  });
-}
-
-class PaymentRecord {
-  final String id;
-  final String planName;
-  final double amount;
-  final DateTime date;
-  final String status; // 'completed' | 'pending' | 'refunded'
-
-  const PaymentRecord({
-    required this.id,
-    required this.planName,
-    required this.amount,
-    required this.date,
-    required this.status,
-  });
-}
-
-// ── Mock data — replace with API calls when backend is ready ──────────────────
-const _mockPlans = [
-  SubscriptionPlan(
-    id: 'free',
-    nameAr: 'المجاني',
-    price: 0,
-    period: '',
-    maxAds: 3,
-    boostCredits: 0,
-    hasTrustedPurchase: false,
-    hasPrioritySupport: false,
-  ),
-  SubscriptionPlan(
-    id: 'basic',
-    nameAr: 'الأساسي',
-    price: 49,
-    period: 'شهرياً',
-    maxAds: 10,
-    boostCredits: 3,
-    hasTrustedPurchase: false,
-    hasPrioritySupport: true,
-    isRecommended: true,
-  ),
-  SubscriptionPlan(
-    id: 'pro',
-    nameAr: 'الاحترافي',
-    price: 129,
-    period: 'شهرياً',
-    maxAds: 999,
-    boostCredits: 15,
-    hasTrustedPurchase: true,
-    hasPrioritySupport: true,
-  ),
-];
-
-// ── Provider ──────────────────────────────────────────────────────────────────
-
-class PaymentsState {
-  final String currentPlanId;
-  final List<SubscriptionPlan> plans;
-  final List<PaymentRecord> history;
-
-  const PaymentsState({
-    required this.currentPlanId,
-    required this.plans,
-    required this.history,
-  });
-}
-
-class PaymentsNotifier extends AsyncNotifier<PaymentsState> {
-  @override
-  Future<PaymentsState> build() async {
-    // TODO: Replace with actual API calls when backend is ready:
-    // final current = await ref.read(dioProvider).get('/subscriptions/current');
-    // final plans   = await ref.read(dioProvider).get('/subscriptions/plans');
-    // final history = await ref.read(dioProvider).get('/payments/history');
-    await Future.delayed(const Duration(milliseconds: 400));
-    return const PaymentsState(
-      currentPlanId: 'free',
-      plans: _mockPlans,
-      history: [],
-    );
-  }
-}
-
-final paymentsProvider = AsyncNotifierProvider<PaymentsNotifier, PaymentsState>(
-  PaymentsNotifier.new,
-);
-
-// ── Screen ────────────────────────────────────────────────────────────────────
-
+/// "سداد العمولات" — publishing is free; a flat commission is owed only after a
+/// sale. This screen shows the company bank details (QR + account) and lists
+/// the user's sold ads with their commission status, linking each unpaid one to
+/// the bank-transfer receipt flow.
 class PaymentsScreen extends ConsumerWidget {
+  /// Kept for router compatibility (legacy fee-calculator entry points). Unused.
   final double? initialPrice;
   const PaymentsScreen({super.key, this.initialPrice});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthed = ref.watch(isAuthenticatedProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         title: const Text(
-          'المدفوعات والرسوم',
+          'سداد العمولات',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -140,245 +38,83 @@ class PaymentsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
       ),
-      body: _FeeCalculatorBody(initialPrice: initialPrice),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _HowItWorksCard(),
+            const SizedBox(height: 16),
+            const _BankAccountCard(),
+            const SizedBox(height: 22),
+            const Text(
+              'عمولات إعلاناتك',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.neutralGray900,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (!isAuthed)
+              const _Hint('سجّل الدخول لعرض العمولات المستحقة على إعلاناتك.')
+            else
+              const _CommissionDuesList(),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _PaymentsBody extends StatelessWidget {
-  final PaymentsState data;
+// ── How it works ──────────────────────────────────────────────────────────────
 
-  const _PaymentsBody({required this.data});
+class _HowItWorksCard extends StatelessWidget {
+  const _HowItWorksCard();
 
   @override
   Widget build(BuildContext context) {
-    final currentPlan = data.plans.firstWhere(
-      (p) => p.id == data.currentPlanId,
-    );
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildCurrentPlanBanner(currentPlan),
-          const SizedBox(height: 20),
-          _buildSectionTitle('اختر الباقة المناسبة'),
-          const SizedBox(height: 12),
-          for (final plan in data.plans) ...[
-            _PlanCard(plan: plan, isCurrent: plan.id == data.currentPlanId),
-            const SizedBox(height: 10),
-          ],
-          if (data.history.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _buildSectionTitle('سجل المدفوعات'),
-            const SizedBox(height: 10),
-            _buildHistorySection(),
-          ] else ...[
-            const SizedBox(height: 8),
-            _buildEmptyHistory(),
-          ],
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCurrentPlanBanner(SubscriptionPlan plan) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.elevatedShadow,
+        color: AppTheme.primaryBlue.withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: .2)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: AppTheme.primaryBlue,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'باقتك الحالية',
+                  'النشر مجاني',
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: AppTheme.primaryBlue,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'الباقة ${plan.nameAr}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                  'تُستحق عمولة ثابتة (شاملة الضريبة) بعد إتمام البيع فقط. بوابات الدفع قيد التجهيز، لذا تُسدّد العمولة عبر تحويل بنكي إلى الحساب التالي ثم إرفاق صورة الإيصال لمراجعتها.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.6,
+                    color: AppTheme.primaryBlue.withValues(alpha: .8),
                   ),
+                  textDirection: TextDirection.rtl,
                 ),
-                if (plan.id != 'free') ...[
-                  const SizedBox(height: 4),
-                  const Text(
-                    'تنتهي في: ٣١ ديسمبر ٢٠٢٥',
-                    style: TextStyle(color: Colors.white60, fontSize: 11),
-                  ),
-                ],
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  plan.price == 0
-                      ? 'مجاناً'
-                      : '${plan.price.toStringAsFixed(0)} ر.س',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                if (plan.period.isNotEmpty)
-                  Text(
-                    plan.period,
-                    style: const TextStyle(color: Colors.white60, fontSize: 10),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: AppTheme.neutralGray800,
-      ),
-    );
-  }
-
-  Widget _buildHistorySection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: data.history.length,
-        separatorBuilder: (_, __) =>
-            const Divider(height: 1, indent: 16, endIndent: 16),
-        itemBuilder: (_, i) => _buildHistoryTile(data.history[i]),
-      ),
-    );
-  }
-
-  Widget _buildHistoryTile(PaymentRecord record) {
-    final statusColor = switch (record.status) {
-      'completed' => AppTheme.colorSuccess,
-      'pending' => AppTheme.colorWarning,
-      'refunded' => AppTheme.colorError,
-      _ => AppTheme.neutralGray500,
-    };
-    final statusLabel = switch (record.status) {
-      'completed' => 'مكتمل',
-      'pending' => 'معلق',
-      'refunded' => 'مسترد',
-      _ => record.status,
-    };
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      title: Text(
-        record.planName,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      ),
-      subtitle: Text(
-        '${record.date.day}/${record.date.month}/${record.date.year}',
-        style: const TextStyle(fontSize: 11, color: AppTheme.neutralGray500),
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${record.amount.toStringAsFixed(0)} ر.س',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              statusLabel,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: statusColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyHistory() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: const Column(
-        children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 48,
-            color: AppTheme.neutralGray300,
-          ),
-          SizedBox(height: 10),
-          Text(
-            'لا توجد مدفوعات سابقة',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.neutralGray500,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'ستظهر هنا مدفوعاتك بعد الاشتراك في إحدى الباقات',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppTheme.neutralGray400),
           ),
         ],
       ),
@@ -386,126 +122,71 @@ class _PaymentsBody extends StatelessWidget {
   }
 }
 
-// ── Plan Card ─────────────────────────────────────────────────────────────────
+// ── Bank account card (QR + details) ──────────────────────────────────────────
 
-class _PlanCard extends StatelessWidget {
-  final SubscriptionPlan plan;
-  final bool isCurrent;
-
-  const _PlanCard({required this.plan, required this.isCurrent});
+class _BankAccountCard extends StatelessWidget {
+  const _BankAccountCard();
 
   @override
   Widget build(BuildContext context) {
-    final isRecommended = plan.isRecommended;
-
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isRecommended
-              ? AppTheme.accentGold
-              : isCurrent
-              ? AppTheme.primaryBlue
-              : AppTheme.neutralGray200,
-          width: isRecommended || isCurrent ? 2 : 1,
-        ),
-        boxShadow: isRecommended
-            ? AppTheme.elevatedShadow
-            : AppTheme.cardShadow,
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildPlanHeader(isRecommended),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildFeatureRow(
-                  Icons.list_alt_rounded,
-                  'الإعلانات النشطة',
-                  plan.maxAds >= 999 ? 'غير محدود' : '${plan.maxAds} إعلان',
-                ),
-                _buildFeatureRow(
-                  Icons.trending_up_rounded,
-                  'رصيد التعزيز',
-                  plan.boostCredits > 0
-                      ? '${plan.boostCredits} مرة/شهر'
-                      : 'غير متاح',
-                  available: plan.boostCredits > 0,
-                ),
-                _buildFeatureRow(
-                  Icons.verified_rounded,
-                  'الشراء الموثوق',
-                  plan.hasTrustedPurchase ? 'متاح' : 'غير متاح',
-                  available: plan.hasTrustedPurchase,
-                ),
-                _buildFeatureRow(
-                  Icons.support_agent_rounded,
-                  'دعم مميز',
-                  plan.hasPrioritySupport ? 'متاح' : 'الدعم العام',
-                  available: plan.hasPrioritySupport,
-                ),
-                const SizedBox(height: 12),
-                if (isCurrent)
-                  Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withValues(alpha: .08),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'باقتك الحالية',
-                        style: TextStyle(
-                          color: AppTheme.primaryBlue,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  )
-                else if (plan.id != 'free')
-                  ElevatedButton(
-                    onPressed: () {
-                      // TODO: integrate payment gateway
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isRecommended
-                          ? AppTheme.accentGold
-                          : AppTheme.primaryBlue,
-                      minimumSize: const Size(double.infinity, 44),
-                      shape: const StadiumBorder(),
-                      textStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    child: Text('اشترك في الباقة ${plan.nameAr}'),
-                  ),
-              ],
-            ),
+          Image.asset(BankAccount.qrAsset, width: 220, fit: BoxFit.contain),
+          const SizedBox(height: 8),
+          const Text(
+            'امسح رمز QR من تطبيق البنك للتحويل المباشر',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(fontSize: 12, color: AppTheme.neutralGray500),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: AppTheme.neutralGray200),
+          _DetailRow(label: 'اسم المستفيد', value: BankAccount.accountName),
+          _DetailRow(label: 'البنك', value: BankAccount.bankName),
+          _DetailRow(
+            label: 'رقم الحساب',
+            value: BankAccount.accountNumber,
+            copyable: true,
+          ),
+          _DetailRow(
+            label: 'الآيبان (IBAN)',
+            value: BankAccount.iban,
+            copyable: true,
+            last: true,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildPlanHeader(bool isRecommended) {
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool copyable;
+  final bool last;
+
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.copyable = false,
+    this.last = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isRecommended
-              ? [AppTheme.accentGold, const Color(0xFFE8960A)]
-              : [AppTheme.primaryBlue, AppTheme.primaryBlueLight],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppTheme.neutralGray200)),
       ),
       child: Row(
         children: [
@@ -513,59 +194,185 @@ class _PlanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'الباقة ${plan.nameAr}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (isRecommended) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: .25),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'الأكثر طلباً',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  label,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.neutralGray500,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.neutralGray900,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          if (copyable)
+            IconButton(
+              icon: const Icon(
+                Icons.copy_rounded,
+                size: 18,
+                color: AppTheme.primaryBlue,
+              ),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: value));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم نسخ $label'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(milliseconds: 1200),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Commission dues list ──────────────────────────────────────────────────────
+
+class _CommissionDuesList extends ConsumerWidget {
+  const _CommissionDuesList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final myAds = ref.watch(myAdsProvider);
+
+    return myAds.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 28),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.primaryBlue,
+            strokeWidth: 2.5,
+          ),
+        ),
+      ),
+      error: (_, __) => const _Hint('تعذّر تحميل العمولات. حاول لاحقاً.'),
+      data: (ads) {
+        // Sold ads that carry a commission (owed, under review, or paid).
+        final dues = ads
+            .where((a) => a.status == 'sold' && (a.paymentAmount ?? 0) > 0)
+            .toList();
+
+        if (dues.isEmpty) {
+          return const _Hint(
+            'لا توجد عمولات مستحقة حالياً. تظهر هنا بعد تحديد إعلان كمُباع.',
+          );
+        }
+
+        return Column(
+          children: [
+            for (final ad in dues) ...[
+              _DueTile(ad: ad),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DueTile extends StatelessWidget {
+  final AdListModel ad;
+  const _DueTile({required this.ad});
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = ad.paymentAmount ?? 0;
+    final status = ad.paymentStatus ?? 'pending';
+
+    final (String label, Color color, bool payable) = switch (status) {
+      'paid' => ('مدفوعة', AppTheme.colorSuccess, false),
+      'under_review' => ('قيد المراجعة', AppTheme.colorWarning, false),
+      _ => ('مستحقة', AppTheme.colorError, true),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Text(
-                plan.price == 0
-                    ? 'مجاناً'
-                    : '${plan.price.toStringAsFixed(0)} ر.س',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Text(
+                  ad.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.neutralGray900,
+                  ),
                 ),
               ),
-              if (plan.period.isNotEmpty)
-                Text(
-                  plan.period,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'العمولة: ${amount.toStringAsFixed(0)} ر.س',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              if (payable)
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      context.push('/ads/${ad.id}/pay', extra: amount),
+                  icon: const Icon(Icons.account_balance_rounded, size: 16),
+                  label: const Text('دفع العمولة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -573,624 +380,43 @@ class _PlanCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildFeatureRow(
-    IconData icon,
-    String label,
-    String value, {
-    bool available = true,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Row(
+// ── Hint ──────────────────────────────────────────────────────────────────────
+
+class _Hint extends StatelessWidget {
+  final String text;
+  const _Hint(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: available ? AppTheme.primaryBlue : AppTheme.neutralGray400,
+          const Icon(
+            Icons.receipt_long_outlined,
+            size: 44,
+            color: AppTheme.neutralGray300,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.neutralGray700,
-              ),
-            ),
-          ),
+          const SizedBox(height: 10),
           Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: available
-                  ? AppTheme.neutralGray800
-                  : AppTheme.neutralGray400,
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.neutralGray500,
+              height: 1.5,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-// ── Fee Calculator ────────────────────────────────────────────────────────────
-
-class _FeeCalculatorBody extends StatefulWidget {
-  final double? initialPrice;
-  const _FeeCalculatorBody({this.initialPrice});
-
-  @override
-  State<_FeeCalculatorBody> createState() => _FeeCalculatorBodyState();
-}
-
-class _FeeCalculatorBodyState extends State<_FeeCalculatorBody> {
-  late final TextEditingController _priceController;
-  late double _itemPrice;
-  static const double _feeRate = 0.05;
-
-  @override
-  void initState() {
-    super.initState();
-    _itemPrice = widget.initialPrice ?? 0;
-    _priceController = TextEditingController(
-      text: _itemPrice > 0 ? _itemPrice.toStringAsFixed(0) : '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _priceController.dispose();
-    super.dispose();
-  }
-
-  double get _appFee => _itemPrice * _feeRate;
-  double get _total => _itemPrice + _appFee;
-
-  void _showApplePaySheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => _ApplePaySheet(
-        total: _total,
-        onConfirm: () {
-          Navigator.pop(ctx);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  SizedBox(width: 8),
-                  Text('تمت عملية الدفع بنجاح'),
-                ],
-              ),
-              backgroundColor: AppTheme.colorSuccess,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Info card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: .08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppTheme.primaryBlue.withValues(alpha: .25),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  color: AppTheme.primaryBlue,
-                  size: 22,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'كيف تُحسب رسوم المنصة؟',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppTheme.primaryBlue,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'رسوم النشر تُدفع مقدمًا عند إنشاء الإعلان، وتُخصم من العمولة عند البيع. الرسوم غير مستردة.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.primaryBlue.withValues(alpha: .75),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Price input
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: AppTheme.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'أدخل سعر المنتج',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppTheme.neutralGray800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _priceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d+\.?\d{0,2}'),
-                    ),
-                  ],
-                  textAlign: TextAlign.start,
-                  decoration: InputDecoration(
-                    hintText: '0.00',
-                    suffixText: 'ر.س',
-                    suffixStyle: const TextStyle(
-                      color: AppTheme.neutralGray600,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    filled: true,
-                    fillColor: AppTheme.neutralGray50,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppTheme.neutralGray200,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppTheme.neutralGray200,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppTheme.primaryBlue,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  onChanged: (v) {
-                    setState(() {
-                      _itemPrice = double.tryParse(v) ?? 0;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Breakdown summary
-          if (_itemPrice > 0) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: AppTheme.cardShadow,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'ملخص الدفع',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppTheme.neutralGray800,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildSummaryRow('سعر المنتج', _itemPrice),
-                  const SizedBox(height: 10),
-                  _buildSummaryRow('رسوم المنصة (5%)', _appFee),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: AppTheme.neutralGray200),
-                  ),
-                  _buildSummaryRow('الإجمالي', _total, isTotal: true),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-          ] else
-            const SizedBox(height: 4),
-
-          // Payment methods section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: AppTheme.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'طرق الدفع المتاحة',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppTheme.neutralGray800,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _PaymentMethodBadge(
-                      icon: Icons.credit_card_rounded,
-                      label: 'مدى',
-                      color: const Color(0xFF006B3F),
-                    ),
-                    _PaymentMethodBadge(
-                      icon: Icons.apple,
-                      label: 'Apple Pay',
-                      color: Colors.black87,
-                    ),
-                    _PaymentMethodBadge(
-                      icon: Icons.phone_android_rounded,
-                      label: 'STC Pay',
-                      color: const Color(0xFF7B1FA2),
-                    ),
-                    _PaymentMethodBadge(
-                      icon: Icons.account_balance_rounded,
-                      label: 'تحويل بنكي',
-                      color: const Color(0xFF1565C0),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Apple Pay button
-          ElevatedButton.icon(
-            onPressed: _itemPrice > 0 ? _showApplePaySheet : null,
-            icon: const Icon(Icons.apple, size: 22),
-            label: const Text('الدفع عبر Apple Pay'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              disabledBackgroundColor: AppTheme.neutralGray300,
-              disabledForegroundColor: AppTheme.neutralGray500,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 54),
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-              elevation: 0,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Non-refundable notice
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: Colors.orange.shade700,
-                  size: 18,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'رسوم النشر المدفوعة مقدماً غير مستردة، وتُخصم من إجمالي العمولة عند إتمام البيع.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.orange.shade800,
-                      height: 1.5,
-                    ),
-                    textDirection: TextDirection.rtl,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // App branding footer
-          Center(
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/images/logo_nobg.png',
-                  height: 48,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.bolt_rounded,
-                    size: 48,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  AppConstants.appNameEn,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  AppConstants.appName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'منصة الإعلانات الأولى في المملكة',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.neutralGray500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: isTotal ? 14 : 13,
-            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
-            color: isTotal ? AppTheme.neutralGray800 : AppTheme.neutralGray600,
-          ),
-        ),
-        Text(
-          '${amount.toStringAsFixed(2)} ر.س',
-          style: TextStyle(
-            fontSize: isTotal ? 15 : 13,
-            fontWeight: FontWeight.w700,
-            color: isTotal ? AppTheme.primaryBlue : AppTheme.neutralGray700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Mock Apple Pay Sheet ──────────────────────────────────────────────────────
-
-class _ApplePaySheet extends StatelessWidget {
-  final double total;
-  final VoidCallback onConfirm;
-
-  const _ApplePaySheet({required this.total, required this.onConfirm});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        16,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 24),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          // Apple logo + title
-          const Icon(Icons.apple, size: 44, color: Colors.black),
-          const SizedBox(height: 2),
-          const Text(
-            'Apple Pay',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Payment details card
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F7),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  'المبلغ',
-                  '${total.toStringAsFixed(2)} ر.س',
-                  valueStyle: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildDetailRow('الجهة', 'برق واضح'),
-                const SizedBox(height: 12),
-                _buildDetailRow('الطريقة', 'Apple Pay'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Confirm button
-          ElevatedButton(
-            onPressed: onConfirm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 54),
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-              elevation: 0,
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.touch_app_rounded, size: 20),
-                SizedBox(width: 8),
-                Text('انقر مرتين للتأكيد'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Cancel
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'إلغاء',
-              style: TextStyle(color: AppTheme.neutralGray600, fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value, {TextStyle? valueStyle}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppTheme.neutralGray600, fontSize: 14),
-        ),
-        Text(
-          value,
-          style:
-              valueStyle ??
-              const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: Colors.black,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Payment Method Badge ──────────────────────────────────────────────────────
-
-class _PaymentMethodBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _PaymentMethodBadge({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withOpacity(0.3)),
-          ),
-          child: Icon(icon, color: color, size: 26),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.neutralGray700,
-          ),
-        ),
-      ],
     );
   }
 }

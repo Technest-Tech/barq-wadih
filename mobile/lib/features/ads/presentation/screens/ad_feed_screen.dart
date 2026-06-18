@@ -974,7 +974,7 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
               const _Divider(),
               _HarajDrawerItem(
                 icon: Icons.payments_outlined,
-                title: 'سداد الرسوم والاشتراكات',
+                title: 'سداد العمولات',
                 onTap: () => _closeAndNavigate('/payments'),
               ),
               const _Divider(),

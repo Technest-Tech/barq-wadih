@@ -33,7 +33,15 @@ function relativeTime(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('ar-SA');
 }
 
-function UserAvatar({ name, avatar, size }: { name: string; avatar?: string | null; size: 'sm' | 'md' }) {
+function UserAvatar({
+  name,
+  avatar,
+  size,
+}: {
+  name: string;
+  avatar?: string | null;
+  size: 'sm' | 'md';
+}) {
   const cls = size === 'md' ? styles.commentAvatar : styles.replyAvatar;
   if (avatar) {
     return (
@@ -56,7 +64,11 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
   const { user, isAuthenticated } = useAuthStore();
 
   // ── Seller follow state ───────────────────────────────────────────────────
-  const { following: isFollowingSeller, busy: followBusy, toggle: toggleFollowSeller } = useIsFollowingSeller(ad.user?.id ?? null);
+  const {
+    following: isFollowingSeller,
+    busy: followBusy,
+    toggle: toggleFollowSeller,
+  } = useIsFollowingSeller(ad.user?.id ?? null);
 
   // ── Image / lightbox state ────────────────────────────────────────────────
   const [activeImg, setActiveImg] = useState(0);
@@ -74,7 +86,16 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
   const [showContactModal, setShowContactModal] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [pendingAuthAction, setPendingAuthAction] = useState<
-    'chat' | 'rate' | 'report' | 'follow' | 'reply' | 'comment' | 'follow_ads' | 'favorite' | 'share' | null
+    | 'chat'
+    | 'rate'
+    | 'report'
+    | 'follow'
+    | 'reply'
+    | 'comment'
+    | 'follow_ads'
+    | 'favorite'
+    | 'share'
+    | null
   >(null);
 
   // ── Similar ads ───────────────────────────────────────────────────────────
@@ -82,9 +103,11 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
 
   useEffect(() => {
     if (ad.category) {
-      fetchAds({ category_id: ad.category.id, page: 1 }).then(res => {
-        setSimilarAds(res.data.filter(a => a.id !== ad.id).slice(0, 10));
-      }).catch(() => {});
+      fetchAds({ category_id: ad.category.id, page: 1 })
+        .then((res) => {
+          setSimilarAds(res.data.filter((a) => a.id !== ad.id).slice(0, 10));
+        })
+        .catch(() => {});
     }
   }, [ad.category, ad.id]);
 
@@ -123,7 +146,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
     setQuestionError('');
     try {
       const q = await postQuestion(ad.id, newQuestion.trim());
-      setQuestions(prev => [q, ...prev]);
+      setQuestions((prev) => [q, ...prev]);
       setNewQuestion('');
       setQuestionSuccess(true);
       setTimeout(() => setQuestionSuccess(false), 3000);
@@ -140,12 +163,8 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
     setReplySubmitting(true);
     try {
       const reply = await postReply(questionId, replyText.trim());
-      setQuestions(prev =>
-        prev.map(q =>
-          q.id === questionId
-            ? { ...q, replies: [...q.replies, reply] }
-            : q
-        )
+      setQuestions((prev) =>
+        prev.map((q) => (q.id === questionId ? { ...q, replies: [...q.replies, reply] } : q))
       );
       setReplyText('');
       setReplyingTo(null);
@@ -162,7 +181,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
       setShowAuthModal(true);
       return;
     }
-    setReplyingTo(prev => (prev === questionId ? null : questionId));
+    setReplyingTo((prev) => (prev === questionId ? null : questionId));
     setReplyText('');
   }
 
@@ -171,41 +190,60 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
   const pendingChatTextRef = useRef<string | null>(null);
 
   // Send the buyer's opening message + create/find conversation in one shot.
-  const sendChatMessage = useCallback(async (text: string) => {
-    if (!user?.id) {
-      throw new Error('يرجى تسجيل الدخول أولاً');
-    }
-    setChatLoading(true);
-    try {
-      const result = await startConversation(ad.id, text, user.id);
-      setShowContactModal(false);
-      router.push(`/${locale}/messages/${result.conversation_id}`);
-    } finally {
-      setChatLoading(false);
-    }
-  }, [ad.id, locale, router, user?.id]);
+  const sendChatMessage = useCallback(
+    async (text: string) => {
+      if (!user?.id) {
+        throw new Error('يرجى تسجيل الدخول أولاً');
+      }
+      setChatLoading(true);
+      try {
+        const result = await startConversation(ad.id, text, user.id);
+        setShowContactModal(false);
+        router.push(`/${locale}/messages/${result.conversation_id}`);
+      } finally {
+        setChatLoading(false);
+      }
+    },
+    [ad.id, locale, router, user?.id]
+  );
 
-  const handleSendChat = useCallback(async (text: string) => {
-    if (!isAuthenticated) {
-      pendingChatTextRef.current = text;
-      setPendingAuthAction('chat');
-      setShowContactModal(false);
-      setShowAuthModal(true);
-      return;
-    }
-    await sendChatMessage(text);
-  }, [isAuthenticated, sendChatMessage]);
+  const handleSendChat = useCallback(
+    async (text: string) => {
+      if (!isAuthenticated) {
+        pendingChatTextRef.current = text;
+        setPendingAuthAction('chat');
+        setShowContactModal(false);
+        setShowAuthModal(true);
+        return;
+      }
+      await sendChatMessage(text);
+    },
+    [isAuthenticated, sendChatMessage]
+  );
 
   // ── Auth-gated actions ────────────────────────────────────────────────────
   const executeAction = async (
-    action: 'chat' | 'rate' | 'report' | 'follow' | 'reply' | 'comment' | 'follow_ads' | 'favorite' | 'share'
+    action:
+      | 'chat'
+      | 'rate'
+      | 'report'
+      | 'follow'
+      | 'reply'
+      | 'comment'
+      | 'follow_ads'
+      | 'favorite'
+      | 'share'
   ) => {
     if (action === 'chat') {
       // Prefer a draft typed in the ContactModal; otherwise open the modal.
       const pending = pendingChatTextRef.current;
       pendingChatTextRef.current = null;
       if (pending) {
-        try { await sendChatMessage(pending); } catch { /* swallow */ }
+        try {
+          await sendChatMessage(pending);
+        } catch {
+          /* swallow */
+        }
       } else {
         setShowContactModal(true);
       }
@@ -221,13 +259,26 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
       handleSendQuestion();
     } else if (action === 'follow') {
       if (ad.user) {
-        try { await toggleFollowSeller(); } catch { /* swallow */ }
+        try {
+          await toggleFollowSeller();
+        } catch {
+          /* swallow */
+        }
       }
     }
   };
 
   const requireAuth = (
-    action: 'chat' | 'rate' | 'report' | 'follow' | 'reply' | 'comment' | 'follow_ads' | 'favorite' | 'share'
+    action:
+      | 'chat'
+      | 'rate'
+      | 'report'
+      | 'follow'
+      | 'reply'
+      | 'comment'
+      | 'follow_ads'
+      | 'favorite'
+      | 'share'
   ) => {
     if (!isAuthenticated) {
       setPendingAuthAction(action);
@@ -246,12 +297,15 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
   };
 
   // ── Keyboard lightbox ─────────────────────────────────────────────────────
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!lightboxOpen) return;
-    if (e.key === 'Escape') setLightboxOpen(false);
-    if (e.key === 'ArrowRight') setActiveImg(i => (i + 1) % ad.images.length);
-    if (e.key === 'ArrowLeft') setActiveImg(i => (i - 1 + ad.images.length) % ad.images.length);
-  }, [lightboxOpen, ad]);
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!lightboxOpen) return;
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === 'ArrowRight') setActiveImg((i) => (i + 1) % ad.images.length);
+      if (e.key === 'ArrowLeft') setActiveImg((i) => (i - 1 + ad.images.length) % ad.images.length);
+    },
+    [lightboxOpen, ad]
+  );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -262,7 +316,11 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
-      try { await navigator.share({ title: ad?.title, url }); } catch { /* dismissed */ }
+      try {
+        await navigator.share({ title: ad?.title, url });
+      } catch {
+        /* dismissed */
+      }
     } else {
       await navigator.clipboard.writeText(url);
       setShareToast(true);
@@ -285,7 +343,6 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
         <div className={styles.layout}>
           {/* ── Left: Main Content ── */}
           <div className={styles.leftCol}>
-
             <div className={styles.detailsCard}>
               <h1 className={styles.desktopTitle}>{ad.title}</h1>
 
@@ -312,9 +369,14 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                     <div className={styles.sellerMeta}>
                       <span className={styles.desktopSellerName}>
                         {ad.user.name}
-                        {ad.user.is_verified && <span className={styles.sellerBadgeVerified} title="موثّق">✓</span>}
-                        {ad.user.is_dealer && <span className={styles.sellerBadgeDealer}>معرض</span>}
-                        <span className={styles.sellerProfileChevron} aria-hidden="true">›</span>
+                        {ad.user.is_verified && (
+                          <span className={styles.sellerBadgeVerified} title="موثّق">
+                            ✓
+                          </span>
+                        )}
+                        <span className={styles.sellerProfileChevron} aria-hidden="true">
+                          ›
+                        </span>
                       </span>
                       <div className={styles.sellerSubMeta}>
                         {Number(ad.user.rating_count ?? 0) > 0 && (
@@ -344,17 +406,26 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
 
               {ad.field_values && ad.field_values.length > 0 && (
                 <div className={styles.desktopDescWrapper}>
-                  <strong>— المواصفات :</strong><br />
+                  <strong>— المواصفات :</strong>
+                  <br />
                   {ad.field_values.map((fv) => (
-                    <span key={fv.field_key}>* {fv.label_ar}: {String(fv.value)}<br /></span>
+                    <span key={fv.field_key}>
+                      * {fv.label_ar}: {String(fv.value)}
+                      <br />
+                    </span>
                   ))}
                 </div>
               )}
 
               <div className={styles.desktopDescWrapper}>{ad.description}</div>
 
-              <div className={styles.desktopDescWrapper} style={{ fontWeight: 600, marginBottom: 0 }}>
-                للتواصل:<br />{ad.contact_phone}
+              <div
+                className={styles.desktopDescWrapper}
+                style={{ fontWeight: 600, marginBottom: 0 }}
+              >
+                للتواصل:
+                <br />
+                {ad.contact_phone}
               </div>
             </div>
 
@@ -370,8 +441,16 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                     onClick={() => setLightboxOpen(true)}
                   />
                   <div className={styles.imgOverlay}>
-                    <span className={styles.imgCounter}>{activeImg + 1} / {ad.images.length}</span>
-                    <button className={styles.expandBtn} onClick={() => setLightboxOpen(true)} title="عرض مكبّر">⛶</button>
+                    <span className={styles.imgCounter}>
+                      {activeImg + 1} / {ad.images.length}
+                    </span>
+                    <button
+                      className={styles.expandBtn}
+                      onClick={() => setLightboxOpen(true)}
+                      title="عرض مكبّر"
+                    >
+                      ⛶
+                    </button>
                   </div>
                   {ad.images.length > 1 && (
                     <div className={styles.thumbRow}>
@@ -402,15 +481,23 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
             <div className={styles.hzContainer}>
               <div className={styles.hzCard}>
                 <button className={styles.hzContactBtn} onClick={() => setShowContactModal(true)}>
-                  <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.091 15.091 0 006.59 6.59l2.2-2.2a1 1 0 011.11-.27c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1A19.93 19.93 0 012 2a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.27 1.11l-2.2 2.2z"/></svg>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6.62 10.79a15.091 15.091 0 006.59 6.59l2.2-2.2a1 1 0 011.11-.27c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1A19.93 19.93 0 012 2a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.27 1.11l-2.2 2.2z" />
+                  </svg>
                   تواصل
                 </button>
               </div>
 
               <div className={styles.hzCard}>
                 <div className={styles.hzActionRow}>
-                  <button className={styles.hzActionBtn} onClick={() => requireAuth('chat')} disabled={chatLoading}>
-                    <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                  <button
+                    className={styles.hzActionBtn}
+                    onClick={() => requireAuth('chat')}
+                    disabled={chatLoading}
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
+                    </svg>
                     مراسلة
                   </button>
                   <button
@@ -418,15 +505,21 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                     onClick={() => requireAuth('favorite')}
                     style={isFavorited ? { color: '#f43f5e' } : undefined}
                   >
-                    <svg viewBox="0 0 24 24" fill={isFavorited ? '#f43f5e' : 'currentColor'}><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <svg viewBox="0 0 24 24" fill={isFavorited ? '#f43f5e' : 'currentColor'}>
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
                     {isFavorited ? 'في المفضلة' : 'تفضيل'}
                   </button>
                   <button className={styles.hzActionBtn} onClick={() => requireAuth('share')}>
-                    <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                    <svg viewBox="0 0 24 24">
+                      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
+                    </svg>
                     مشاركة
                   </button>
                   <button className={styles.hzActionBtn} onClick={() => requireAuth('report')}>
-                    <svg viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+                    <svg viewBox="0 0 24 24">
+                      <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
+                    </svg>
                     بلاغ
                   </button>
                 </div>
@@ -434,14 +527,26 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
 
               <div className={styles.hzCard}>
                 <div className={styles.hzTagsRow}>
-                  <Link href={`/${locale}`} className={styles.hzTag}>كل الحراج</Link>
-                  {ad.category && <Link href={`/${locale}?category=${ad.category.id}`} className={styles.hzTag}>{ad.category.name_ar}</Link>}
-                  {ad.city && <Link href={`/${locale}?city=${ad.city.id}`} className={styles.hzTag}>{ad.city.name_ar}</Link>}
+                  <Link href={`/${locale}`} className={styles.hzTag}>
+                    كل الحراج
+                  </Link>
+                  {ad.category && (
+                    <Link href={`/${locale}?category=${ad.category.id}`} className={styles.hzTag}>
+                      {ad.category.name_ar}
+                    </Link>
+                  )}
+                  {ad.city && (
+                    <Link href={`/${locale}?city=${ad.city.id}`} className={styles.hzTag}>
+                      {ad.city.name_ar}
+                    </Link>
+                  )}
                 </div>
               </div>
 
               <div className={styles.hzWarningBanner}>
-                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88a9.947 9.947 0 0112.28 0C16.43 19.18 14.03 20 12 20z"/></svg>
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88a9.947 9.947 0 0112.28 0C16.43 19.18 14.03 20 12 20z" />
+                </svg>
                 <span>شاهد ملف العضو وتقييماته والاراء حوله قبل التعامل معه.</span>
               </div>
             </div>
@@ -476,11 +581,17 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                         <div className={styles.repliesList}>
                           {q.replies.map((reply) => (
                             <div key={reply.id} className={styles.replyCard}>
-                              <UserAvatar name={reply.user.name} avatar={reply.user.avatar} size="sm" />
+                              <UserAvatar
+                                name={reply.user.name}
+                                avatar={reply.user.avatar}
+                                size="sm"
+                              />
                               <div className={styles.replyContent}>
                                 <span className={styles.replyUser}>{reply.user.name}</span>
                                 <p className={styles.replyText}>{reply.body}</p>
-                                <span className={styles.replyTime}>{relativeTime(reply.created_at)}</span>
+                                <span className={styles.replyTime}>
+                                  {relativeTime(reply.created_at)}
+                                </span>
                               </div>
                             </div>
                           ))}
@@ -495,7 +606,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                             className={styles.replyTextarea}
                             placeholder="اكتب ردك هنا..."
                             value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
+                            onChange={(e) => setReplyText(e.target.value)}
                             rows={2}
                           />
                           <div className={styles.replyFormActions}>
@@ -504,9 +615,11 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                               onClick={() => handleSendReply(q.id)}
                               disabled={replySubmitting || !replyText.trim()}
                             >
-                              {replySubmitting
-                                ? <span className={styles.spinnerInline} />
-                                : 'إرسال الرد'}
+                              {replySubmitting ? (
+                                <span className={styles.spinnerInline} />
+                              ) : (
+                                'إرسال الرد'
+                              )}
                             </button>
                             <button
                               className={styles.cancelReplyBtn}
@@ -522,7 +635,9 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                             className={styles.commentReplyBtn}
                             onClick={() => openReplyBox(q.id)}
                           >
-                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
+                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z" />
+                            </svg>
                             رد
                           </button>
                         </div>
@@ -539,7 +654,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                   className={styles.newCommentTextarea}
                   placeholder="ما الذي تريد معرفته عن هذا الإعلان؟"
                   value={newQuestion}
-                  onChange={e => setNewQuestion(e.target.value)}
+                  onChange={(e) => setNewQuestion(e.target.value)}
                   rows={3}
                 />
                 {questionError && <p className={styles.questionError}>{questionError}</p>}
@@ -556,10 +671,16 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                       }
                     }}
                   >
-                    {questionSubmitting
-                      ? <span className={styles.spinnerInline} />
-                      : <>إرسال <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></>
-                    }
+                    {questionSubmitting ? (
+                      <span className={styles.spinnerInline} />
+                    ) : (
+                      <>
+                        إرسال{' '}
+                        <svg viewBox="0 0 24 24">
+                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                      </>
+                    )}
                   </button>
                   {questionSuccess && (
                     <span className={styles.questionSuccess}>✓ تم إرسال سؤالك</span>
@@ -572,8 +693,9 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
             <div className={styles.disclaimer} style={{ marginTop: '1.5rem' }}>
               <span className={styles.disclaimerIcon}>⚠️</span>
               <p>
-                <strong>تنبيه:</strong> برق واضح هي منصة وسيطة بين البائع والمشتري. الموقع غير مسؤول عن دقة المعلومات المقدمة من المُعلن.
-                يُرجى التحقق من السلعة قبل إتمام الصفقة، وعدم دفع أي مبالغ مقدماً دون التأكد من الجودة.
+                <strong>تنبيه:</strong> برق واضح هي منصة وسيطة بين البائع والمشتري. الموقع غير مسؤول
+                عن دقة المعلومات المقدمة من المُعلن. يُرجى التحقق من السلعة قبل إتمام الصفقة، وعدم
+                دفع أي مبالغ مقدماً دون التأكد من الجودة.
               </p>
             </div>
           </div>
@@ -583,7 +705,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
             <div className={styles.similarSidebar}>
               <button className={styles.similarHeaderBtn} onClick={() => requireAuth('follow_ads')}>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
                 </svg>
                 متابعة العروض المشابهة
               </button>
@@ -597,7 +719,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
 
               {similarAds.length > 0 ? (
                 <div className={styles.similarGrid}>
-                  {similarAds.map(s => (
+                  {similarAds.map((s) => (
                     <Link href={`/${locale}/ads/${s.id}`} key={s.id} className={styles.similarCard}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -610,7 +732,14 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '1rem' }}>
+                <p
+                  style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--text-tertiary)',
+                    textAlign: 'center',
+                    marginTop: '1rem',
+                  }}
+                >
                   لا توجد عروض مشابهة
                 </p>
               )}
@@ -622,17 +751,29 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
       {/* ── Lightbox ── */}
       {lightboxOpen && (
         <div className={styles.lightboxOverlay} onClick={() => setLightboxOpen(false)}>
-          <button className={styles.lightboxClose} onClick={() => setLightboxOpen(false)}>✕</button>
+          <button className={styles.lightboxClose} onClick={() => setLightboxOpen(false)}>
+            ✕
+          </button>
           {ad.images.length > 1 && (
             <>
               <button
                 className={`${styles.lightboxNav} ${styles.lightboxPrev}`}
-                onClick={e => { e.stopPropagation(); setActiveImg(i => (i - 1 + ad.images.length) % ad.images.length); }}
-              >‹</button>
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImg((i) => (i - 1 + ad.images.length) % ad.images.length);
+                }}
+              >
+                ‹
+              </button>
               <button
                 className={`${styles.lightboxNav} ${styles.lightboxNext}`}
-                onClick={e => { e.stopPropagation(); setActiveImg(i => (i + 1) % ad.images.length); }}
-              >›</button>
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveImg((i) => (i + 1) % ad.images.length);
+                }}
+              >
+                ›
+              </button>
             </>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -640,16 +781,16 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
             src={ad.images[activeImg]?.image_url}
             alt={ad.title}
             className={styles.lightboxImg}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           />
-          <div className={styles.lightboxCounter}>{activeImg + 1} / {ad.images.length}</div>
+          <div className={styles.lightboxCounter}>
+            {activeImg + 1} / {ad.images.length}
+          </div>
         </div>
       )}
 
       {/* ── Share toast ── */}
-      {shareToast && (
-        <div className={styles.shareToast}>✓ تم نسخ رابط الإعلان</div>
-      )}
+      {shareToast && <div className={styles.shareToast}>✓ تم نسخ رابط الإعلان</div>}
 
       {/* ── Rating Modal ── */}
       {showRatingModal && ad?.user && (
@@ -662,12 +803,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
       )}
 
       {/* ── Report Modal ── */}
-      {showReportModal && (
-        <ReportModal
-          adId={ad.id}
-          onClose={() => setShowReportModal(false)}
-        />
-      )}
+      {showReportModal && <ReportModal adId={ad.id} onClose={() => setShowReportModal(false)} />}
 
       {/* ── Auth Modal ── */}
       <AuthModal

@@ -124,6 +124,8 @@ class AdResource extends JsonResource
             'payment_amount'   => $isOwner ? $ad->payment_amount : null,
             'payment_provider' => $isOwner ? $ad->payment_provider : null,
             'paid_at'          => $isOwner ? $ad->paid_at : null,
+            'payment_proof_url'   => $isOwner ? $ad->payment_proof_url : null,
+            'payment_review_note' => $isOwner ? $ad->payment_review_note : null,
 
             'published_at'     => $ad->published_at,
             'expires_at'       => $ad->expires_at,

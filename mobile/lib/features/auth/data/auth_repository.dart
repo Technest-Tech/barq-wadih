@@ -165,9 +165,39 @@ class AuthRepository {
 
   ApiException _mapError(DioException e) {
     final data = e.response?.data;
-    final message = data is Map
-        ? (data['message'] as String?) ?? e.message ?? 'خطأ في الشبكة'
-        : e.message ?? 'خطأ في الشبكة';
-    return ApiException(message: message, statusCode: e.response?.statusCode);
+    Map<String, dynamic>? errors;
+    String? message;
+
+    if (data is Map) {
+      // Laravel validation (422) returns a generic `message` plus an `errors`
+      // map of per-field messages. Surface the specific field messages instead
+      // of the generic "بيانات غير صالحة".
+      final rawErrors = data['errors'];
+      if (rawErrors is Map) {
+        errors = rawErrors.cast<String, dynamic>();
+        message = _firstFieldError(rawErrors);
+      }
+      message ??= data['message'] as String?;
+    }
+
+    message ??= e.message ?? 'خطأ في الشبكة';
+    return ApiException(
+      message: message,
+      statusCode: e.response?.statusCode,
+      errors: errors,
+    );
+  }
+
+  /// Joins the first message of each field's error list into one readable text.
+  String? _firstFieldError(Map errors) {
+    final messages = <String>[];
+    for (final value in errors.values) {
+      if (value is List && value.isNotEmpty) {
+        messages.add(value.first.toString());
+      } else if (value is String) {
+        messages.add(value);
+      }
+    }
+    return messages.isEmpty ? null : messages.join('\n');
   }
 }

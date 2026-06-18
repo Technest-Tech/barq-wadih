@@ -4,6 +4,9 @@
 	<dict>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<!-- Required for Face ID login (local_auth) -->
+		<key>NSFaceIDUsageDescription</key>
+		<string>يُستخدم للدخول السريع والآمن إلى حسابك باستخدام بصمة الوجه.</string>
 		<key>CFBundleDisplayName</key>
 		<string>Barq Wadih</string>
 		<key>CFBundleExecutable</key>

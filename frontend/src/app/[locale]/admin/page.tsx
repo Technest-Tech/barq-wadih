@@ -267,11 +267,7 @@ export default function AdminDashboardPage() {
           <h1 className={styles.pageTitle}>لوحة التحكم</h1>
           <p className={styles.pageDate}>{dateStr}</p>
         </div>
-        <button
-          className={styles.refreshBtn}
-          onClick={() => loadStats(true)}
-          disabled={refreshing}
-        >
+        <button className={styles.refreshBtn} onClick={() => loadStats(true)} disabled={refreshing}>
           <span className={`${styles.refreshIcon} ${refreshing ? styles.spinning : ''}`}>🔄</span>
           تحديث
         </button>
@@ -311,14 +307,13 @@ export default function AdminDashboardPage() {
           <div className={styles.kpiHeader}>
             <span className={styles.kpiIcon}>💰</span>
             <span className={`${styles.kpiTrend} ${styles[revenueTrend.dir]}`}>
-              {revenueTrend.dir === 'up' ? '↑' : revenueTrend.dir === 'down' ? '↓' : '—'} {revenueTrend.pct}
+              {revenueTrend.dir === 'up' ? '↑' : revenueTrend.dir === 'down' ? '↓' : '—'}{' '}
+              {revenueTrend.pct}
             </span>
           </div>
           <div className={styles.kpiValue}>{formatCurrency(stats.revenue.total)}</div>
           <div className={styles.kpiLabel}>إجمالي الإيرادات</div>
-          <div className={styles.kpiSub}>
-            {formatCurrency(stats.revenue.this_month)} هذا الشهر
-          </div>
+          <div className={styles.kpiSub}>{formatCurrency(stats.revenue.this_month)} هذا الشهر</div>
         </div>
 
         {/* Pending Commissions */}
@@ -363,13 +358,6 @@ export default function AdminDashboardPage() {
           <div>
             <div className={styles.quickStatValue}>{stats.users.verified}</div>
             <div className={styles.quickStatLabel}>موثق</div>
-          </div>
-        </div>
-        <div className={styles.quickStat}>
-          <span className={styles.quickStatIcon}>🏬</span>
-          <div>
-            <div className={styles.quickStatValue}>{stats.users.dealers}</div>
-            <div className={styles.quickStatLabel}>تاجر</div>
           </div>
         </div>
         <div className={styles.quickStat}>
@@ -437,9 +425,7 @@ export default function AdminDashboardPage() {
                 <tr key={ad.id}>
                   <td>
                     <div className={styles.userCell}>
-                      <div className={styles.userAvatar}>
-                        {ad.user?.name?.[0] || '?'}
-                      </div>
+                      <div className={styles.userAvatar}>{ad.user?.name?.[0] || '?'}</div>
                       <span className={styles.userName}>{ad.user?.name || 'مجهول'}</span>
                     </div>
                   </td>
@@ -458,7 +444,14 @@ export default function AdminDashboardPage() {
               ))}
               {stats.recent_ads.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--admin-text-muted)' }}>
+                  <td
+                    colSpan={6}
+                    style={{
+                      textAlign: 'center',
+                      padding: '40px',
+                      color: 'var(--admin-text-muted)',
+                    }}
+                  >
                     لا توجد إعلانات حالياً
                   </td>
                 </tr>

@@ -47,7 +47,86 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           password: _passwordCtrl.text,
         );
     if (!mounted) return;
-    if (ref.read(authProvider) is AuthAuthenticated) context.go('/');
+    if (ref.read(authProvider) is AuthAuthenticated) {
+      await _promptBiometricSetup();
+      if (!mounted) return;
+      context.go('/');
+    }
+  }
+
+  /// After registration, offer to set up fingerprint login for next time.
+  Future<void> _promptBiometricSetup() async {
+    final supported = await ref.read(biometricSupportedProvider.future);
+    if (!supported || !mounted) return;
+
+    final enable = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          icon: const Icon(
+            Icons.fingerprint_rounded,
+            color: AppTheme.primaryBlue,
+            size: 44,
+          ),
+          title: const Text(
+            'تفعيل الدخول بالبصمة',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+          content: const Text(
+            'هل تريد استخدام بصمتك لتسجيل الدخول بسرعة في المرة القادمة؟',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(
+                'لاحقًا',
+                style: TextStyle(color: AppTheme.neutralGray500),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('تفعيل'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (enable != true || !mounted) return;
+
+    final ok = await ref
+        .read(authProvider.notifier)
+        .setupBiometrics(
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text,
+        );
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تم تفعيل الدخول بالبصمة'),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
   }
 
   void _showError(String msg) {

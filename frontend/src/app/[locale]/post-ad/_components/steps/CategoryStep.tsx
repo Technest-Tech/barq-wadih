@@ -15,15 +15,26 @@ export function CategoryStep() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetchCategories().then(setCategories).catch(console.error).finally(() => setLoading(false));
+    fetchCategories()
+      .then(setCategories)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  // Clear search when navigating between parent/sub levels
-  useEffect(() => { setSearch(''); }, [w.parentCategory]);
+  // Clear search when navigating between parent/sub levels. Done during render
+  // (not in an effect) by comparing against the previous parent category.
+  const [prevParent, setPrevParent] = useState(w.parentCategory);
+  if (w.parentCategory !== prevParent) {
+    setPrevParent(w.parentCategory);
+    setSearch('');
+  }
 
+  // Per-category flat commission owed after the sale (publishing itself is free).
   const feeFor = (c: CategoryChild | Category): number | null => {
-    const tier = w.sellerType === 'dealer' ? 'publish_fee_dealer' : 'publish_fee_individual';
-    const v = (c as unknown as Record<string, number | string | null | undefined>)[tier];
+    if ((c as CategoryChild).is_free) return 0;
+    const v = (c as unknown as Record<string, number | string | null | undefined>)[
+      'deferred_commission_individual'
+    ];
     return v === null || v === undefined ? null : Number(v);
   };
 
@@ -36,11 +47,11 @@ export function CategoryStep() {
     const results: Array<{ parent: Category; child: CategoryChild | null }> = [];
     for (const parent of categories) {
       const parentMatch = parent.name_ar.toLowerCase().includes(q);
-      const matchingChildren = (parent.children ?? []).filter(c =>
+      const matchingChildren = (parent.children ?? []).filter((c) =>
         c.name_ar.toLowerCase().includes(q)
       );
       if (matchingChildren.length > 0) {
-        matchingChildren.forEach(child => results.push({ parent, child }));
+        matchingChildren.forEach((child) => results.push({ parent, child }));
       } else if (parentMatch) {
         results.push({ parent, child: null });
       }
@@ -53,13 +64,13 @@ export function CategoryStep() {
     if (!w.parentCategory) return [];
     const source = children.length > 0 ? children : [w.parentCategory as CategoryChild];
     if (!q) return source;
-    return source.filter(c => c.name_ar.toLowerCase().includes(q));
+    return source.filter((c) => c.name_ar.toLowerCase().includes(q));
   }, [q, children, w.parentCategory]);
 
   // Filtered parent categories when no search
   const filteredParents = useMemo(() => {
     if (!q) return categories;
-    return categories.filter(c => c.name_ar.toLowerCase().includes(q));
+    return categories.filter((c) => c.name_ar.toLowerCase().includes(q));
   }, [q, categories]);
 
   const isSearching = q.length > 0;
@@ -71,32 +82,52 @@ export function CategoryStep() {
         <div>
           <div className={styles.stepTitle}>اختر تصنيف الإعلان</div>
           <div className={styles.stepSub}>
-            {w.parentCategory ? `داخل: ${w.parentCategory.name_ar}` : 'اختر القسم ثم التصنيف الفرعي'}
+            {w.parentCategory
+              ? `داخل: ${w.parentCategory.name_ar}`
+              : 'اختر القسم ثم التصنيف الفرعي'}
           </div>
         </div>
       </header>
 
       {loading ? (
-        <div className={styles.loadingWrap}><div className={styles.spinner} /></div>
+        <div className={styles.loadingWrap}>
+          <div className={styles.spinner} />
+        </div>
       ) : (
         <>
           {/* Search bar — shown at both levels */}
           <div className={styles.catSearchWrap}>
             <span className={styles.catSearchIcon}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </span>
             <input
               className={styles.catSearchInput}
               type="search"
-              placeholder={w.parentCategory ? `ابحث في ${w.parentCategory.name_ar}...` : 'ابحث في كل التصنيفات...'}
+              placeholder={
+                w.parentCategory
+                  ? `ابحث في ${w.parentCategory.name_ar}...`
+                  : 'ابحث في كل التصنيفات...'
+              }
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               autoComplete="off"
             />
             {isSearching && (
-              <button type="button" className={styles.catSearchClear} onClick={() => setSearch('')}>✕</button>
+              <button type="button" className={styles.catSearchClear} onClick={() => setSearch('')}>
+                ✕
+              </button>
             )}
           </div>
 
@@ -118,7 +149,7 @@ export function CategoryStep() {
                 </div>
               ) : (
                 <ul className={styles.catList} role="list">
-                  {filteredChildren.map(c => (
+                  {filteredChildren.map((c) => (
                     <li key={c.id}>
                       <button
                         type="button"
@@ -159,10 +190,10 @@ export function CategoryStep() {
                           }
                         }}
                       >
-                        <span className={styles.catRowName}>{highlightMatch(target.name_ar, q)}</span>
-                        {child && (
-                          <span className={styles.catRowBreadcrumb}>{parent.name_ar}</span>
-                        )}
+                        <span className={styles.catRowName}>
+                          {highlightMatch(target.name_ar, q)}
+                        </span>
+                        {child && <span className={styles.catRowBreadcrumb}>{parent.name_ar}</span>}
                         <DealerFeeBadge fee={feeFor(target)} />
                         <Chevron />
                       </button>
@@ -174,7 +205,7 @@ export function CategoryStep() {
           ) : (
             /* Normal parent category list */
             <ul className={styles.catList} role="list">
-              {filteredParents.map(c => {
+              {filteredParents.map((c) => {
                 const childCount = c.children?.length ?? 0;
                 return (
                   <li key={c.id}>
@@ -197,41 +228,6 @@ export function CategoryStep() {
         </>
       )}
 
-      {/* Seller type selector — shown once a category is picked */}
-      {w.category && (
-        <div style={{ marginTop: 20, padding: '16px', background: 'rgba(99,102,241,0.06)', borderRadius: 12, border: '1px solid rgba(99,102,241,0.2)' }}>
-          <div style={{ fontSize: '.85rem', fontWeight: 700, color: '#c7d2fe', marginBottom: 10, textAlign: 'right' }}>
-            أنت تبيع بصفتك...
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => w.setSellerType('individual')}
-              style={{
-                flex: 1, padding: '10px 0', borderRadius: 10, border: `2px solid ${w.sellerType === 'individual' ? '#6366f1' : '#334155'}`,
-                background: w.sellerType === 'individual' ? 'rgba(99,102,241,0.18)' : 'transparent',
-                color: w.sellerType === 'individual' ? '#a5b4fc' : '#94a3b8',
-                fontWeight: 700, fontSize: '.9rem', cursor: 'pointer', transition: 'all .15s',
-              }}
-            >
-              👤 فرد
-            </button>
-            <button
-              type="button"
-              onClick={() => w.setSellerType('dealer')}
-              style={{
-                flex: 1, padding: '10px 0', borderRadius: 10, border: `2px solid ${w.sellerType === 'dealer' ? '#6366f1' : '#334155'}`,
-                background: w.sellerType === 'dealer' ? 'rgba(99,102,241,0.18)' : 'transparent',
-                color: w.sellerType === 'dealer' ? '#a5b4fc' : '#94a3b8',
-                fontWeight: 700, fontSize: '.9rem', cursor: 'pointer', transition: 'all .15s',
-              }}
-            >
-              🏢 معرض / تاجر
-            </button>
-          </div>
-        </div>
-      )}
-
       <WizardFooter />
     </div>
   );
@@ -245,7 +241,14 @@ function highlightMatch(text: string, q: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <mark style={{ background: 'rgba(42,82,152,0.18)', color: 'inherit', borderRadius: 3, padding: '0 1px' }}>
+      <mark
+        style={{
+          background: 'rgba(42,82,152,0.18)',
+          color: 'inherit',
+          borderRadius: 3,
+          padding: '0 1px',
+        }}
+      >
         {text.slice(idx, idx + q.length)}
       </mark>
       {text.slice(idx + q.length)}

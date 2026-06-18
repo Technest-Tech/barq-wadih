@@ -25,11 +25,7 @@ function avgNum(v: string | number | undefined): number {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ProfilePage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default function ProfilePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);
   const { ready } = useRequireAuth(`/${locale}/login`);
   const router = useRouter();
@@ -40,32 +36,33 @@ export default function ProfilePage({
 
   // ── Image uploads ─────────────────────────────────────────────────────────
   const avatarRef = useRef<HTMLInputElement | null>(null);
-  const coverRef  = useRef<HTMLInputElement | null>(null);
+  const coverRef = useRef<HTMLInputElement | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [uploadingCover,  setUploadingCover]  = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // ── Name editing ──────────────────────────────────────────────────────────
   const [editingName, setEditingName] = useState(false);
-  const [nameText,    setNameText]    = useState('');
-  const [savingName,  setSavingName]  = useState(false);
+  const [nameText, setNameText] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   // ── Bio editing ───────────────────────────────────────────────────────────
   const [editingBio, setEditingBio] = useState(false);
-  const [bioText,    setBioText]    = useState('');
-  const [savingBio,  setSavingBio]  = useState(false);
+  const [bioText, setBioText] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
 
   // ── Region / City ─────────────────────────────────────────────────────────
-  const [regions,        setRegions]        = useState<Region[]>([]);
-  const [cities,         setCities]         = useState<City[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<number | ''>('');
-  const [selectedCity,   setSelectedCity]   = useState<number | ''>('');
+  const [selectedCity, setSelectedCity] = useState<number | ''>('');
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationEdited, setLocationEdited] = useState(false);
 
   // ── Fetch fresh user data ─────────────────────────────────────────────────
   useEffect(() => {
     if (!ready) return;
-    authApi.me()
+    authApi
+      .me()
       .then((res) => {
         const u = res.data!;
         setUser(u);
@@ -80,20 +77,27 @@ export default function ProfilePage({
         }
       })
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   // ── Load regions ──────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchRegions().then(setRegions).catch(() => {});
+    fetchRegions()
+      .then(setRegions)
+      .catch(() => {});
   }, []);
 
   // ── Load cities when region changes ──────────────────────────────────────
   useEffect(() => {
-    if (!selectedRegion) { setCities([]); return; }
+    if (!selectedRegion) {
+      setCities([]);
+      return;
+    }
     const region = regions.find((r) => r.id === selectedRegion);
     if (!region) return;
-    fetchCities(region.slug).then(setCities).catch(() => {});
+    fetchCities(region.slug)
+      .then(setCities)
+      .catch(() => {});
   }, [selectedRegion, regions]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -106,7 +110,7 @@ export default function ProfilePage({
     try {
       const res = await authApi.uploadAvatar(file);
       const newUrl = res.data?.avatar_url ?? null;
-      setUser((u) => u ? { ...u, avatar_url: newUrl } : u);
+      setUser((u) => (u ? { ...u, avatar_url: newUrl } : u));
       if (user) updateUser({ ...user, avatar_url: newUrl });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'فشل رفع الصورة');
@@ -123,7 +127,7 @@ export default function ProfilePage({
     try {
       const res = await authApi.uploadCover(file);
       const newUrl = res.data?.cover_image_url ?? null;
-      setUser((u) => u ? { ...u, cover_image_url: newUrl } : u);
+      setUser((u) => (u ? { ...u, cover_image_url: newUrl } : u));
       if (user) updateUser({ ...user, cover_image_url: newUrl });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'فشل رفع الغلاف');
@@ -143,7 +147,7 @@ export default function ProfilePage({
     try {
       const res = await authApi.updateProfile({ name: nameText.trim() });
       const updated = res.data!;
-      setUser((u) => u ? { ...u, name: updated.name } : u);
+      setUser((u) => (u ? { ...u, name: updated.name } : u));
       updateUser({ ...user!, name: updated.name });
       setEditingName(false);
     } catch (err) {
@@ -163,7 +167,7 @@ export default function ProfilePage({
     try {
       const res = await authApi.updateProfile({ bio: bioText.trim() });
       const newBio = res.data?.bio ?? bioText.trim();
-      setUser((u) => u ? { ...u, bio: newBio } : u);
+      setUser((u) => (u ? { ...u, bio: newBio } : u));
       updateUser({ ...user!, bio: newBio });
       setEditingBio(false);
     } catch (err) {
@@ -178,10 +182,10 @@ export default function ProfilePage({
     try {
       const res = await authApi.updateProfile({
         region_id: selectedRegion || undefined,
-        city_id:   selectedCity   || undefined,
+        city_id: selectedCity || undefined,
       });
       const updated = res.data!;
-      setUser((u) => u ? { ...u, region: updated.region, city: updated.city } : u);
+      setUser((u) => (u ? { ...u, region: updated.region, city: updated.city } : u));
       updateUser({ ...user!, region: updated.region, city: updated.city });
       setLocationEdited(false);
     } catch (err) {
@@ -193,7 +197,11 @@ export default function ProfilePage({
 
   async function handleLogout() {
     if (!confirm('هل تريد تسجيل الخروج؟')) return;
-    try { await authApi.logout(); } catch { /* ignore */ }
+    try {
+      await authApi.logout();
+    } catch {
+      /* ignore */
+    }
     clearAuth();
     router.push(`/${locale}`);
   }
@@ -229,7 +237,9 @@ export default function ProfilePage({
       {/* ── Cover ── */}
       <section
         className={`${styles.cover} ${user.cover_image_url ? styles.coverWithImage : ''}`}
-        style={user.cover_image_url ? { backgroundImage: `url(${user.cover_image_url})` } : undefined}
+        style={
+          user.cover_image_url ? { backgroundImage: `url(${user.cover_image_url})` } : undefined
+        }
       >
         {user.cover_image_url && <div className={styles.coverOverlay} />}
         <button
@@ -238,19 +248,27 @@ export default function ProfilePage({
           onClick={() => coverRef.current?.click()}
           disabled={uploadingCover}
         >
-          {uploadingCover
-            ? <><span className={`${styles.spinner} ${styles.spinnerDark}`} /> جارٍ الرفع</>
-            : '📷 تغيير الغلاف'}
+          {uploadingCover ? (
+            <>
+              <span className={`${styles.spinner} ${styles.spinnerDark}`} /> جارٍ الرفع
+            </>
+          ) : (
+            '📷 تغيير الغلاف'
+          )}
         </button>
-        <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handleCoverChange} />
+        <input
+          ref={coverRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          hidden
+          onChange={handleCoverChange}
+        />
       </section>
 
       <main className={styles.page}>
         <div className={styles.container}>
-
           {/* ── Identity card ── */}
           <section className={styles.identityCard}>
-
             {/* Avatar */}
             <div className={styles.avatarWrap}>
               {user.avatar_url ? (
@@ -259,7 +277,11 @@ export default function ProfilePage({
               ) : (
                 <span>{user.name?.charAt(0) ?? '؟'}</span>
               )}
-              {user.is_verified && <span className={styles.verifiedDot} title="موثوق">✓</span>}
+              {user.is_verified && (
+                <span className={styles.verifiedDot} title="موثوق">
+                  ✓
+                </span>
+              )}
               <button
                 type="button"
                 className={styles.avatarEditBtn}
@@ -269,12 +291,17 @@ export default function ProfilePage({
               >
                 {uploadingAvatar ? <span className={styles.spinner} /> : '📷'}
               </button>
-              <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handleAvatarChange} />
+              <input
+                ref={avatarRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={handleAvatarChange}
+              />
             </div>
 
             {/* Name + badges + bio */}
             <div className={styles.identityBody}>
-
               {/* Name row */}
               {editingName ? (
                 <div className={styles.inlineEditRow}>
@@ -284,17 +311,33 @@ export default function ProfilePage({
                     onChange={(e) => setNameText(e.target.value)}
                     maxLength={100}
                     autoFocus
-                    onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveName();
+                      if (e.key === 'Escape') setEditingName(false);
+                    }}
                   />
-                  <button className={styles.inlineSave}  onClick={saveName}               disabled={savingName}>{savingName ? '...' : 'حفظ'}</button>
-                  <button className={styles.inlineCancel} onClick={() => setEditingName(false)} disabled={savingName}>إلغاء</button>
+                  <button className={styles.inlineSave} onClick={saveName} disabled={savingName}>
+                    {savingName ? '...' : 'حفظ'}
+                  </button>
+                  <button
+                    className={styles.inlineCancel}
+                    onClick={() => setEditingName(false)}
+                    disabled={savingName}
+                  >
+                    إلغاء
+                  </button>
                 </div>
               ) : (
                 <div className={styles.nameRow}>
                   <h1 className={styles.name}>{user.name}</h1>
                   {user.is_verified && <span className={styles.verifiedBadge}>✓ موثوق</span>}
-                  {user.is_dealer  && <span className={styles.dealerBadge}>⭐ معرض</span>}
-                  <button className={styles.fieldEditBtn} onClick={openNameEdit} aria-label="تعديل الاسم">✏️</button>
+                  <button
+                    className={styles.fieldEditBtn}
+                    onClick={openNameEdit}
+                    aria-label="تعديل الاسم"
+                  >
+                    ✏️
+                  </button>
                 </div>
               )}
 
@@ -314,17 +357,32 @@ export default function ProfilePage({
                     autoFocus
                   />
                   <div className={styles.bioEditActions}>
-                    <button className={styles.bioSaveBtn}   onClick={saveBio}               disabled={savingBio}>{savingBio ? '...حفظ' : 'حفظ'}</button>
-                    <button className={styles.bioCancelBtn} onClick={() => setEditingBio(false)} disabled={savingBio}>إلغاء</button>
+                    <button className={styles.bioSaveBtn} onClick={saveBio} disabled={savingBio}>
+                      {savingBio ? '...حفظ' : 'حفظ'}
+                    </button>
+                    <button
+                      className={styles.bioCancelBtn}
+                      onClick={() => setEditingBio(false)}
+                      disabled={savingBio}
+                    >
+                      إلغاء
+                    </button>
                   </div>
                 </div>
               ) : (
                 <div className={styles.bioRow}>
-                  {user.bio
-                    ? <p className={styles.bio}>{user.bio}</p>
-                    : <p className={styles.bioPlaceholder}>أضف نبذة تعريفية عنك...</p>
-                  }
-                  <button className={styles.fieldEditBtn} onClick={openBioEdit} aria-label="تعديل النبذة">✏️</button>
+                  {user.bio ? (
+                    <p className={styles.bio}>{user.bio}</p>
+                  ) : (
+                    <p className={styles.bioPlaceholder}>أضف نبذة تعريفية عنك...</p>
+                  )}
+                  <button
+                    className={styles.fieldEditBtn}
+                    onClick={openBioEdit}
+                    aria-label="تعديل النبذة"
+                  >
+                    ✏️
+                  </button>
                 </div>
               )}
 
@@ -376,7 +434,9 @@ export default function ProfilePage({
                 <span className={styles.infoIcon}>📱</span>
                 <div>
                   <span className={styles.infoLabel}>رقم الجوال</span>
-                  <span className={styles.infoValue} dir="ltr">{user.phone ?? '—'}</span>
+                  <span className={styles.infoValue} dir="ltr">
+                    {user.phone ?? '—'}
+                  </span>
                   {user.phone && !user.phone_verified_at && (
                     <span className={styles.unverifiedBadge}>غير موثق</span>
                   )}
@@ -402,7 +462,9 @@ export default function ProfilePage({
                 >
                   <option value="">— اختر المنطقة —</option>
                   {regions.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name_ar}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.name_ar}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -419,7 +481,9 @@ export default function ProfilePage({
                 >
                   <option value="">— اختر المدينة —</option>
                   {cities.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name_ar}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name_ar}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -483,7 +547,6 @@ export default function ProfilePage({
               🚪 تسجيل الخروج
             </button>
           </section>
-
         </div>
       </main>
 

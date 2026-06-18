@@ -50,6 +50,16 @@ export interface AdListItem {
   boosted_until: string | null;
   published_at: string | null;
   created_at: string;
+  // Owner-only: present in My Ads to drive the after-sale commission CTA.
+  payment_status?:
+    | 'not_required'
+    | 'pending'
+    | 'under_review'
+    | 'paid'
+    | 'failed'
+    | 'refunded'
+    | null;
+  payment_amount?: string | null;
 }
 
 export interface AdFieldValue {
@@ -90,10 +100,12 @@ export interface Ad extends AdListItem {
   views_count: number;
   favorites_count: number;
   commission_amount: string | null;
-  payment_status: 'not_required' | 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_status: 'not_required' | 'pending' | 'under_review' | 'paid' | 'failed' | 'refunded';
   payment_amount: string | null;
   payment_provider: string | null;
   paid_at: string | null;
+  payment_proof_url?: string | null;
+  payment_review_note?: string | null;
   expires_at: string | null;
   updated_at: string;
   // Sprint 13: Boost eligibility (owner-only, null for non-owners)

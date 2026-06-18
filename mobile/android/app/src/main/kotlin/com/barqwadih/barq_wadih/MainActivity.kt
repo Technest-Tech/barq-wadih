@@ -1,5 +1,7 @@
 package com.barqwadih.barq_wadih
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FlutterFragmentActivity (not FlutterActivity) is required by the local_auth
+// plugin to host the native biometric prompt.
+class MainActivity : FlutterFragmentActivity()

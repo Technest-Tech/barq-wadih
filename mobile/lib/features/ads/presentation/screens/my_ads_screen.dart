@@ -357,10 +357,15 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
   Future<void> _handleMarkSold() async {
     setState(() => _markingSold = true);
     try {
-      await ref.read(adRepositoryProvider).markSold(ad.id);
+      final result = await ref.read(adRepositoryProvider).markSold(ad.id);
       ref.read(myAdsProvider.notifier).updateStatus(ad.id, 'sold', 'مُباع');
       if (mounted) {
-        await SoldFeeSheet.show(context, adTitle: ad.title, adPrice: ad.price);
+        await SoldFeeSheet.show(
+          context,
+          adId: ad.id,
+          adTitle: ad.title,
+          commission: result.paymentAmount ?? 0,
+        );
       }
     } on ApiException catch (e) {
       if (mounted) {

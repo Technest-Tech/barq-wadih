@@ -132,21 +132,14 @@ class AdController extends BaseController
             $request->file('images', [])
         );
 
-        // Tell the wizard whether to skip straight to the ad detail page or
-        // hand off to the Pay step. Frontend reads `requires_payment` first.
-        $requiresPayment = $ad->payment_status === \App\Enums\PaymentStatus::Pending->value
-            && (float) ($ad->payment_amount ?? 0) > 0;
-
-        $message = $requiresPayment
-            ? 'تم حفظ الإعلان — يرجى إكمال الدفع لنشره.'
-            : 'تم نشر الإعلان بنجاح.';
-
+        // Publishing is free for every category — the ad goes live immediately.
+        // The flat commission is only charged after the seller marks it sold.
         return $this->successResponse([
             'ad'              => new AdResource($ad),
-            'requires_payment'=> $requiresPayment,
-            'payment_amount'  => $requiresPayment ? (float) $ad->payment_amount : 0.0,
-            'payment_init_url'=> $requiresPayment ? route('ads.payment.init', ['ad' => $ad->id]) : null,
-        ], $message, 201);
+            'requires_payment'=> false,
+            'payment_amount'  => 0.0,
+            'payment_init_url'=> null,
+        ], 'تم نشر الإعلان بنجاح.', 201);
     }
 
     // ── Auth: Update Ad ───────────────────────────────────────────────────────
@@ -241,14 +234,12 @@ class AdController extends BaseController
         return $this->successResponse([
             'price'              => $price,
             'commission_amount'  => $amount,
-            'commission_rate'    => $isFlatFee ? null : '0.5%',
-            'is_flat_fee'        => $isFlatFee,
-            'minimum_commission' => $isFlatFee ? null : 90.0,
-            'note'               => $price <= 0
-                ? 'أدخل السعر لحساب العمولة'
-                : ($isFlatFee
-                    ? "العمولة المستحقة ثابتة: {$amount} ر.س"
-                    : 'العمولة = الأعلى بين 90 ر.س أو 0.5% من السعر'),
+            'commission_rate'    => null,
+            'is_flat_fee'        => true,
+            'minimum_commission' => null,
+            'note'               => $amount > 0
+                ? "النشر مجاني. عمولة ثابتة {$amount} ر.س (شاملة الضريبة) تُدفع بعد إتمام البيع."
+                : 'النشر والعمولة مجاناً بالكامل في هذا القسم.',
         ]);
     }
 }

@@ -26,6 +26,9 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_secure_storage: ^10.0.0
 
+  # Biometric (fingerprint / Face ID) login
+  local_auth: ^2.3.0
+
   # Firebase (phone OTP auth + Firestore chat + Storage + Push)
   firebase_core: ^3.13.0
   firebase_auth: ^5.5.2
@@ -56,6 +59,9 @@ dependencies:
 
   # Typography
   google_fonts: ^6.2.1
+
+  # Icons — shared with the Next.js web frontend (lucide-react)
+  lucide_icons: ^0.257.0
 
   # Local KV cache
   hive_flutter: ^1.1.0

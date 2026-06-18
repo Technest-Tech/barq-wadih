@@ -9,14 +9,15 @@ class CategorySeeder extends Seeder
 {
     public function run(): void
     {
-        // Publish fees (SAR): upfront cost when posting an ad.
-        $carsFees   = ['publish_fee_individual' => 20.00, 'publish_fee_dealer' => 10.00];
-        $otherFees  = ['publish_fee_individual' => 3.00,  'publish_fee_dealer' => 3.00];
+        // Publishing is FREE for every category — no upfront publish fee.
+        $carsFees   = ['publish_fee_individual' => 0.00, 'publish_fee_dealer' => 0.00];
+        $otherFees  = ['publish_fee_individual' => 0.00, 'publish_fee_dealer' => 0.00];
 
-        // Deferred commissions (SAR): collected after the sale.
-        // Cars dealers: 80 SAR fixed. Phones: 10 SAR fixed. Others: 0 (falls back to 0.5% formula).
-        $carsDeferred   = ['deferred_commission_individual' => 0.00, 'deferred_commission_dealer' => 80.00];
-        $phonesDeferred = ['deferred_commission_individual' => 10.00, 'deferred_commission_dealer' => 10.00];
+        // Flat commissions (SAR, VAT-inclusive): collected AFTER the sale.
+        // Cars & Vehicles: 99 ر.س. Phones & all other paid sections: 10 ر.س. Free sections: 0.
+        $carsDeferred   = ['deferred_commission_individual' => 99.00, 'deferred_commission_dealer' => 99.00];
+        $otherDeferred  = ['deferred_commission_individual' => 10.00, 'deferred_commission_dealer' => 10.00];
+        $phonesDeferred = $otherDeferred;
 
         $categories = [
             // ── 1. السيارات ────────────────────────────────────────────────────
@@ -379,7 +380,7 @@ class CategorySeeder extends Seeder
         foreach ($categories as $data) {
             $children  = $data['children'] ?? [];
             $fees      = $data['fees']     ?? $otherFees;
-            $deferred  = $data['deferred'] ?? [];
+            $deferred  = $data['deferred'] ?? $otherDeferred;
             unset($data['children'], $data['fees'], $data['deferred']);
 
             $attrs = array_merge($data, [
@@ -388,6 +389,7 @@ class CategorySeeder extends Seeder
                 'image'                           => $data['image'] ?? null,
                 'prohibited_keywords'             => $data['prohibited_keywords'] ?? null,
                 'commission_rate'                 => $data['commission_rate'] ?? null,
+                'commission_trigger'              => 'after_sale',
                 'publish_fee_individual'          => $fees['publish_fee_individual'],
                 'publish_fee_dealer'              => $fees['publish_fee_dealer'],
                 'fee_deductible_from_commission'  => true,
@@ -407,6 +409,7 @@ class CategorySeeder extends Seeder
                         'is_active'                       => $child['is_active'] ?? true,
                         'is_free'                         => $data['is_free'],
                         'image'                           => null,
+                        'commission_trigger'              => 'after_sale',
                         'publish_fee_individual'          => $fees['publish_fee_individual'],
                         'publish_fee_dealer'              => $fees['publish_fee_dealer'],
                         'fee_deductible_from_commission'  => true,

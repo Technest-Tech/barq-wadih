@@ -135,19 +135,19 @@ export default function SellerProfilePage({
   const { id } = use(params);
   const userId = parseInt(id, 10);
 
-  const [profile, setProfile]   = useState<SellerProfile | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [profile, setProfile] = useState<SellerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [tab, setTab] = useState<'ads' | 'reviews'>('ads');
 
-  const [ads, setAds]                 = useState<AdListItem[]>([]);
-  const [adsLoading, setAdsLoading]   = useState(false);
-  const [adsPage, setAdsPage]         = useState(1);
-  const [adsHasMore, setAdsHasMore]   = useState(false);
+  const [ads, setAds] = useState<AdListItem[]>([]);
+  const [adsLoading, setAdsLoading] = useState(false);
+  const [adsPage, setAdsPage] = useState(1);
+  const [adsHasMore, setAdsHasMore] = useState(false);
 
-  const [reviews, setReviews]         = useState<Rating[]>([]);
-  const [reviewsLoading, setRevLoad]  = useState(false);
+  const [reviews, setReviews] = useState<Rating[]>([]);
+  const [reviewsLoading, setRevLoad] = useState(false);
 
   const { following, busy: followBusy, toggle: toggleFollow } = useIsFollowingSeller(userId);
 
@@ -155,13 +155,13 @@ export default function SellerProfilePage({
   const updateAuthUser = useAuthStore((s) => s.updateUser);
   const isOwnProfile = currentUser?.id === userId;
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const coverInputRef  = useRef<HTMLInputElement | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [uploadingCover,  setUploadingCover]  = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const [editingBio, setEditingBio] = useState(false);
-  const [bioText,    setBioText]    = useState('');
-  const [savingBio,  setSavingBio]  = useState(false);
+  const [bioText, setBioText] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -221,11 +221,15 @@ export default function SellerProfilePage({
     let cancelled = false;
     setLoading(true);
     fetchSellerProfile(userId)
-      .then((p) => { if (!cancelled) setProfile(p); })
+      .then((p) => {
+        if (!cancelled) setProfile(p);
+      })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'فشل تحميل الملف');
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     setAdsLoading(true);
     fetchSellerAds(userId, 1)
@@ -235,14 +239,22 @@ export default function SellerProfilePage({
         setAdsHasMore(res.meta.current_page < res.meta.last_page);
         setAdsPage(1);
       })
-      .finally(() => { if (!cancelled) setAdsLoading(false); });
+      .finally(() => {
+        if (!cancelled) setAdsLoading(false);
+      });
 
     setRevLoad(true);
     fetchUserRatings(userId, 1)
-      .then((res) => { if (!cancelled) setReviews(res.data); })
-      .finally(() => { if (!cancelled) setRevLoad(false); });
+      .then((res) => {
+        if (!cancelled) setReviews(res.data);
+      })
+      .finally(() => {
+        if (!cancelled) setRevLoad(false);
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   async function loadMoreAds() {
@@ -279,7 +291,9 @@ export default function SellerProfilePage({
               <div className={styles.emptyIllustration}>👤</div>
               <h2>تعذر تحميل ملف البائع</h2>
               <p>{error ?? 'البائع غير موجود.'}</p>
-              <Link href="/ar" className={styles.browseBtn}>الرئيسية</Link>
+              <Link href="/ar" className={styles.browseBtn}>
+                الرئيسية
+              </Link>
             </div>
           </div>
         </main>
@@ -288,8 +302,8 @@ export default function SellerProfilePage({
     );
   }
 
-  const avg     = avgNumber(profile.avg_rating);
-  const dist    = profile.rating_distribution;
+  const avg = avgNumber(profile.avg_rating);
+  const dist = profile.rating_distribution;
   const distMax = Math.max(1, ...Object.values(dist));
   const lastActive = formatLastActive(profile.last_active_at);
 
@@ -327,7 +341,6 @@ export default function SellerProfilePage({
 
       <main className={styles.page}>
         <div className={styles.container}>
-
           {/* ── Identity card ── */}
           <section className={styles.identityCard}>
             <div className={styles.avatarWrap}>
@@ -337,7 +350,11 @@ export default function SellerProfilePage({
               ) : (
                 <span>{profile.name?.charAt(0) ?? '؟'}</span>
               )}
-              {profile.is_verified && <span className={styles.verifiedDot} title="موثوق">✓</span>}
+              {profile.is_verified && (
+                <span className={styles.verifiedDot} title="موثوق">
+                  ✓
+                </span>
+              )}
               {isOwnProfile && (
                 <>
                   <button
@@ -364,7 +381,6 @@ export default function SellerProfilePage({
               <div className={styles.nameRow}>
                 <h1 className={styles.name}>{profile.name}</h1>
                 {profile.is_verified && <span className={styles.verifiedBadge}>✓ موثوق</span>}
-                {profile.is_dealer && <span className={styles.dealerBadge}>⭐ معرض</span>}
               </div>
 
               <div className={styles.metaRow}>
@@ -389,11 +405,7 @@ export default function SellerProfilePage({
                     autoFocus
                   />
                   <div className={styles.bioEditActions}>
-                    <button
-                      className={styles.bioSaveBtn}
-                      onClick={saveBio}
-                      disabled={savingBio}
-                    >
+                    <button className={styles.bioSaveBtn} onClick={saveBio} disabled={savingBio}>
                       {savingBio ? '...حفظ' : 'حفظ'}
                     </button>
                     <button
@@ -487,9 +499,7 @@ export default function SellerProfilePage({
                 <div className={styles.distMain}>
                   <div className={styles.distAvg}>{avg.toFixed(1)}</div>
                   <Stars value={avg} size={18} />
-                  <div className={styles.distCount}>
-                    بناءً على {profile.rating_count} تقييم
-                  </div>
+                  <div className={styles.distCount}>بناءً على {profile.rating_count} تقييم</div>
                 </div>
                 <div className={styles.distBars}>
                   {[5, 4, 3, 2, 1].map((star) => {
@@ -548,7 +558,9 @@ export default function SellerProfilePage({
             ) : (
               <>
                 <div className={styles.adsGrid}>
-                  {ads.map((ad) => <AdCard key={ad.id} ad={ad} />)}
+                  {ads.map((ad) => (
+                    <AdCard key={ad.id} ad={ad} />
+                  ))}
                 </div>
                 {adsHasMore && (
                   <div className={styles.loadMoreWrap}>
@@ -559,23 +571,23 @@ export default function SellerProfilePage({
                 )}
               </>
             )
+          ) : reviewsLoading ? (
+            <div className={styles.reviewsList}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className={styles.reviewSkeleton} />
+              ))}
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className={styles.tabEmpty}>
+              <div className={styles.tabEmptyIcon}>⭐</div>
+              <p>لا توجد تقييمات بعد</p>
+            </div>
           ) : (
-            reviewsLoading ? (
-              <div className={styles.reviewsList}>
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className={styles.reviewSkeleton} />
-                ))}
-              </div>
-            ) : reviews.length === 0 ? (
-              <div className={styles.tabEmpty}>
-                <div className={styles.tabEmptyIcon}>⭐</div>
-                <p>لا توجد تقييمات بعد</p>
-              </div>
-            ) : (
-              <div className={styles.reviewsList}>
-                {reviews.map((r) => <ReviewCard key={r.id} r={r} />)}
-              </div>
-            )
+            <div className={styles.reviewsList}>
+              {reviews.map((r) => (
+                <ReviewCard key={r.id} r={r} />
+              ))}
+            </div>
           )}
         </div>
       </main>

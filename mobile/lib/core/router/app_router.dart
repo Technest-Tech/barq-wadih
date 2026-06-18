@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../../features/ads/presentation/screens/ad_feed_screen.dart';
 import '../../features/ads/presentation/screens/ad_detail_screen.dart';
 import '../../features/ads/presentation/screens/post_ad_screen.dart';
+import '../../features/ads/presentation/screens/bank_transfer_screen.dart';
 import '../../features/ads/presentation/screens/my_ads_screen.dart';
 import '../../features/ads/presentation/screens/search_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -176,6 +177,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return _slidePage(
             key: state.pageKey,
             child: AdDetailScreen(adId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/ads/:id/pay',
+        pageBuilder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+          final fee = state.extra is num
+              ? (state.extra as num).toDouble()
+              : 0.0;
+          return _slidePage(
+            key: state.pageKey,
+            child: BankTransferScreen(adId: id, fee: fee),
           );
         },
       ),

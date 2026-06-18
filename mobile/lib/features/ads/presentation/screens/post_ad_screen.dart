@@ -25,6 +25,9 @@ import '../../domain/ad_model.dart';
 
 enum _PriceOption { fixed, negotiable, callForPrice }
 
+/// A Saudi mobile number in canonical local form: 05 followed by 8 digits.
+bool isValidSaudiPhone(String raw) => RegExp(r'^05\d{8}$').hasMatch(raw.trim());
+
 class PostAdScreen extends ConsumerStatefulWidget {
   final int? adId;
   const PostAdScreen({super.key, this.adId});
@@ -47,18 +50,14 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   CategoryModel? _selectedCategory;
 
   // Step 2 — Details
-  String _sellerType = 'individual'; // 'individual' | 'dealer'
+  // All users are individuals for now — the merchant/individual choice was removed.
+  final String _sellerType = 'individual';
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _whatsappCtrl = TextEditingController();
   _PriceOption _priceOption = _PriceOption.fixed;
   bool _showPhonePublicly = true;
-
-  // Dynamic category field controllers
-  final Map<String, TextEditingController> _dynControllers = {};
-  final Map<String, String> _fieldValues = {};
 
   // Step 3 — Images
   final List<XFile> _images = [];
@@ -79,7 +78,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   bool get _step2Valid =>
       _titleCtrl.text.trim().isNotEmpty &&
       _descCtrl.text.trim().isNotEmpty &&
-      (!_showPhonePublicly || _phoneCtrl.text.trim().isNotEmpty) &&
+      (!_showPhonePublicly || isValidSaudiPhone(_phoneCtrl.text)) &&
       (_priceOption != _PriceOption.fixed || _priceCtrl.text.trim().isNotEmpty);
 
   @override
@@ -102,11 +101,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     _descCtrl.dispose();
     _priceCtrl.dispose();
     _phoneCtrl.dispose();
-    _whatsappCtrl.dispose();
     _districtFreeTextCtrl.dispose();
-    for (final c in _dynControllers.values) {
-      c.dispose();
-    }
     super.dispose();
   }
 
@@ -137,17 +132,12 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         _descCtrl.text = ad.description;
         _priceCtrl.text = ad.price?.toStringAsFixed(0) ?? '';
         _phoneCtrl.text = ad.contactPhone;
-        _whatsappCtrl.text = ad.contactWhatsapp ?? '';
         _priceOption = ad.priceHidden
             ? _PriceOption.callForPrice
             : ad.isNegotiable
             ? _PriceOption.negotiable
             : _PriceOption.fixed;
         _showPhonePublicly = ad.showPhonePublicly;
-
-        for (final fv in ad.fieldValues) {
-          _fieldValues[fv.fieldKey] = fv.value?.toString() ?? '';
-        }
 
         if (ad.region != null) {
           _selectedRegion = RegionModel(
@@ -264,14 +254,6 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     setState(() => _step--);
   }
 
-  TextEditingController _dynCtrl(String key) {
-    return _dynControllers.putIfAbsent(key, () {
-      final c = TextEditingController(text: _fieldValues[key] ?? '');
-      c.addListener(() => _fieldValues[key] = c.text);
-      return c;
-    });
-  }
-
   // ── Image picking ──────────────────────────────────────────────────────────
 
   Future<void> _pickImages() async {
@@ -298,8 +280,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     final publishFee = _selectedCategory?.publishFee(_sellerType) ?? 0.0;
     final categoryIsFree = _selectedCategory?.isFree ?? false;
 
-    if (categoryIsFree || publishFee <= 0) {
-      // Free category or no publish fee — submit directly
+    // Free category, no fee, or editing an existing ad — submit directly.
+    if (categoryIsFree || publishFee <= 0 || _isEditMode) {
       await _submit();
       return;
     }
@@ -319,13 +301,13 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await _submit();
+      await _submit(publishFee: publishFee);
     }
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
-  Future<void> _submit() async {
+  Future<void> _submit({double? publishFee}) async {
     if (!_pledgeAccepted || _selectedCity == null) return;
     setState(() {
       _submitting = true;
@@ -357,8 +339,6 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         'price_hidden': (_priceOption == _PriceOption.callForPrice) ? '1' : '0',
         'show_phone_publicly': _showPhonePublicly ? '1' : '0',
         'contact_phone': _phoneCtrl.text.trim(),
-        if (_whatsappCtrl.text.isNotEmpty)
-          'contact_whatsapp': _whatsappCtrl.text.trim(),
         if (_selectedDistrict != null)
           'district_id': _selectedDistrict!.id.toString()
         else if (_districtFreeTextCtrl.text.trim().isNotEmpty)
@@ -366,7 +346,6 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         'pledge_accepted': '1',
         if (_latitude != null) 'latitude': _latitude.toString(),
         if (_longitude != null) 'longitude': _longitude.toString(),
-        ..._fieldValues.map((k, v) => MapEntry('fields[$k]', v)),
       };
 
       if (!_isEditMode) {
@@ -390,6 +369,14 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       if (mounted) {
         ref.invalidate(adsFeedProvider);
         ref.invalidate(myAdsProvider);
+
+        // Paid ad — route to the bank-transfer + receipt-upload screen instead
+        // of the ad detail. The ad stays pending until the transfer is approved.
+        if (publishFee != null && publishFee > 0) {
+          context.go('/ads/${ad.id}/pay', extra: publishFee);
+          return;
+        }
+
         context.go('/ads/${ad.id}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -509,18 +496,12 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   descCtrl: _descCtrl,
                   priceCtrl: _priceCtrl,
                   phoneCtrl: _phoneCtrl,
-                  whatsappCtrl: _whatsappCtrl,
                   priceOption: _priceOption,
                   showPhonePublicly: _showPhonePublicly,
-                  categoryId: _selectedCategory?.id,
-                  fieldValues: _fieldValues,
                   errors: _fieldErrors,
                   onPriceOptionChanged: (v) => setState(() => _priceOption = v),
                   onShowPhoneChanged: (v) =>
                       setState(() => _showPhonePublicly = v),
-                  onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
-                  dynCtrl: _dynCtrl,
-                  isValid: _step2Valid,
                   onBack: _prev,
                   onNext: () {
                     if (_step2Valid) _next();
@@ -550,7 +531,6 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   priceText: _priceCtrl.text.trim(),
                   categoryId: _selectedCategory?.id,
                   sellerType: _sellerType,
-                  onSellerTypeChanged: (v) => setState(() => _sellerType = v),
                   onSelectLocation: (r, c) {
                     setState(() {
                       _selectedRegion = r;
@@ -744,8 +724,8 @@ class _Step0Pledge extends StatelessWidget {
       'بسم الله الرحمن الرحيم.\n\n'
       'أتعهد وأقسم بالله العظيم أنا المعلن المسجّل في موقع برق واضح ما يلي:\n\n'
       '١. أن جميع المعلومات والصور المنشورة في إعلاني صحيحة ودقيقة، وتعبّر عن السلعة أو الخدمة كما هي بدون غش أو تدليس.\n\n'
-      '٢. أن أدفع للموقع رسوم العمولة المستحقة المحددة حسب القسم المختار، خلال مدة لا تتجاوز 10 أيام من استلامي لكامل مبلغ المبايعة من المشتري.\n\n'
-      '٣. أن رسوم النشر المدفوعة عند إنشاء الإعلان غير مستردة، وذلك مقابل خدمة عرض الإعلان والوصول إلى المهتمين.\n\n'
+      '٢. أن أدفع للموقع عمولة البيع الثابتة المحددة حسب القسم المختار (شاملة ضريبة القيمة المضافة) بعد إتمام عملية البيع، خلال مدة لا تتجاوز 10 أيام من استلامي لكامل مبلغ المبايعة من المشتري.\n\n'
+      '٣. أن نشر الإعلان مجاني، وأن العمولة لا تُستحق إلا بعد إتمام البيع فعلياً.\n\n'
       '٤. أن أتحمل كامل المسؤولية القانونية والشرعية عن صحة الإعلان ومحتواه، وأن للموقع الحق في حذفه أو إيقاف حسابي عند مخالفة الشروط.\n\n'
       '٥. ألتزم بعدم نشر إعلانات تحتوي على ما يخالف الأنظمة المعمول بها في المملكة العربية السعودية.\n\n'
       'والله على ما أقول شهيد.';
@@ -1336,20 +1316,12 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
 // ── Step 2: Details ───────────────────────────────────────────────────────────
 
 class _Step2Details extends ConsumerStatefulWidget {
-  final TextEditingController titleCtrl,
-      descCtrl,
-      priceCtrl,
-      phoneCtrl,
-      whatsappCtrl;
+  final TextEditingController titleCtrl, descCtrl, priceCtrl, phoneCtrl;
   final _PriceOption priceOption;
-  final bool showPhonePublicly, isValid;
-  final int? categoryId;
-  final Map<String, String> fieldValues;
+  final bool showPhonePublicly;
   final Map<String, String> errors;
   final void Function(_PriceOption) onPriceOptionChanged;
   final void Function(bool) onShowPhoneChanged;
-  final void Function(String, String) onFieldChanged;
-  final TextEditingController Function(String) dynCtrl;
   final VoidCallback onBack, onNext;
 
   const _Step2Details({
@@ -1357,17 +1329,11 @@ class _Step2Details extends ConsumerStatefulWidget {
     required this.descCtrl,
     required this.priceCtrl,
     required this.phoneCtrl,
-    required this.whatsappCtrl,
     required this.priceOption,
     required this.showPhonePublicly,
-    required this.isValid,
-    required this.categoryId,
-    required this.fieldValues,
     required this.errors,
     required this.onPriceOptionChanged,
     required this.onShowPhoneChanged,
-    required this.onFieldChanged,
-    required this.dynCtrl,
     required this.onBack,
     required this.onNext,
   });
@@ -1379,9 +1345,17 @@ class _Step2Details extends ConsumerStatefulWidget {
 class _Step2DetailsState extends ConsumerState<_Step2Details> {
   @override
   Widget build(BuildContext context) {
-    final categoryFieldsState = widget.categoryId != null
-        ? ref.watch(categoryFieldsProvider(widget.categoryId!))
-        : null;
+    // Compute validity here (not via a parent prop) so the Next button updates
+    // live as the user types — text changes only rebuild this child widget.
+    final phoneText = widget.phoneCtrl.text.trim();
+    final phoneValid =
+        !widget.showPhonePublicly || isValidSaudiPhone(phoneText);
+    final isValid =
+        widget.titleCtrl.text.trim().isNotEmpty &&
+        widget.descCtrl.text.trim().isNotEmpty &&
+        phoneValid &&
+        (widget.priceOption != _PriceOption.fixed ||
+            widget.priceCtrl.text.trim().isNotEmpty);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -1404,7 +1378,7 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               style: const TextStyle(color: AppTheme.neutralGray900),
               onChanged: (_) => setState(() {}),
               decoration: _inputDecoration(
-                hint: 'مثال: تويوتا كامري 2022 نظيف',
+                hint: 'مثال: عنوان واضح ومختصر يصف الإعلان',
                 error: widget.errors['title'],
               ),
             ),
@@ -1497,112 +1471,6 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
             const SizedBox(height: 4),
           ],
 
-          // ── Dynamic category fields ───────────────────────────────────────
-          if (categoryFieldsState != null) ...[
-            categoryFieldsState.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: AppTheme.primaryBlue,
-                    strokeWidth: 2,
-                  ),
-                ),
-              ),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (fields) {
-                if (fields.isEmpty) return const SizedBox.shrink();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionHeader(
-                      title: 'المواصفات',
-                      icon: Icons.tune_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    ...fields.map((f) {
-                      if (f.options.isNotEmpty) {
-                        return _FormField(
-                          label: f.labelAr,
-                          required: f.isRequired,
-                          child: DropdownButtonFormField<String>(
-                            initialValue: widget.fieldValues[f.fieldKey],
-                            hint: Text(
-                              f.placeholderAr ?? 'اختر...',
-                              style: const TextStyle(
-                                color: AppTheme.neutralGray500,
-                              ),
-                            ),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 14,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppTheme.neutralGray200,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppTheme.neutralGray200,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppTheme.primaryBlue,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                            items: f.options
-                                .map(
-                                  (o) => DropdownMenuItem(
-                                    value: o,
-                                    child: Text(
-                                      o,
-                                      textDirection: TextDirection.rtl,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null)
-                                widget.onFieldChanged(f.fieldKey, v);
-                            },
-                          ),
-                        );
-                      }
-                      return _FormField(
-                        label: f.labelAr,
-                        required: f.isRequired,
-                        child: TextField(
-                          controller: widget.dynCtrl(f.fieldKey),
-                          textDirection: TextDirection.rtl,
-                          keyboardType:
-                              f.fieldType == 'number' || f.fieldType == 'year'
-                              ? TextInputType.number
-                              : TextInputType.text,
-                          style: const TextStyle(
-                            color: AppTheme.neutralGray900,
-                          ),
-                          decoration: _inputDecoration(
-                            hint: f.placeholderAr ?? '',
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
-            ),
-          ],
-
           // ── Contact ──────────────────────────────────────────────────────
           _SectionHeader(title: 'معلومات التواصل', icon: Icons.phone_outlined),
           const SizedBox(height: 12),
@@ -1624,33 +1492,18 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               controller: widget.phoneCtrl,
               textDirection: TextDirection.ltr,
               keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
               onChanged: (_) => setState(() {}),
               style: const TextStyle(color: AppTheme.neutralGray900),
               decoration: _inputDecoration(
                 hint: '05xxxxxxxx',
-                error: widget.errors['contact_phone'],
-                prefix: const Text(
-                  '🇸🇦 +966  ',
-                  style: TextStyle(fontSize: 13),
-                ),
-              ),
-            ),
-          ),
-
-          _FormField(
-            label: 'رقم واتساب',
-            required: false,
-            child: TextField(
-              controller: widget.whatsappCtrl,
-              textDirection: TextDirection.ltr,
-              keyboardType: TextInputType.phone,
-              style: const TextStyle(color: AppTheme.neutralGray900),
-              decoration: _inputDecoration(
-                hint: '05xxxxxxxx (اختياري)',
-                prefix: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [Text('💬  ', style: TextStyle(fontSize: 15))],
-                ),
+                error: phoneText.isNotEmpty && !isValidSaudiPhone(phoneText)
+                    ? 'أدخل رقم جوال سعودي صحيح (05xxxxxxxx)'
+                    : widget.errors['contact_phone'],
+                prefix: const Text('🇸🇦  ', style: TextStyle(fontSize: 13)),
               ),
             ),
           ),
@@ -1658,7 +1511,7 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           const SizedBox(height: 20),
           _NavRow(
             onBack: widget.onBack,
-            onNext: widget.isValid ? widget.onNext : null,
+            onNext: isValid ? widget.onNext : null,
             nextLabel: 'التالي: الصور',
           ),
         ],
@@ -1954,7 +1807,6 @@ class _Step4LocationSubmit extends ConsumerWidget {
   final String? priceText;
   final int? categoryId;
   final String sellerType;
-  final void Function(String) onSellerTypeChanged;
   final void Function(RegionModel, CityModel?) onSelectLocation;
   final VoidCallback onPickDistrict;
   final VoidCallback onClearDistrict;
@@ -1975,7 +1827,6 @@ class _Step4LocationSubmit extends ConsumerWidget {
     required this.priceText,
     required this.categoryId,
     required this.sellerType,
-    required this.onSellerTypeChanged,
     required this.onSelectLocation,
     required this.onPickDistrict,
     required this.onClearDistrict,
@@ -1988,10 +1839,12 @@ class _Step4LocationSubmit extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canSubmit = selectedCity != null && !submitting;
     final price = double.tryParse(priceText ?? '');
-    final commissionState = (price != null && price > 0 && categoryId != null)
+    // Commission is a flat per-category amount (price-independent), so preview it
+    // whenever a category is chosen — not only after a price is entered.
+    final commissionState = categoryId != null
         ? ref.watch(
             commissionPreviewProvider((
-              price: price,
+              price: price ?? 0,
               categoryId: categoryId!,
               sellerType: sellerType,
             )),
@@ -2007,115 +1860,6 @@ class _Step4LocationSubmit extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Seller type ────────────────────────────────────────────────────
-          _SectionHeader(
-            title: 'أنت تبيع بصفتك',
-            icon: Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onSellerTypeChanged('individual'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: sellerType == 'individual'
-                          ? const Color(0xFFDCFCE7)
-                          : Colors.white,
-                      border: Border.all(
-                        color: sellerType == 'individual'
-                            ? const Color(0xFF16A34A)
-                            : AppTheme.neutralGray200,
-                        width: sellerType == 'individual' ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: sellerType == 'individual'
-                          ? [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF16A34A,
-                                ).withValues(alpha: .15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('👤', style: TextStyle(fontSize: 24)),
-                        const SizedBox(height: 6),
-                        Text(
-                          'فرد',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: sellerType == 'individual'
-                                ? const Color(0xFF15803D)
-                                : AppTheme.neutralGray600,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onSellerTypeChanged('dealer'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: sellerType == 'dealer'
-                          ? const Color(0xFFFFF7ED)
-                          : Colors.white,
-                      border: Border.all(
-                        color: sellerType == 'dealer'
-                            ? const Color(0xFFEA580C)
-                            : AppTheme.neutralGray200,
-                        width: sellerType == 'dealer' ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: sellerType == 'dealer'
-                          ? [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFEA580C,
-                                ).withValues(alpha: .15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('🏢', style: TextStyle(fontSize: 24)),
-                        const SizedBox(height: 6),
-                        Text(
-                          'معرض / تاجر',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: sellerType == 'dealer'
-                                ? const Color(0xFFC2410C)
-                                : AppTheme.neutralGray600,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
           _SectionHeader(
             title: 'موقع الإعلان',
             icon: Icons.location_on_rounded,
@@ -2350,18 +2094,23 @@ class _Step4LocationSubmit extends ConsumerWidget {
               ),
           ],
 
-          // ── Commission ────────────────────────────────────────────────────
+          // ── Fees & commission ─────────────────────────────────────────────
           if (commissionState != null) ...[
             const SizedBox(height: 20),
-            _SectionHeader(title: 'عمولة الخدمة', icon: Icons.percent_rounded),
+            _SectionHeader(
+              title: 'الرسوم والعمولة',
+              icon: Icons.receipt_long_rounded,
+            ),
             const SizedBox(height: 8),
             commissionState.when(
               loading: () => Container(
                 height: 72,
                 decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
+                  color: AppTheme.primaryBlue.withValues(alpha: .05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.shade200),
+                  border: Border.all(
+                    color: AppTheme.primaryBlue.withValues(alpha: .15),
+                  ),
                 ),
                 child: const Center(
                   child: SizedBox(
@@ -2369,75 +2118,91 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.amber,
+                      color: AppTheme.primaryBlue,
                     ),
                   ),
                 ),
               ),
               error: (_, __) => const SizedBox.shrink(),
-              data: (preview) => Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text('💰', style: TextStyle(fontSize: 18)),
-                      ),
+              data: (preview) {
+                final hasCommission = preview.commissionAmount > 0;
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: .05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primaryBlue.withValues(alpha: .18),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              if (!preview.isFlatFee)
-                                Text(
-                                  '~',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.amber.shade900,
-                                  ),
-                                ),
-                              Text(
-                                '${preview.commissionAmount.toStringAsFixed(0)} ر.س'
-                                '${preview.isFlatFee ? '' : ' عمولة متوقعة'}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.amber.shade900,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
+                  ),
+                  child: Column(
+                    children: [
+                      // Publishing is always free.
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [
                           Text(
-                            preview.note,
+                            'رسوم النشر',
                             style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.amber.shade800,
-                              height: 1.4,
+                              fontSize: 13,
+                              color: AppTheme.neutralGray700,
                             ),
-                            textDirection: TextDirection.rtl,
+                          ),
+                          Text(
+                            'مجاني',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF16A34A),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Divider(
+                          height: 1,
+                          color: AppTheme.neutralGray200,
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'عمولة البيع (تُدفع بعد إتمام البيع)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.neutralGray700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            hasCommission
+                                ? '${preview.commissionAmount.toStringAsFixed(0)} ر.س'
+                                : 'مجاني',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.primaryBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        preview.note,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.neutralGray600,
+                          height: 1.5,
+                        ),
+                        textDirection: TextDirection.rtl,
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
 
@@ -3219,30 +2984,27 @@ class _PublishPaymentSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Payment methods
+          // Payment method — bank transfer (gateways not yet live)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _pmBadge(
-                Icons.credit_card_rounded,
-                'مدى',
-                const Color(0xFF006B3F),
-              ),
-              const SizedBox(width: 12),
-              _pmBadge(Icons.apple, 'Apple Pay', Colors.black87),
-              const SizedBox(width: 12),
-              _pmBadge(
-                Icons.phone_android_rounded,
-                'STC Pay',
-                const Color(0xFF7B1FA2),
-              ),
-              const SizedBox(width: 12),
-              _pmBadge(
                 Icons.account_balance_rounded,
-                'بنكي',
+                'تحويل بنكي',
                 const Color(0xFF1565C0),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'الدفع حالياً عبر تحويل بنكي، ثم إرفاق صورة الإيصال لمراجعته من الإدارة.',
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: AppTheme.neutralGray600,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -3292,7 +3054,7 @@ class _PublishPaymentSheet extends StatelessWidget {
               ),
             ),
             child: Text(
-              'تأكيد الدفع ونشر الإعلان (${fee.toStringAsFixed(0)} ر.س)',
+              'متابعة الدفع عبر تحويل بنكي (${fee.toStringAsFixed(0)} ر.س)',
             ),
           ),
           const SizedBox(height: 10),

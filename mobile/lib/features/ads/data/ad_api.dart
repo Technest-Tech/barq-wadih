@@ -224,6 +224,34 @@ class AdRepository {
     }
   }
 
+  /// POST /ads/{id}/payment/proof — upload a bank-transfer receipt (multipart).
+  /// Moves the ad's publish-fee payment into `under_review` for admin approval.
+  Future<AdDetailModel> uploadPaymentProof(int id, String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'proof': await MultipartFile.fromFile(
+          filePath,
+          filename: filePath.split('/').last,
+        ),
+      });
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/ads/$id/payment/proof',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return AdDetailModel.fromJson(
+        response.data!['data'] as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw ApiException(
+        message:
+            e.response?.data?['message'] as String? ?? 'فشل رفع إيصال التحويل',
+        statusCode: e.response?.statusCode,
+        errors: e.response?.data?['errors'] as Map<String, dynamic>?,
+      );
+    }
+  }
+
   /// DELETE /ads/{id}
   Future<void> deleteAd(int id) async {
     try {

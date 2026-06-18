@@ -43,6 +43,8 @@ const ENDPOINTS = {
   AD_PAYMENT_INIT: (id: number) => `/v1/ads/${id}/payment/init`,
   /** Confirm payment — POST /v1/ads/{id}/payment/confirm */
   AD_PAYMENT_CONFIRM: (id: number) => `/v1/ads/${id}/payment/confirm`,
+  /** Upload bank-transfer receipt — POST /v1/ads/{id}/payment/proof */
+  AD_PAYMENT_PROOF: (id: number) => `/v1/ads/${id}/payment/proof`,
 
   // ── Sprint 7: Search ─────────────────────────────────────────────────────
   /** Full-text search — GET /v1/search?q=&category_id=&city_id=&price_min=&... */
@@ -199,6 +201,12 @@ const ENDPOINTS = {
   ADMIN_COMMISSION_STATUS: (id: number) => `/v1/admin/commissions/${id}/status`,
   ADMIN_COMMISSIONS_SUMMARY: '/v1/admin/commissions/summary',
   ADMIN_COMMISSIONS_EXPORT: '/v1/admin/commissions/export',
+
+  // ── Bank-transfer payment-proof review ────────────────────────────────
+  ADMIN_PAYMENT_PROOFS: '/v1/admin/payment-proofs',
+  ADMIN_PAYMENT_PROOFS_PENDING_COUNT: '/v1/admin/payment-proofs/pending-count',
+  ADMIN_PAYMENT_PROOF_APPROVE: (id: number) => `/v1/admin/payment-proofs/${id}/approve`,
+  ADMIN_PAYMENT_PROOF_REJECT: (id: number) => `/v1/admin/payment-proofs/${id}/reject`,
 
   // ── Sprint 16: Admin Analytics ────────────────────────────────────────
   ADMIN_ANALYTICS_REVENUE: '/v1/admin/analytics/revenue',

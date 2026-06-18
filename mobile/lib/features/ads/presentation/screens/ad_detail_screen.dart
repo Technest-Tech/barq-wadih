@@ -443,29 +443,6 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                                     color: Color(0xFF0075C4),
                                   ),
                                 ],
-                                if (ad.user?.isDealer ?? false) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF159787,
-                                      ).withValues(alpha: .12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      'معرض',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFF159787),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                                 const SizedBox(width: 4),
                                 const Icon(
                                   Icons.chevron_left,
@@ -1543,8 +1520,9 @@ class _MoreOptionsDialogState extends ConsumerState<_MoreOptionsDialog> {
         Navigator.pop(context); // close the dialog
         await SoldFeeSheet.show(
           context,
+          adId: widget.adId,
           adTitle: result.title,
-          adPrice: result.price,
+          commission: result.paymentAmount ?? 0,
         );
       }
     } catch (e) {

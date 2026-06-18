@@ -114,7 +114,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     return (
       <div className={styles.loading}>
         <h3>⚠️ لم يتم العثور على المستخدم</h3>
-        <Link href="/admin/users" className={styles.backLink}>← العودة للمستخدمين</Link>
+        <Link href="/admin/users" className={styles.backLink}>
+          ← العودة للمستخدمين
+        </Link>
       </div>
     );
   }
@@ -122,9 +124,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className={styles.page}>
       {/* Toast */}
-      {toast && (
-        <div className={`${styles.toast} ${styles[toast.type]}`}>{toast.message}</div>
-      )}
+      {toast && <div className={`${styles.toast} ${styles[toast.type]}`}>{toast.message}</div>}
 
       {/* Modal */}
       {modal && (
@@ -133,10 +133,16 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             <h3 className={styles.modalTitle}>{modal.title}</h3>
             <p className={styles.modalBody}>{modal.body}</p>
             <div className={styles.modalActions}>
-              <button className={`${styles.modalBtn} ${styles[modal.type]}`} onClick={modal.onConfirm}>
+              <button
+                className={`${styles.modalBtn} ${styles[modal.type]}`}
+                onClick={modal.onConfirm}
+              >
                 تأكيد
               </button>
-              <button className={`${styles.modalBtn} ${styles.cancel}`} onClick={() => setModal(null)}>
+              <button
+                className={`${styles.modalBtn} ${styles.cancel}`}
+                onClick={() => setModal(null)}
+              >
                 إلغاء
               </button>
             </div>
@@ -162,33 +168,26 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             <h1 className={styles.profileName}>{user.name}</h1>
 
             <div className={styles.profileBadges}>
-              <span className={`${styles.badge} ${styles.role}`}>
-                {user.role_label}
-              </span>
-              <span className={`${styles.badge} ${user.is_active ? styles.active : styles.inactive}`}>
+              <span className={`${styles.badge} ${styles.role}`}>{user.role_label}</span>
+              <span
+                className={`${styles.badge} ${user.is_active ? styles.active : styles.inactive}`}
+              >
                 {user.is_active ? '✅ نشط' : '⛔ معطل'}
               </span>
               {user.is_verified && (
                 <span className={`${styles.badge} ${styles.verified}`}>🛡️ موثق</span>
               )}
-              {user.is_dealer && (
-                <span className={`${styles.badge} ${styles.dealer}`}>🏬 تاجر</span>
-              )}
             </div>
 
             <div className={styles.profileMeta}>
-              {user.phone && (
-                <span className={styles.metaItem}>📱 {user.phone}</span>
-              )}
-              {user.email && (
-                <span className={styles.metaItem}>📧 {user.email}</span>
-              )}
-              {user.city && (
-                <span className={styles.metaItem}>📍 {user.city.name_ar}</span>
-              )}
+              {user.phone && <span className={styles.metaItem}>📱 {user.phone}</span>}
+              {user.email && <span className={styles.metaItem}>📧 {user.email}</span>}
+              {user.city && <span className={styles.metaItem}>📍 {user.city.name_ar}</span>}
               <span className={styles.metaItem}>📅 انضم {formatDate(user.created_at)}</span>
               {user.last_active_at && (
-                <span className={styles.metaItem}>🕐 آخر نشاط {formatDate(user.last_active_at)}</span>
+                <span className={styles.metaItem}>
+                  🕐 آخر نشاط {formatDate(user.last_active_at)}
+                </span>
               )}
             </div>
           </div>
@@ -222,9 +221,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           <div className={styles.statLabel}>إجمالي الإعلانات</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>
-            ★ {parseFloat(user.avg_rating || '0').toFixed(1)}
-          </div>
+          <div className={styles.statValue}>★ {parseFloat(user.avg_rating || '0').toFixed(1)}</div>
           <div className={styles.statLabel}>التقييم ({user.rating_count} تقييم)</div>
         </div>
         <div className={styles.statCard}>
@@ -300,7 +297,13 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                           {ad.status_label}
                         </span>
                       </td>
-                      <td style={{ fontSize: '12px', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+                      <td
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--admin-text-muted)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {formatDate(ad.created_at)}
                       </td>
                     </tr>
@@ -338,7 +341,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                       </td>
                       <td>
                         <span className={`${styles.statusBadge} ${styles[payment.status] || ''}`}>
-                          {payment.status === 'paid' ? 'مدفوع' : payment.status === 'due' ? 'مستحق' : payment.status}
+                          {payment.status === 'paid'
+                            ? 'مدفوع'
+                            : payment.status === 'due'
+                              ? 'مستحق'
+                              : payment.status}
                         </span>
                       </td>
                       <td>{payment.payment_method || '—'}</td>
@@ -380,7 +387,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                       </td>
                       <td>
                         <span className={styles.ratingStars}>
-                          {'★'.repeat(rating.score)}{'☆'.repeat(5 - rating.score)}
+                          {'★'.repeat(rating.score)}
+                          {'☆'.repeat(5 - rating.score)}
                         </span>
                       </td>
                       <td>

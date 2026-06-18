@@ -28,6 +28,7 @@ class CategoryResource extends JsonResource
             'commission_rate'                 => $this->commission_rate,
             'publish_fee_individual'          => $this->publish_fee_individual,
             'publish_fee_dealer'              => $this->publish_fee_dealer,
+            'deferred_commission_individual'  => $this->deferred_commission_individual,
             'fee_deductible_from_commission'  => $this->fee_deductible_from_commission,
             'ads_count'                       => $this->ads_count,
             'fields_count'                    => $this->whenCounted('fields'),

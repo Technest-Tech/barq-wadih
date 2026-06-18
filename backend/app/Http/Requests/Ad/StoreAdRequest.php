@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Ad;
 
 use App\Models\Category;
-use App\Models\CategoryField;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -14,13 +13,23 @@ class StoreAdRequest extends FormRequest
         return true; // Auth middleware handles authentication
     }
 
+    /**
+     * The merchant/individual distinction was removed — every ad is posted as
+     * an individual for now. Force it here so the value is consistent no matter
+     * what a client sends.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['seller_type' => 'individual']);
+    }
+
     public function rules(): array
     {
         $categoryId = (int) $this->input('category_id');
 
         return [
             // Core
-            'seller_type'    => ['required', 'in:individual,dealer'],
+            'seller_type'    => ['required', 'in:individual'],
             'category_id'    => ['required', 'integer', Rule::exists('categories', 'id')->where('is_active', true)],
             'city_id'        => ['required', 'integer', 'exists:cities,id'],
             'title'          => ['required', 'string', 'min:3', 'max:100'],
@@ -62,20 +71,6 @@ class StoreAdRequest extends FormRequest
             if ($isParent) {
                 $v->errors()->add('category_id', 'يجب اختيار تصنيف فرعي وليس تصنيفاً رئيسياً.');
                 return;
-            }
-
-            // Validate required dynamic fields
-            $requiredFields = CategoryField::where('category_id', $categoryId)
-                ->where('is_required', true)
-                ->pluck('field_key');
-
-            /** @var array<string, mixed> $submittedFields */
-            $submittedFields = (array) $this->input('fields', []);
-
-            foreach ($requiredFields as $key) {
-                if (! array_key_exists($key, $submittedFields) || blank($submittedFields[$key])) {
-                    $v->errors()->add("fields.{$key}", "الحقل '{$key}' مطلوب لهذا التصنيف.");
-                }
             }
 
             // Need at least one location-depth signal: a district FK, a free-text

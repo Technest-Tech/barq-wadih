@@ -108,6 +108,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Publish-fee payment lifecycle (mocked driver in dev, Moyasar later)
     Route::post('ads/{ad}/payment/init',    [AdPaymentController::class, 'init'])->name('ads.payment.init');
     Route::post('ads/{ad}/payment/confirm', [AdPaymentController::class, 'confirm'])->name('ads.payment.confirm');
+    // Manual bank-transfer receipt upload (until PSP is live) — goes to admin review.
+    Route::post('ads/{ad}/payment/proof',   [AdPaymentController::class, 'uploadProof'])->name('ads.payment.proof');
 
     // Sprint 9: Ratings
     Route::post('ads/{ad}/ratings',          [RatingController::class, 'store'])->name('ratings.store');
