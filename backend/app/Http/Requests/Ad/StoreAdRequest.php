@@ -73,17 +73,10 @@ class StoreAdRequest extends FormRequest
                 return;
             }
 
-            // Need at least one location-depth signal: a district FK, a free-text
-            // district name, or a map pin. The wizard always gathers at least one.
-            $hasDistrict     = ! blank($this->input('district_id'));
-            $hasDistrictFree = ! blank($this->input('district_name_free'));
-            $hasMapPin       = ! blank($this->input('latitude')) && ! blank($this->input('longitude'));
-            if (! $hasDistrict && ! $hasDistrictFree && ! $hasMapPin) {
-                $v->errors()->add('district_id', 'يجب اختيار الحي أو تحديد الموقع على الخريطة.');
-            }
-
-            // If district_id is given, it must belong to the same city.
-            if ($hasDistrict) {
+            // District (FK or free-text) and the map pin are all optional — the
+            // required city already provides location. If a district_id is given,
+            // it must belong to the selected city.
+            if (! blank($this->input('district_id'))) {
                 $cityId     = (int) $this->input('city_id');
                 $districtId = (int) $this->input('district_id');
                 $belongs = \App\Models\District::where('id', $districtId)
