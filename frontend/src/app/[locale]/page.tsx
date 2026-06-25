@@ -835,7 +835,7 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
         <div className={styles.adListPriceInline}>
           {priceText}
           {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
-          {showNeg && <span className={styles.negText}> · على السوم</span>}
+          {showNeg && <span className={styles.negText}>على السوم</span>}
         </div>
 
         <div className={styles.adListBottomRow}>
@@ -864,7 +864,7 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
       {/* 2) Price beside the image */}
       <div className={styles.adListPriceBox}>
         {priceText} {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
-        {showNeg && <span className={styles.negText}> · على السوم</span>}
+        {showNeg && <span className={styles.negText}>على السوم</span>}
       </div>
 
       {/* 3) Image on Left Side (RTL End) */}
@@ -924,7 +924,7 @@ function AdCard({ ad, locale }: { ad: AdListItem; locale: string }) {
         <h3 className={styles.adTitle}>{ad.title}</h3>
         <p className={styles.adPrice}>
           {priceText}
-          {ad.is_negotiable && !ad.is_free && <span className={styles.negText}> · على السوم</span>}
+          {ad.is_negotiable && !ad.is_free && <span className={styles.negText}>على السوم</span>}
         </p>
         <div className={styles.adMeta}>
           <span className={styles.adCity}>📍 {ad.city?.name_ar ?? '—'}</span>

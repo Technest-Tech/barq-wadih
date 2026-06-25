@@ -1074,9 +1074,16 @@
   margin-top: var(--space-1);
 }
 .negText {
-  font-size: var(--text-xs);
-  font-weight: var(--font-regular);
-  color: var(--text-tertiary);
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #c2410c;
+  background: #ffedd5;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  margin-inline-start: 5px;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 .adMeta {
   display: flex;
