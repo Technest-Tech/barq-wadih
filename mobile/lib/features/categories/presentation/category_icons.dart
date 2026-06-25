@@ -83,12 +83,19 @@ const Map<String, IconData> _categoryIcons = {
   'beverages': LucideIcons.coffee,
   'organic': LucideIcons.leaf,
 
-  // ── Animals (mostly hidden subs — map the ones with a fitting glyph) ──────
+  // ── Animals ──────────────────────────────────────────────────────────────
   'birds': LucideIcons.bird,
   'cats': LucideIcons.cat,
   'dogs': LucideIcons.dog,
   'fish-turtles': LucideIcons.fish,
   'pet-supplies': LucideIcons.bone,
+  'cattle': LucideIcons.beef,
+  'rabbits-squirrels': LucideIcons.squirrel,
+  'ornamental-fish': LucideIcons.fish,
+  // Birds → حمام/دجاج/بط (third level)
+  'pigeons': LucideIcons.bird,
+  'chickens': LucideIcons.drumstick,
+  'ducks': LucideIcons.bird,
 };
 
 IconData categoryIcon(String slug) => _categoryIcons[slug] ?? LucideIcons.tag;

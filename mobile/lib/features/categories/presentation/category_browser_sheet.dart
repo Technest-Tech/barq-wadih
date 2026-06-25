@@ -46,14 +46,35 @@ class CategoryBrowserSheet extends ConsumerStatefulWidget {
 }
 
 class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
-  CategoryModel? _selected;
+  // Drill path: each tap into a category with children pushes it here, so the
+  // browser supports 3+ levels (e.g. حيوانات → طيور → حمام/دجاج/بط). Empty = the
+  // top-level list. The last entry is the category whose children are shown.
+  final List<CategoryModel> _path = [];
   final _searchCtrl = TextEditingController();
   String _query = '';
+
+  CategoryModel? get _current => _path.isEmpty ? null : _path.last;
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _drillInto(CategoryModel cat) {
+    setState(() {
+      _path.add(cat);
+      _query = '';
+      _searchCtrl.clear();
+    });
+  }
+
+  void _popLevel() {
+    setState(() {
+      if (_path.isNotEmpty) _path.removeLast();
+      _query = '';
+      _searchCtrl.clear();
+    });
   }
 
   List<_SearchHit> _searchAll(List<CategoryModel> cats) {
@@ -67,6 +88,11 @@ class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
       for (final child in cat.children) {
         if (_matches(child.nameAr, q) || _matches(child.nameEn, q)) {
           hits.add(_SearchHit(cat: child, parent: cat));
+        }
+        for (final grand in child.children) {
+          if (_matches(grand.nameAr, q) || _matches(grand.nameEn, q)) {
+            hits.add(_SearchHit(cat: grand, parent: child));
+          }
         }
       }
     }
@@ -117,13 +143,9 @@ class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: Row(
                   children: [
-                    if (_selected != null)
+                    if (_path.isNotEmpty)
                       IconButton(
-                        onPressed: () => setState(() {
-                          _selected = null;
-                          _query = '';
-                          _searchCtrl.clear();
-                        }),
+                        onPressed: _popLevel,
                         icon: const Icon(Icons.arrow_forward_ios, size: 16),
                         style: IconButton.styleFrom(
                           backgroundColor: AppTheme.neutralGray100,
@@ -135,7 +157,7 @@ class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
                       const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _selected != null ? _selected!.nameAr : 'اختر القسم',
+                        _current != null ? _current!.nameAr : 'اختر القسم',
                         textDirection: TextDirection.rtl,
                         textAlign: TextAlign.right,
                         style: const TextStyle(
@@ -166,8 +188,8 @@ class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
                   textDirection: TextDirection.rtl,
                   onChanged: (v) => setState(() => _query = v),
                   decoration: InputDecoration(
-                    hintText: _selected != null
-                        ? 'بحث في ${_selected!.nameAr}...'
+                    hintText: _current != null
+                        ? 'بحث في ${_current!.nameAr}...'
                         : 'بحث في الأقسام...',
                     hintTextDirection: TextDirection.rtl,
                     hintStyle: const TextStyle(
@@ -230,30 +252,41 @@ class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
                     onRetry: () => ref.refresh(categoriesProvider),
                   ),
                   data: (cats) {
-                    // Subcategory view
-                    if (_selected != null) {
-                      final children = _searchChildren(_selected!.children);
+                    // Subcategory view (current drill level)
+                    final current = _current;
+                    if (current != null) {
+                      final children = _searchChildren(current.children);
                       return _ChildrenListView(
-                        parent: _selected!,
+                        parent: current,
                         children: children,
                         query: _query,
                         controller: scrollCtrl,
-                        onSelect: (c) => Navigator.pop(context, c),
-                        onSelectParent: () => Navigator.pop(context, _selected),
+                        // Drill deeper when the child itself has children
+                        // (e.g. طيور), otherwise it's the final selection.
+                        onSelect: (c) {
+                          if (c.children.isNotEmpty) {
+                            _drillInto(c);
+                          } else {
+                            Navigator.pop(context, c);
+                          }
+                        },
+                        onSelectParent: () => Navigator.pop(context, current),
                       );
                     }
 
-                    // Search mode — flat results across all
+                    // Search mode — flat results across all levels
                     if (_query.trim().isNotEmpty) {
                       final hits = _searchAll(cats);
                       return _SearchResultsView(
                         hits: hits,
                         controller: scrollCtrl,
                         onSelect: (hit) {
-                          if (hit.parent == null &&
-                              hit.cat.children.isNotEmpty) {
+                          if (hit.cat.children.isNotEmpty) {
+                            // Restore the ancestor path then drill into the hit.
                             setState(() {
-                              _selected = hit.cat;
+                              _path.clear();
+                              if (hit.parent != null) _path.add(hit.parent!);
+                              _path.add(hit.cat);
                               _query = '';
                               _searchCtrl.clear();
                             });
@@ -272,7 +305,7 @@ class _CategoryBrowserSheetState extends ConsumerState<CategoryBrowserSheet> {
                         if (cat.children.isEmpty) {
                           Navigator.pop(context, cat);
                         } else {
-                          setState(() => _selected = cat);
+                          _drillInto(cat);
                         }
                       },
                     );
@@ -383,7 +416,7 @@ class _ChildrenListView extends StatelessWidget {
                   slug: e.value.slug,
                   image: e.value.image,
                   color: color,
-                  childCount: 0,
+                  childCount: e.value.children.length,
                   onTap: () => onSelect(e.value),
                 ),
                 const Divider(

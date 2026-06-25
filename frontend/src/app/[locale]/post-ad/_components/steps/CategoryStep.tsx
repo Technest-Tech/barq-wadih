@@ -13,6 +13,10 @@ export function CategoryStep() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // Mid-level subcategory being drilled into (e.g. طيور under حيوانات), which
+  // exposes a third level (حمام/دجاج/بط). Local to the step — the final pick
+  // lives in the store as `category`.
+  const [subParent, setSubParent] = useState<CategoryChild | null>(null);
 
   useEffect(() => {
     fetchCategories()
@@ -21,8 +25,7 @@ export function CategoryStep() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Clear search when navigating between parent/sub levels. Done during render
-  // (not in an effect) by comparing against the previous parent category.
+  // Clear search when the top-level parent changes (done during render).
   const [prevParent, setPrevParent] = useState(w.parentCategory);
   if (w.parentCategory !== prevParent) {
     setPrevParent(w.parentCategory);
@@ -38,42 +41,94 @@ export function CategoryStep() {
     return v === null || v === undefined ? null : Number(v);
   };
 
-  const children = w.parentCategory?.children ?? [];
-  const q = search.trim().toLowerCase();
+  const hasChildren = (c: CategoryChild | Category | null | undefined): boolean =>
+    !!c && (c.children?.length ?? 0) > 0;
 
-  // Flat search results across ALL parents and their children
+  const q = search.trim().toLowerCase();
+  const isSearching = q.length > 0;
+
+  // Children of whichever level we're currently browsing (sub-level if drilled in).
+  const currentChildren: CategoryChild[] = subParent
+    ? (subParent.children ?? [])
+    : (w.parentCategory?.children ?? []);
+
+  // List for the subcategory level (falls back to the parent itself as a leaf).
+  const childSource =
+    currentChildren.length > 0
+      ? currentChildren
+      : w.parentCategory
+        ? [w.parentCategory as CategoryChild]
+        : [];
+  const filteredChildren = q
+    ? childSource.filter((c) => c.name_ar.toLowerCase().includes(q))
+    : childSource;
+
+  const filteredParents = q
+    ? categories.filter((c) => c.name_ar.toLowerCase().includes(q))
+    : categories;
+
+  // Flatten the whole tree (all levels) for global search with breadcrumbs.
+  const allNodes = useMemo(() => {
+    const out: Array<{ node: CategoryChild; path: CategoryChild[] }> = [];
+    const walk = (nodes: CategoryChild[], path: CategoryChild[]) => {
+      for (const n of nodes) {
+        out.push({ node: n, path });
+        if (n.children?.length) walk(n.children, [...path, n]);
+      }
+    };
+    walk(categories as CategoryChild[], []);
+    return out;
+  }, [categories]);
+
   const globalResults = useMemo(() => {
     if (!q || w.parentCategory) return null;
-    const results: Array<{ parent: Category; child: CategoryChild | null }> = [];
-    for (const parent of categories) {
-      const parentMatch = parent.name_ar.toLowerCase().includes(q);
-      const matchingChildren = (parent.children ?? []).filter((c) =>
-        c.name_ar.toLowerCase().includes(q)
-      );
-      if (matchingChildren.length > 0) {
-        matchingChildren.forEach((child) => results.push({ parent, child }));
-      } else if (parentMatch) {
-        results.push({ parent, child: null });
-      }
+    return allNodes.filter((x) => x.node.name_ar.toLowerCase().includes(q));
+  }, [q, allNodes, w.parentCategory]);
+
+  // ── Navigation helpers ──────────────────────────────────────────────────────
+  const pickParent = (c: Category) => {
+    w.setParentCategory(c);
+    setSubParent(null);
+  };
+
+  const goBackLevel = () => {
+    setSubParent(null);
+    if (!subParent) w.setParentCategory(null);
+  };
+
+  // Pick a row in the current children list: drill in if it has children, else select.
+  const pickChild = (c: CategoryChild) => {
+    if (!subParent && hasChildren(c)) {
+      setSubParent(c);
+      setSearch('');
+    } else {
+      w.setCategory(c);
     }
-    return results;
-  }, [q, categories, w.parentCategory]);
+  };
 
-  // Filtered list for the subcategory level
-  const filteredChildren = useMemo(() => {
-    if (!w.parentCategory) return [];
-    const source = children.length > 0 ? children : [w.parentCategory as CategoryChild];
-    if (!q) return source;
-    return source.filter((c) => c.name_ar.toLowerCase().includes(q));
-  }, [q, children, w.parentCategory]);
+  // Pick a node from the flat global search, restoring its full ancestor path.
+  const selectFromSearch = (node: CategoryChild, path: CategoryChild[]) => {
+    const kids = hasChildren(node);
+    if (path.length === 0) {
+      w.setParentCategory(node as Category);
+      if (!kids) w.setCategory(node);
+    } else if (path.length === 1) {
+      w.setParentCategory(path[0] as Category);
+      if (kids) setSubParent(node);
+      else w.setCategory(node);
+    } else {
+      w.setParentCategory(path[0] as Category);
+      setSubParent(path[1]);
+      w.setCategory(node);
+    }
+    setSearch('');
+  };
 
-  // Filtered parent categories when no search
-  const filteredParents = useMemo(() => {
-    if (!q) return categories;
-    return categories.filter((c) => c.name_ar.toLowerCase().includes(q));
-  }, [q, categories]);
-
-  const isSearching = q.length > 0;
+  const headerSub = w.parentCategory
+    ? subParent
+      ? `${w.parentCategory.name_ar} › ${subParent.name_ar}`
+      : `داخل: ${w.parentCategory.name_ar}`
+    : 'اختر القسم ثم التصنيف الفرعي';
 
   return (
     <div>
@@ -81,11 +136,7 @@ export function CategoryStep() {
         <span className={styles.stepIcon}>📂</span>
         <div>
           <div className={styles.stepTitle}>اختر تصنيف الإعلان</div>
-          <div className={styles.stepSub}>
-            {w.parentCategory
-              ? `داخل: ${w.parentCategory.name_ar}`
-              : 'اختر القسم ثم التصنيف الفرعي'}
-          </div>
+          <div className={styles.stepSub}>{headerSub}</div>
         </div>
       </header>
 
@@ -95,7 +146,7 @@ export function CategoryStep() {
         </div>
       ) : (
         <>
-          {/* Search bar — shown at both levels */}
+          {/* Search bar — shown at all levels */}
           <div className={styles.catSearchWrap}>
             <span className={styles.catSearchIcon}>
               <svg
@@ -117,7 +168,7 @@ export function CategoryStep() {
               type="search"
               placeholder={
                 w.parentCategory
-                  ? `ابحث في ${w.parentCategory.name_ar}...`
+                  ? `ابحث في ${(subParent ?? w.parentCategory)?.name_ar ?? ''}...`
                   : 'ابحث في كل التصنيفات...'
               }
               value={search}
@@ -131,15 +182,16 @@ export function CategoryStep() {
             )}
           </div>
 
-          {/* Subcategory level */}
+          {/* Subcategory / sub-subcategory level */}
           {w.parentCategory ? (
             <>
               <button
                 type="button"
                 className={`${pm.pmBtn} ${pm.pmBtnGhost} ${styles.catBackBtn}`}
-                onClick={() => w.setParentCategory(null)}
+                onClick={goBackLevel}
               >
-                <Chevron back /> رجوع للأقسام
+                <Chevron back />{' '}
+                {subParent ? `رجوع إلى ${w.parentCategory.name_ar}` : 'رجوع للأقسام'}
               </button>
 
               {filteredChildren.length === 0 ? (
@@ -149,24 +201,31 @@ export function CategoryStep() {
                 </div>
               ) : (
                 <ul className={styles.catList} role="list">
-                  {filteredChildren.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        className={`${styles.catRow} ${w.category?.id === c.id ? styles.catRowActive : ''}`}
-                        onClick={() => w.setCategory(c)}
-                      >
-                        <span className={styles.catRowName}>{highlightMatch(c.name_ar, q)}</span>
-                        <DealerFeeBadge fee={feeFor(c)} />
-                        <Chevron />
-                      </button>
-                    </li>
-                  ))}
+                  {filteredChildren.map((c) => {
+                    const drillable = !subParent && hasChildren(c);
+                    return (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          className={`${styles.catRow} ${w.category?.id === c.id ? styles.catRowActive : ''}`}
+                          onClick={() => pickChild(c)}
+                        >
+                          <span className={styles.catRowName}>{highlightMatch(c.name_ar, q)}</span>
+                          {drillable ? (
+                            <span className={styles.catRowMeta}>{c.children?.length} تصنيف</span>
+                          ) : (
+                            <DealerFeeBadge fee={feeFor(c)} />
+                          )}
+                          <Chevron />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </>
           ) : isSearching && globalResults ? (
-            /* Global search results across all categories */
+            /* Global search results across all category levels */
             globalResults.length === 0 ? (
               <div className={styles.catSearchEmpty}>
                 <div className={styles.catSearchEmptyIcon}>🔍</div>
@@ -174,32 +233,28 @@ export function CategoryStep() {
               </div>
             ) : (
               <ul className={styles.catList} role="list">
-                {globalResults.map(({ parent, child }) => {
-                  const target = child ?? (parent as unknown as CategoryChild);
-                  return (
-                    <li key={`${parent.id}-${child?.id ?? 'p'}`}>
-                      <button
-                        type="button"
-                        className={`${styles.catRow} ${w.category?.id === target.id ? styles.catRowActive : ''}`}
-                        onClick={() => {
-                          if (child) {
-                            w.setParentCategory(parent);
-                            w.setCategory(child);
-                          } else {
-                            w.setParentCategory(parent);
-                          }
-                        }}
-                      >
-                        <span className={styles.catRowName}>
-                          {highlightMatch(target.name_ar, q)}
+                {globalResults.map(({ node, path }) => (
+                  <li key={`${path.map((p) => p.id).join('-')}-${node.id}`}>
+                    <button
+                      type="button"
+                      className={`${styles.catRow} ${w.category?.id === node.id ? styles.catRowActive : ''}`}
+                      onClick={() => selectFromSearch(node, path)}
+                    >
+                      <span className={styles.catRowName}>{highlightMatch(node.name_ar, q)}</span>
+                      {path.length > 0 && (
+                        <span className={styles.catRowBreadcrumb}>
+                          {path.map((p) => p.name_ar).join(' › ')}
                         </span>
-                        {child && <span className={styles.catRowBreadcrumb}>{parent.name_ar}</span>}
-                        <DealerFeeBadge fee={feeFor(target)} />
-                        <Chevron />
-                      </button>
-                    </li>
-                  );
-                })}
+                      )}
+                      {hasChildren(node) ? (
+                        <span className={styles.catRowMeta}>{node.children?.length} تصنيف</span>
+                      ) : (
+                        <DealerFeeBadge fee={feeFor(node)} />
+                      )}
+                      <Chevron />
+                    </button>
+                  </li>
+                ))}
               </ul>
             )
           ) : (
@@ -209,11 +264,7 @@ export function CategoryStep() {
                 const childCount = c.children?.length ?? 0;
                 return (
                   <li key={c.id}>
-                    <button
-                      type="button"
-                      className={styles.catRow}
-                      onClick={() => w.setParentCategory(c)}
-                    >
+                    <button type="button" className={styles.catRow} onClick={() => pickParent(c)}>
                       <span className={styles.catRowName}>{c.name_ar}</span>
                       {childCount > 0 && (
                         <span className={styles.catRowMeta}>{childCount} تصنيف</span>

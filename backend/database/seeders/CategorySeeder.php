@@ -76,21 +76,19 @@ class CategorySeeder extends Seeder
                 'sort_order' => 4,
                 'is_free' => false,
                 'children' => [
-                    // الأقسام المفعّلة (4 فقط حسب طلب العميل)
                     ['name_ar' => 'إبل',  'name_en' => 'Camels', 'slug' => 'camels', 'icon' => '🐪', 'sort_order' => 1],
                     ['name_ar' => 'غنم',  'name_en' => 'Sheep',  'slug' => 'sheep',  'icon' => '🐑', 'sort_order' => 2],
                     ['name_ar' => 'ماعز', 'name_en' => 'Goats',  'slug' => 'goats',  'icon' => '🐐', 'sort_order' => 3],
-                    ['name_ar' => 'طيور', 'name_en' => 'Birds',  'slug' => 'birds',  'icon' => '🦜', 'sort_order' => 4],
-                    // الأقسام المخفية
-                    ['name_ar' => 'خيل',              'name_en' => 'Horses',           'slug' => 'horses',      'icon' => '🐎', 'sort_order' => 5,  'is_active' => false],
-                    ['name_ar' => 'دجاج وطيور داجنة', 'name_en' => 'Poultry',          'slug' => 'poultry',     'icon' => '🐔', 'sort_order' => 6,  'is_active' => false],
-                    ['name_ar' => 'حمام',             'name_en' => 'Pigeons',          'slug' => 'pigeons',     'icon' => '🕊️', 'sort_order' => 7,  'is_active' => false],
-                    ['name_ar' => 'كلاب',             'name_en' => 'Dogs',             'slug' => 'dogs',        'icon' => '🐕', 'sort_order' => 8,  'is_active' => false],
-                    ['name_ar' => 'قطط',              'name_en' => 'Cats',             'slug' => 'cats',        'icon' => '🐈', 'sort_order' => 9,  'is_active' => false],
-                    ['name_ar' => 'بقر',              'name_en' => 'Cattle',           'slug' => 'cattle',      'icon' => '🐮', 'sort_order' => 10, 'is_active' => false],
-                    ['name_ar' => 'أسماك وسلاحف',     'name_en' => 'Fish & Turtles',   'slug' => 'fish-turtles', 'icon' => '🐟', 'sort_order' => 11, 'is_active' => false],
-                    ['name_ar' => 'أرانب وقوارض',     'name_en' => 'Rabbits & Rodents', 'slug' => 'rabbits',     'icon' => '🐇', 'sort_order' => 12, 'is_active' => false],
-                    ['name_ar' => 'مستلزمات حيوانات', 'name_en' => 'Pet Supplies',     'slug' => 'pet-supplies', 'icon' => '🦴', 'sort_order' => 13, 'is_active' => false],
+                    ['name_ar' => 'بقر',  'name_en' => 'Cattle', 'slug' => 'cattle', 'icon' => '🐄', 'sort_order' => 4],
+                    ['name_ar' => 'خيول', 'name_en' => 'Horses', 'slug' => 'horses', 'icon' => '🐎', 'sort_order' => 5],
+                    ['name_ar' => 'أرانب وسناجب', 'name_en' => 'Rabbits & Squirrels', 'slug' => 'rabbits-squirrels', 'icon' => '🐇', 'sort_order' => 6],
+                    // طيور — تتفرع داخلياً (مستوى ثالث)
+                    ['name_ar' => 'طيور', 'name_en' => 'Birds', 'slug' => 'birds', 'icon' => '🦜', 'sort_order' => 7, 'children' => [
+                        ['name_ar' => 'حمام', 'name_en' => 'Pigeons',  'slug' => 'pigeons',  'icon' => '🕊️', 'sort_order' => 1],
+                        ['name_ar' => 'دجاج', 'name_en' => 'Chickens', 'slug' => 'chickens', 'icon' => '🐔', 'sort_order' => 2],
+                        ['name_ar' => 'بط',   'name_en' => 'Ducks',    'slug' => 'ducks',    'icon' => '🦆', 'sort_order' => 3],
+                    ]],
+                    ['name_ar' => 'أسماك زينة', 'name_en' => 'Ornamental Fish', 'slug' => 'ornamental-fish', 'icon' => '🐠', 'sort_order' => 8],
                 ],
             ],
 
@@ -379,50 +377,46 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($categories as $data) {
-            $children = $data['children'] ?? [];
-            $fees = $data['fees'] ?? $otherFees;
-            $deferred = $data['deferred'] ?? $otherDeferred;
-            unset($data['children'], $data['fees'], $data['deferred']);
-
-            $attrs = array_merge($data, [
-                'parent_id' => null,
-                'is_active' => $data['is_active'] ?? true,
-                'image' => $data['image'] ?? null,
-                'prohibited_keywords' => $data['prohibited_keywords'] ?? null,
-                'commission_rate' => $data['commission_rate'] ?? null,
-                'commission_trigger' => 'after_sale',
-                'publish_fee_individual' => $fees['publish_fee_individual'],
-                'publish_fee_dealer' => $fees['publish_fee_dealer'],
-                'fee_deductible_from_commission' => true,
-                'deferred_commission_individual' => $deferred['deferred_commission_individual'] ?? 0,
-                'deferred_commission_dealer' => $deferred['deferred_commission_dealer'] ?? 0,
-            ]);
-
-            $category = Category::updateOrCreate(['slug' => $data['slug']], $attrs);
-
-            foreach ($children as $child) {
-                $childDeferred = $child['deferred'] ?? $deferred;
-                unset($child['deferred']);
-                Category::updateOrCreate(
-                    ['slug' => $child['slug']],
-                    array_merge($child, [
-                        'parent_id' => $category->id,
-                        'is_active' => $child['is_active'] ?? true,
-                        'is_free' => $data['is_free'],
-                        'image' => null,
-                        'commission_trigger' => 'after_sale',
-                        'publish_fee_individual' => $fees['publish_fee_individual'],
-                        'publish_fee_dealer' => $fees['publish_fee_dealer'],
-                        'fee_deductible_from_commission' => true,
-                        'deferred_commission_individual' => $childDeferred['deferred_commission_individual'] ?? 0,
-                        'deferred_commission_dealer' => $childDeferred['deferred_commission_dealer'] ?? 0,
-                    ]),
-                );
-            }
+            $this->upsertCategory($data, null, $otherFees, $otherDeferred, $data['is_free'] ?? false);
         }
 
         // Point main categories at the self-hosted gradient-tile SVG icons so a
         // fresh seed gets the modern icons without a manual step.
         Artisan::call('categories:set-icons');
+    }
+
+    /**
+     * Recursively upsert a category node and its descendants. Supports 3+ levels
+     * (e.g. حيوانات → طيور → حمام/دجاج/بط). Each child inherits the parent's fees,
+     * deferred commission and is_free flag unless it overrides them.
+     */
+    private function upsertCategory(array $data, ?int $parentId, array $fees, array $deferred, bool $isFree): void
+    {
+        $children = $data['children'] ?? [];
+        $fees = $data['fees'] ?? $fees;
+        $deferred = $data['deferred'] ?? $deferred;
+        $isFree = $data['is_free'] ?? $isFree;
+        unset($data['children'], $data['fees'], $data['deferred'], $data['is_free']);
+
+        $attrs = array_merge($data, [
+            'parent_id' => $parentId,
+            'is_active' => $data['is_active'] ?? true,
+            'is_free' => $isFree,
+            'image' => $data['image'] ?? null,
+            'prohibited_keywords' => $data['prohibited_keywords'] ?? null,
+            'commission_rate' => $data['commission_rate'] ?? null,
+            'commission_trigger' => 'after_sale',
+            'publish_fee_individual' => $fees['publish_fee_individual'],
+            'publish_fee_dealer' => $fees['publish_fee_dealer'],
+            'fee_deductible_from_commission' => true,
+            'deferred_commission_individual' => $deferred['deferred_commission_individual'] ?? 0,
+            'deferred_commission_dealer' => $deferred['deferred_commission_dealer'] ?? 0,
+        ]);
+
+        $category = Category::updateOrCreate(['slug' => $data['slug']], $attrs);
+
+        foreach ($children as $child) {
+            $this->upsertCategory($child, $category->id, $fees, $deferred, $isFree);
+        }
     }
 }

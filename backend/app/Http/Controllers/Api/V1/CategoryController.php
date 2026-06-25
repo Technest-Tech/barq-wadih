@@ -29,12 +29,7 @@ class CategoryController extends BaseController
                     ->active()
                     ->ordered()
                     ->withCount('fields')
-                    ->with([
-                        'children' => fn ($q) => $q
-                            ->active()
-                            ->ordered()
-                            ->withCount('fields'),
-                    ])
+                    ->with($this->childrenTreeEager())
                     ->get()
             );
         } catch (\Throwable) {
@@ -43,12 +38,7 @@ class CategoryController extends BaseController
                 ->active()
                 ->ordered()
                 ->withCount('fields')
-                ->with([
-                    'children' => fn ($q) => $q
-                        ->active()
-                        ->ordered()
-                        ->withCount('fields'),
-                ])
+                ->with($this->childrenTreeEager())
                 ->get();
         }
 
@@ -56,5 +46,26 @@ class CategoryController extends BaseController
             CategoryResource::collection($categories),
             __('Retrieved categories tree')
         );
+    }
+
+    /**
+     * Eager-load constraint for the subcategory tree: active children, and
+     * each child's own active children (a third level — e.g. طيور → حمام/دجاج/بط),
+     * all ordered and with their field counts.
+     */
+    private function childrenTreeEager(): array
+    {
+        $childConstraint = fn ($q) => $q
+            ->active()
+            ->ordered()
+            ->withCount('fields')
+            ->with([
+                'children' => fn ($q2) => $q2
+                    ->active()
+                    ->ordered()
+                    ->withCount('fields'),
+            ]);
+
+        return ['children' => $childConstraint];
     }
 }
