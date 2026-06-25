@@ -209,7 +209,7 @@ class _SidebarItem extends StatelessWidget {
 
 // ── Subcategory grid ──────────────────────────────────────────────────────────
 
-class _SubcategoryGrid extends StatelessWidget {
+class _SubcategoryGrid extends StatefulWidget {
   final CategoryModel parent;
   final bool isDark;
   final void Function(CategoryModel sub) onTap;
@@ -223,8 +223,25 @@ class _SubcategoryGrid extends StatelessWidget {
   });
 
   @override
+  State<_SubcategoryGrid> createState() => _SubcategoryGridState();
+}
+
+class _SubcategoryGridState extends State<_SubcategoryGrid> {
+  // Third-level drill-down (e.g. طيور → حمام/دجاج/بط). Null = browsing the
+  // parent's direct subcategories.
+  CategoryModel? _drilled;
+
+  @override
+  void didUpdateWidget(_SubcategoryGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.parent.id != widget.parent.id) _drilled = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final subs = parent.children;
+    final isDark = widget.isDark;
+    final level = _drilled ?? widget.parent;
+    final subs = level.children;
 
     if (subs.isEmpty) {
       // No children → the category itself is the leaf
@@ -233,15 +250,14 @@ class _SubcategoryGrid extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionHeader(title: parent.nameAr),
+            _SectionHeader(title: widget.parent.nameAr),
             const SizedBox(height: 12),
             _BadgeTile(
-              label: parent.nameAr,
-              slug: parent.slug,
-              image: parent.image,
+              label: widget.parent.nameAr,
+              slug: widget.parent.slug,
               index: 0,
               isDark: isDark,
-              onTap: onParentTap,
+              onTap: widget.onParentTap,
             ),
           ],
         ),
@@ -253,7 +269,13 @@ class _SubcategoryGrid extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
-            child: _SectionHeader(title: parent.nameAr),
+            child: _drilled == null
+                ? _SectionHeader(title: widget.parent.nameAr)
+                : _DrillHeader(
+                    title: _drilled!.nameAr,
+                    parentTitle: widget.parent.nameAr,
+                    onBack: () => setState(() => _drilled = null),
+                  ),
           ),
         ),
         SliverPadding(
@@ -265,19 +287,56 @@ class _SubcategoryGrid extends StatelessWidget {
               crossAxisSpacing: 10,
               childAspectRatio: 0.9,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (_, i) => _BadgeTile(
-                label: subs[i].nameAr,
-                slug: subs[i].slug,
-                image: subs[i].image,
+            delegate: SliverChildBuilderDelegate((_, i) {
+              final sub = subs[i];
+              final drillable = _drilled == null && sub.children.isNotEmpty;
+              return _BadgeTile(
+                label: sub.nameAr,
+                slug: sub.slug,
                 index: i,
                 isDark: isDark,
-                onTap: () => onTap(subs[i]),
-              ),
-              childCount: subs.length,
-            ),
+                showChevron: drillable,
+                onTap: () {
+                  if (drillable) {
+                    setState(() => _drilled = sub);
+                  } else {
+                    widget.onTap(sub);
+                  }
+                },
+              );
+            }, childCount: subs.length),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Header shown when drilled into a third-level group, with a back affordance.
+class _DrillHeader extends StatelessWidget {
+  final String title;
+  final String parentTitle;
+  final VoidCallback onBack;
+  const _DrillHeader({
+    required this.title,
+    required this.parentTitle,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        InkWell(
+          onTap: onBack,
+          borderRadius: BorderRadius.circular(8),
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(Icons.arrow_forward_rounded, size: 20),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(child: _SectionHeader(title: title)),
       ],
     );
   }
@@ -320,17 +379,17 @@ class _SectionHeader extends StatelessWidget {
 class _BadgeTile extends StatefulWidget {
   final String label;
   final String slug;
-  final String? image;
   final int index;
   final bool isDark;
+  final bool showChevron;
   final VoidCallback onTap;
 
   const _BadgeTile({
     required this.label,
     required this.slug,
-    this.image,
     required this.index,
     required this.isDark,
+    this.showChevron = false,
     required this.onTap,
   });
 
@@ -393,49 +452,61 @@ class _BadgeTileState extends State<_BadgeTile>
       onTapCancel: () => _ctrl.reverse(),
       child: ScaleTransition(
         scale: _scale,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: widget.isDark ? [darkFrom, darkTo] : [from, to],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: (widget.isDark ? darkFrom : from).withValues(alpha: .35),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              categoryVisual(
-                widget.slug,
-                widget.image,
-                color: textColor,
-                iconSize: 22,
-                imageSize: 30,
-                radius: 8,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                  height: 1.3,
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: widget.isDark ? [darkFrom, darkTo] : [from, to],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: (widget.isDark ? darkFrom : from).withValues(
+                      alpha: .35,
+                    ),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Always render the white Lucide glyph on the coloured tile —
+                  // the tile itself is the gradient, so we must not nest the
+                  // coloured gradient-tile SVG (image) inside another gradient.
+                  Icon(categoryIcon(widget.slug), color: textColor, size: 26),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                      height: 1.3,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (widget.showChevron)
+              Positioned(
+                top: 6,
+                left: 6,
+                child: Icon(
+                  Icons.more_horiz_rounded,
+                  size: 14,
+                  color: textColor.withValues(alpha: 0.85),
+                ),
+              ),
+          ],
         ),
       ),
     );
