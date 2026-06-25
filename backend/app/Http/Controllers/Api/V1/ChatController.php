@@ -97,7 +97,9 @@ class ChatController extends BaseController
     {
         $request->validate([
             'receiver_id'     => ['required', 'integer', 'exists:users,id'],
-            'message_preview' => ['required', 'string', 'max:200'],
+            // Accept long messages: the preview is truncated below rather than
+            // rejected, so a long chat message still triggers a notification.
+            'message_preview' => ['required', 'string'],
         ]);
 
         /** @var User $sender */
@@ -106,7 +108,7 @@ class ChatController extends BaseController
         $this->chatService->notifyNewMessage(
             conversationId: $id,
             receiverId:     $request->integer('receiver_id'),
-            messagePreview: $request->string('message_preview'),
+            messagePreview: mb_substr($request->string('message_preview'), 0, 200),
             sender:         $sender
         );
 

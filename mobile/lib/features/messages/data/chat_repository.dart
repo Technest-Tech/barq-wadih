@@ -119,7 +119,6 @@ class ChatRepository {
 
     final sellerId = seller['id'].toString();
     final buyerId = buyer['id'].toString();
-    final sellerIdInt = (seller['id'] as num?)?.toInt();
 
     await _seedConversation(
       conversationId: conversationId,
@@ -139,20 +138,14 @@ class ChatRepository {
       },
     );
 
+    // sendMessage() notifies the receiver (the seller) internally, so no
+    // explicit notifyNewMessage call is needed here.
     await sendMessage(
       conversationId: conversationId,
       myId: myId,
       myUid: myUid,
       text: initialMessage,
     );
-
-    if (sellerIdInt != null) {
-      notifyNewMessage(
-        conversationId: conversationId,
-        receiverId: sellerIdInt,
-        messagePreview: initialMessage,
-      );
-    }
 
     return conversationId;
   }
@@ -234,6 +227,17 @@ class ChatRepository {
       'unreadCount.$otherId': currentUnread + 1,
       'updatedAt': now,
     });
+
+    // Notify the receiver: creates an in-app notification record (notification
+    // center + unread badge) AND dispatches an FCM push. Best-effort.
+    final receiverId = int.tryParse(otherId);
+    if (receiverId != null) {
+      await notifyNewMessage(
+        conversationId: conversationId,
+        receiverId: receiverId,
+        messagePreview: text.trim(),
+      );
+    }
   }
 
   /// Upload voice recording to Firebase Storage then send as voice message.
@@ -297,6 +301,15 @@ class ChatRepository {
       'unreadCount.$otherId': currentUnread + 1,
       'updatedAt': now,
     });
+
+    final receiverId = int.tryParse(otherId);
+    if (receiverId != null) {
+      await notifyNewMessage(
+        conversationId: conversationId,
+        receiverId: receiverId,
+        messagePreview: '🎤 رسالة صوتية',
+      );
+    }
   }
 
   /// Upload image to Firebase Storage then send as image message.
@@ -357,6 +370,15 @@ class ChatRepository {
       'unreadCount.$otherId': currentUnread + 1,
       'updatedAt': now,
     });
+
+    final receiverId = int.tryParse(otherId);
+    if (receiverId != null) {
+      await notifyNewMessage(
+        conversationId: conversationId,
+        receiverId: receiverId,
+        messagePreview: '📷 صورة',
+      );
+    }
   }
 
   /// Mark all received messages as read and reset unread counter.
