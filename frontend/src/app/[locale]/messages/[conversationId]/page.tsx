@@ -58,6 +58,12 @@ function formatDuration(seconds: number): string {
   return `${m}:${s}`;
 }
 
+// Chat media (image attach + voice messages) both upload to Firebase Storage.
+// Storage is not provisioned yet (needs the Blaze upgrade), so the buttons are
+// hidden until then. Enable later by setting NEXT_PUBLIC_CHAT_MEDIA_ENABLED=true
+// in the frontend env and rebuilding — no code change required.
+const CHAT_MEDIA_ENABLED = process.env.NEXT_PUBLIC_CHAT_MEDIA_ENABLED === 'true';
+
 interface ConvMeta {
   adId?: string;
   adTitle?: string;
@@ -532,22 +538,26 @@ export default function ConversationPage() {
       ) : (
         /* Normal input bar */
         <div className={styles.inputBar}>
-          <button
-            className={styles.iconBtn}
-            onClick={() => fileRef.current?.click()}
-            disabled={isBusy}
-            aria-label="إرسال صورة"
-            type="button"
-          >
-            <ImagePlus size={20} />
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handleImagePick}
-          />
+          {CHAT_MEDIA_ENABLED && (
+            <>
+              <button
+                className={styles.iconBtn}
+                onClick={() => fileRef.current?.click()}
+                disabled={isBusy}
+                aria-label="إرسال صورة"
+                type="button"
+              >
+                <ImagePlus size={20} />
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleImagePick}
+              />
+            </>
+          )}
 
           <textarea
             ref={textareaRef}
@@ -559,10 +569,11 @@ export default function ConversationPage() {
             onKeyDown={handleKeyDown}
           />
 
-          {canSend ? (
+          {canSend || !CHAT_MEDIA_ENABLED ? (
             <button
               className={styles.sendBtn}
               onClick={handleSend}
+              disabled={!canSend}
               aria-label="إرسال"
               type="button"
             >

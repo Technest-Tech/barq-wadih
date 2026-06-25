@@ -79,6 +79,12 @@ dependencies:
   flutter_native_splash: ^2.4.4
   image: ^4.8.0
 
+# `record` 5.x pins record_linux 0.7.2, which doesn't implement the newer
+# record_platform_interface (startStream) and breaks compilation. We only
+# target Android/iOS, so force the compatible Linux impl to fix the build.
+dependency_overrides:
+  record_linux: ^1.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
