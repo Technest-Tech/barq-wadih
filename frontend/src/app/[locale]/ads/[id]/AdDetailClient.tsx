@@ -14,6 +14,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import PremiumFavoriteModal from '@/components/favorites/PremiumFavoriteModal';
 import ContactModal from '@/components/ads/ContactModal';
 import { useIsFollowingSeller } from '@/lib/sellerFollows';
+import { toggleCategoryFollow, fetchFollowStatus } from '@/lib/api/follows';
 import { fetchQuestions, postQuestion, postReply } from '@/lib/api/questions';
 import type { Question } from '@/lib/api/questions';
 import styles from './page.module.css';
@@ -110,6 +111,33 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
         .catch(() => {});
     }
   }, [ad.category, ad.id]);
+
+  // ── Follow this ad's category ─────────────────────────────────────────────
+  const [isFollowingCategory, setIsFollowingCategory] = useState(false);
+  const [followCategoryBusy, setFollowCategoryBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !ad.category) {
+      setIsFollowingCategory(false);
+      return;
+    }
+    fetchFollowStatus(ad.category.id)
+      .then((res) => setIsFollowingCategory(res.is_following))
+      .catch(() => {});
+  }, [isAuthenticated, ad.category]);
+
+  const toggleFollowCategory = async () => {
+    if (!ad.category || followCategoryBusy) return;
+    setFollowCategoryBusy(true);
+    try {
+      const res = await toggleCategoryFollow(ad.category.id, ad.city?.id);
+      setIsFollowingCategory(res.is_following);
+    } catch {
+      /* swallow */
+    } finally {
+      setFollowCategoryBusy(false);
+    }
+  };
 
   // ── Questions state ───────────────────────────────────────────────────────
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -265,6 +293,8 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
           /* swallow */
         }
       }
+    } else if (action === 'follow_ads') {
+      await toggleFollowCategory();
     }
   };
 
@@ -703,11 +733,15 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
           {/* ── Right: Sidebar ── */}
           <div className={styles.rightCol}>
             <div className={styles.similarSidebar}>
-              <button className={styles.similarHeaderBtn} onClick={() => requireAuth('follow_ads')}>
+              <button
+                className={styles.similarHeaderBtn}
+                onClick={() => requireAuth('follow_ads')}
+                disabled={followCategoryBusy}
+              >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                   <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
                 </svg>
-                متابعة العروض المشابهة
+                {isFollowingCategory ? 'إلغاء متابعة العروض المشابهة' : 'متابعة العروض المشابهة'}
               </button>
 
               <div className={styles.similarTabs}>
