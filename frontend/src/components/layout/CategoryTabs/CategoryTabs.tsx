@@ -12,7 +12,10 @@ const LUCIDE_ICONS: Record<string, React.ReactNode> = {
 };
 
 // ── Fallback static data (shown if API fails) ─────────────────────────────────
-const FALLBACK_CATEGORIES: Pick<Category, 'id' | 'icon' | 'name_ar' | 'slug'>[] = [
+type TabCategory = Pick<Category, 'id' | 'icon' | 'name_ar' | 'slug'> & {
+  image?: string | null;
+};
+const FALLBACK_CATEGORIES: TabCategory[] = [
   { id: 0, icon: '🚗', name_ar: 'سيارات', slug: 'cars' },
   { id: 2, icon: '📱', name_ar: 'إلكترونيات', slug: 'electronics' },
   { id: 3, icon: '🛋️', name_ar: 'أثاث ومفروشات', slug: 'furniture' },
@@ -29,7 +32,7 @@ const FALLBACK_CATEGORIES: Pick<Category, 'id' | 'icon' | 'name_ar' | 'slug'>[] 
 ];
 
 export default function CategoryTabs() {
-  const [categories, setCategories] = useState<typeof FALLBACK_CATEGORIES>([]);
+  const [categories, setCategories] = useState<TabCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +48,7 @@ export default function CategoryTabs() {
           data.map((c) => ({
             id: c.id,
             icon: c.icon ?? '📦',
+            image: c.image,
             name_ar: c.name_ar,
             slug: c.slug,
           }))
@@ -88,7 +92,10 @@ export default function CategoryTabs() {
               id={`category-tab-${cat.slug}`}
               className={`${styles.tab} ${activeSlug === cat.slug ? styles.tabActive : ''}`}
             >
-              {LUCIDE_ICONS[cat.slug] ? (
+              {cat.image?.startsWith('http') ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={cat.image} alt={cat.name_ar} className={styles.tabIconImg} />
+              ) : LUCIDE_ICONS[cat.slug] ? (
                 <span className={styles.tabIcon}>{LUCIDE_ICONS[cat.slug]}</span>
               ) : cat.icon?.startsWith('http') ? (
                 // eslint-disable-next-line @next/next/no-img-element

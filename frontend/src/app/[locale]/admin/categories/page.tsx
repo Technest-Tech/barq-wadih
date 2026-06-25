@@ -414,7 +414,7 @@ export default function AdminCategoriesPage() {
             style={{ background: `linear-gradient(135deg, ${color}, transparent)` }}
           />
           <div className={cs.catIconWrap} style={{ boxShadow: `0 0 0 2px ${color}33` }}>
-            {renderIcon(cat.icon, 22, !cat.is_active)}
+            {renderIcon(cat.image || cat.icon, 22, !cat.is_active)}
           </div>
           <div className={cs.catInfo}>
             <div className={cs.catName}>
@@ -506,7 +506,7 @@ export default function AdminCategoriesPage() {
           <div className={cs.catPreview}>
             {previewSubs.map((sub) => (
               <span key={sub.id} className={cs.previewChip} title={sub.name_ar}>
-                <span className={cs.previewIcon}>{renderIcon(sub.icon, 12)}</span>
+                <span className={cs.previewIcon}>{renderIcon(sub.image || sub.icon, 12)}</span>
                 <span>{sub.name_ar}</span>
               </span>
             ))}
@@ -557,7 +557,9 @@ export default function AdminCategoriesPage() {
           >
             {/* Modal header */}
             <div className={cs.subsModalHeader}>
-              <div className={cs.subsModalIcon}>{renderIcon(subsModal.icon, 24)}</div>
+              <div className={cs.subsModalIcon}>
+                {renderIcon(subsModal.image || subsModal.icon, 24)}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className={cs.subsModalTitle}>
                   الفرعيات تحت &quot;{subsModal.name_ar}&quot;
@@ -619,7 +621,9 @@ export default function AdminCategoriesPage() {
                     key={sub.id}
                     className={`${cs.subRow} ${!sub.is_active ? cs.subRowInactive : ''}`}
                   >
-                    <div className={cs.subRowIcon}>{renderIcon(sub.icon, 18, !sub.is_active)}</div>
+                    <div className={cs.subRowIcon}>
+                      {renderIcon(sub.image || sub.icon, 18, !sub.is_active)}
+                    </div>
                     <div className={cs.subRowInfo}>
                       <div className={cs.subRowName}>{sub.name_ar}</div>
                       <div className={cs.subRowMeta}>
@@ -1043,7 +1047,8 @@ export default function AdminCategoriesPage() {
               <div className={cs.pmHeaderText}>
                 <div className={cs.pmHeaderTitle}>حقول التصنيف</div>
                 <div className={cs.pmHeaderSub}>
-                  {renderIcon(fieldsModal.icon, 14)} {fieldsModal.name_ar} · {fields.length} حقل
+                  {renderIcon(fieldsModal.image || fieldsModal.icon, 14)} {fieldsModal.name_ar} ·{' '}
+                  {fields.length} حقل
                 </div>
               </div>
               <button

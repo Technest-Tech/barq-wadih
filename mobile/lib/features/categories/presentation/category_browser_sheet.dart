@@ -326,6 +326,7 @@ class _TopLevelListView extends StatelessWidget {
         return _CategoryTile(
           name: cat.nameAr,
           slug: cat.slug,
+          image: cat.image,
           color: color,
           childCount: cat.children.length,
           onTap: () => onTap(cat),
@@ -380,6 +381,7 @@ class _ChildrenListView extends StatelessWidget {
                 _CategoryTile(
                   name: e.value.nameAr,
                   slug: e.value.slug,
+                  image: e.value.image,
                   color: color,
                   childCount: 0,
                   onTap: () => onSelect(e.value),
@@ -460,6 +462,7 @@ class _SearchResultsView extends StatelessWidget {
 class _CategoryTile extends StatelessWidget {
   final String name;
   final String slug;
+  final String? image;
   final Color color;
   final int childCount;
   final VoidCallback onTap;
@@ -467,6 +470,7 @@ class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.name,
     required this.slug,
+    this.image,
     required this.color,
     required this.childCount,
     required this.onTap,
@@ -488,7 +492,14 @@ class _CategoryTile extends StatelessWidget {
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(categoryIcon(slug), color: color, size: 20),
+              child: categoryVisual(
+                slug,
+                image,
+                color: color,
+                iconSize: 20,
+                imageSize: 40,
+                radius: 10,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -618,7 +629,14 @@ class _SearchResultTile extends StatelessWidget {
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(categoryIcon(hit.cat.slug), color: color, size: 20),
+              child: categoryVisual(
+                hit.cat.slug,
+                hit.cat.image,
+                color: color,
+                iconSize: 20,
+                imageSize: 40,
+                radius: 10,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

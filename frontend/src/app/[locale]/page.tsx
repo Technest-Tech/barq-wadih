@@ -479,7 +479,7 @@ export default function HomePage() {
                                 setCategorySearch('');
                               }}
                             >
-                              <CategoryIcon icon={c.icon} name={c.name_ar} />
+                              <CategoryIcon icon={c.icon} image={c.image} name={c.name_ar} />
                               <span>{c.name_ar}</span>
                             </button>
                           ))}
@@ -593,6 +593,7 @@ export default function HomePage() {
                       >
                         <CategoryIcon
                           icon={cat.icon}
+                          image={cat.image}
                           name={cat.name_ar}
                           className={styles.sbNavEmojiFlat}
                         />
@@ -787,23 +788,26 @@ export default function HomePage() {
   );
 }
 
-// ── Category icon: renders <img> for URL icons, emoji text otherwise ──────────
+// ── Category icon: prefers the uploaded image, then a URL icon, then emoji ─────
 function CategoryIcon({
   icon,
+  image,
   name,
   className,
 }: {
   icon: string | null | undefined;
+  image?: string | null | undefined;
   name: string;
   className?: string;
 }) {
-  if (icon?.startsWith('http')) {
+  const src = image?.startsWith('http') ? image : icon?.startsWith('http') ? icon : null;
+  if (src) {
     return (
       <img
-        src={icon}
+        src={src}
         alt={name}
         className={className}
-        style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }}
+        style={{ width: 24, height: 24, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
       />
     );
   }

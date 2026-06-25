@@ -238,6 +238,7 @@ class _SubcategoryGrid extends StatelessWidget {
             _BadgeTile(
               label: parent.nameAr,
               slug: parent.slug,
+              image: parent.image,
               index: 0,
               isDark: isDark,
               onTap: onParentTap,
@@ -268,6 +269,7 @@ class _SubcategoryGrid extends StatelessWidget {
               (_, i) => _BadgeTile(
                 label: subs[i].nameAr,
                 slug: subs[i].slug,
+                image: subs[i].image,
                 index: i,
                 isDark: isDark,
                 onTap: () => onTap(subs[i]),
@@ -318,6 +320,7 @@ class _SectionHeader extends StatelessWidget {
 class _BadgeTile extends StatefulWidget {
   final String label;
   final String slug;
+  final String? image;
   final int index;
   final bool isDark;
   final VoidCallback onTap;
@@ -325,6 +328,7 @@ class _BadgeTile extends StatefulWidget {
   const _BadgeTile({
     required this.label,
     required this.slug,
+    this.image,
     required this.index,
     required this.isDark,
     required this.onTap,
@@ -409,7 +413,14 @@ class _BadgeTileState extends State<_BadgeTile>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(categoryIcon(widget.slug), color: textColor, size: 22),
+              categoryVisual(
+                widget.slug,
+                widget.image,
+                color: textColor,
+                iconSize: 22,
+                imageSize: 30,
+                radius: 8,
+              ),
               const SizedBox(height: 4),
               Text(
                 widget.label,
