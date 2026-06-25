@@ -23,6 +23,8 @@ const FALLBACK_CATEGORIES: Pick<Category, 'id' | 'icon' | 'name_ar' | 'slug'>[] 
   { id: 8, icon: '📚', name_ar: 'كتب ومجلات', slug: 'books-magazines' },
   { id: 9, icon: '🧸', name_ar: 'ألعاب وأطفال', slug: 'toys-kids' },
   { id: 10, icon: '🐕', name_ar: 'حيوانات', slug: 'animals' },
+  { id: 12, icon: '🎣', name_ar: 'صيد ورحلات', slug: 'hunting-trips' },
+  { id: 13, icon: '🍽️', name_ar: 'أطعمة ومشروبات', slug: 'food-beverages' },
   { id: 11, icon: '📦', name_ar: 'أخرى', slug: 'other' },
 ];
 

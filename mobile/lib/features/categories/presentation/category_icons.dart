@@ -7,6 +7,10 @@ IconData categoryIcon(String slug) {
   switch (slug) {
     case 'cars':
       return LucideIcons.car;
+    case 'hunting-trips':
+      return LucideIcons.fish;
+    case 'food-beverages':
+      return LucideIcons.utensils;
     default:
       return LucideIcons.layoutGrid;
   }
