@@ -249,8 +249,9 @@ class AdListModel {
   String get priceDisplay {
     if (isFree) return 'مجاني';
     if (priceHidden) return 'عند الاتصال';
-    if (isNegotiable) return 'على السوم';
-    if (price == null) return '—';
+    // "على السوم" ads now carry a price, so show the number; the negotiable
+    // tag is rendered separately next to it (see priceDisplay usages).
+    if (price == null) return isNegotiable ? 'على السوم' : '—';
     return '${price!.toStringAsFixed(0)} ر.س';
   }
 }

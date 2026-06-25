@@ -816,11 +816,14 @@ function CategoryIcon({
 
 // ── Ad List Row (Haraj-style) ─────────────────────────────────────────────────
 function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
+  // Negotiable ("على السوم") ads now carry a price, so show the number; a null
+  // price means "عند الاتصال" (call for price).
   const priceText = ad.is_free
     ? 'مجانية'
     : ad.price
       ? `${Number(ad.price).toLocaleString('ar-SA')}`
-      : 'على السوم';
+      : 'عند الاتصال';
+  const showNeg = ad.is_negotiable && !ad.is_free && !!ad.price;
 
   return (
     <Link href={`/${locale}/ads/${ad.id}`} className={styles.adListRowHaraj}>
@@ -832,6 +835,7 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
         <div className={styles.adListPriceInline}>
           {priceText}
           {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
+          {showNeg && <span className={styles.negText}> · على السوم</span>}
         </div>
 
         <div className={styles.adListBottomRow}>
@@ -860,6 +864,7 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
       {/* 2) Price beside the image */}
       <div className={styles.adListPriceBox}>
         {priceText} {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
+        {showNeg && <span className={styles.negText}> · على السوم</span>}
       </div>
 
       {/* 3) Image on Left Side (RTL End) */}

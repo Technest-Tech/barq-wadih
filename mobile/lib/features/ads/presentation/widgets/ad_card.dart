@@ -115,14 +115,40 @@ class _AdCardState extends State<AdCard> {
         ),
         const SizedBox(height: 4),
 
-        // Price — green like Haraj
-        Text(
-          ad.priceDisplay,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.colorSuccess,
-          ),
+        // Price — green like Haraj, with an "على السوم" tag for negotiable ads
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                ad.priceDisplay,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.colorSuccess,
+                ),
+              ),
+            ),
+            if (ad.isNegotiable && ad.price != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'على السوم',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         if (!widget.isGrid)
           const SizedBox(height: 6)
