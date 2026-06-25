@@ -828,6 +828,12 @@ function AdListRow({ ad, locale }: { ad: AdListItem; locale: string }) {
       <div className={styles.adListInfoRight}>
         <h3 className={styles.adListTitleHaraj}>{ad.title}</h3>
 
+        {/* Inline price — shown on mobile where the side price box is hidden */}
+        <div className={styles.adListPriceInline}>
+          {priceText}
+          {ad.price && !ad.is_free && <span className={styles.currencyLabel}>ر.س</span>}
+        </div>
+
         <div className={styles.adListBottomRow}>
           <div className={styles.adListMetaGroup}>
             <div className={styles.adListMetaItem}>
