@@ -70,7 +70,8 @@ export default function CategoryTabs() {
           id="category-tab-all"
           className={`${styles.tab} ${activeSlug === 'all' ? styles.tabActive : ''}`}
         >
-          <span className={styles.tabIcon}>🏠</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/category-all.svg" alt="الكل" className={styles.tabIconImg} />
           <span className={styles.tabName}>الكل</span>
         </Link>
 
