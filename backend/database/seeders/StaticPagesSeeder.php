@@ -41,16 +41,23 @@ class StaticPagesSeeder extends Seeder
   <li>تحتفظ المنصة بحق إزالة أي إعلان مخالف دون إشعار مسبق.</li>
 </ul>
 
-<h2>خامساً: الرسوم والمدفوعات</h2>
+<h2>خامساً: الفئات الممنوعة حالياً</h2>
+<p>لا تقبل المنصة في الوقت الراهن نشر الإعلانات في الفئات التالية:</p>
+<ul>
+  <li>العقارات بكافة أنواعها (بيع، شراء، إيجار، تأجير)</li>
+</ul>
+<p style="color:#b45309;background:#fef9c3;padding:10px 14px;border-radius:6px;font-size:0.9em;">سيتم الإعلان عن أي تحديثات على قائمة الفئات المسموح بها عبر المنصة.</p>
+
+<h2>سادساً: الرسوم والمدفوعات</h2>
 <p>قد يستلزم نشر بعض الإعلانات دفع رسوم محددة. تُعرض الرسوم بوضوح قبل إتمام عملية النشر. جميع المدفوعات نهائية وغير قابلة للاسترداد ما لم تنص سياسة الاسترداد على خلاف ذلك.</p>
 
-<h2>سادساً: المسؤولية</h2>
+<h2>سابعاً: المسؤولية</h2>
 <p>برق واضح غير مسؤولة عن أي خسائر أو أضرار تنشأ عن تعاملات المستخدمين أو صحة المعلومات المنشورة. يتحمل المستخدم المسؤولية الكاملة عن محتوى إعلاناته وتعاملاته.</p>
 
-<h2>سابعاً: التعديلات</h2>
+<h2>ثامناً: التعديلات</h2>
 <p>تحتفظ المنصة بحق تعديل هذه الشروط في أي وقت. يُعدّ استمرارك في استخدام المنصة بعد نشر التعديلات قبولاً ضمنياً لها.</p>
 
-<h2>ثامناً: القانون المنظّم</h2>
+<h2>تاسعاً: القانون المنظّم</h2>
 <p>تخضع هذه الشروط لأنظمة المملكة العربية السعودية، وتختص المحاكم السعودية بالنظر في أي نزاع ينشأ عنها.</p>
 
 <p style="color:#888;font-size:0.85em;">آخر تحديث: يناير 2025</p>
@@ -79,16 +86,23 @@ HTML,
   <li>The platform reserves the right to remove any non-compliant listing without prior notice.</li>
 </ul>
 
-<h2>5. Fees & Payments</h2>
+<h2>5. Currently Prohibited Categories</h2>
+<p>The platform currently does not accept listings in the following categories:</p>
+<ul>
+  <li>Real estate of all types (sale, purchase, rent, lease)</li>
+</ul>
+<p style="color:#b45309;background:#fef9c3;padding:10px 14px;border-radius:6px;font-size:0.9em;">Any updates to the list of permitted categories will be announced on the platform.</p>
+
+<h2>6. Fees & Payments</h2>
 <p>Some listings may require a fee, which is clearly displayed before publishing. All payments are final and non-refundable unless otherwise stated in the refund policy.</p>
 
-<h2>6. Liability</h2>
+<h2>7. Liability</h2>
 <p>Barq Wadih is not liable for any losses or damages arising from user transactions or the accuracy of posted information. Users bear full responsibility for their listing content and dealings.</p>
 
-<h2>7. Modifications</h2>
+<h2>8. Modifications</h2>
 <p>The platform reserves the right to modify these Terms at any time. Continued use of the platform after changes are published constitutes acceptance of the updated Terms.</p>
 
-<h2>8. Governing Law</h2>
+<h2>9. Governing Law</h2>
 <p>These Terms are governed by the laws of Saudi Arabia. Saudi courts shall have exclusive jurisdiction over any disputes arising from these Terms.</p>
 
 <p style="color:#888;font-size:0.85em;">Last updated: January 2025</p>
