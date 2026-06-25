@@ -18,13 +18,13 @@
   background: linear-gradient(180deg, #1f5fdb 0%, #1b4fe4 100%);
   color: #fff;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   min-height: 60px;
 }
 
 .backBtn,
 .kebabBtn {
-  background: rgba(255,255,255,.14);
+  background: rgba(255, 255, 255, 0.14);
   border: none;
   color: #fff;
   width: 36px;
@@ -39,9 +39,12 @@
 }
 .backBtn:hover,
 .kebabBtn:hover:not(:disabled) {
-  background: rgba(255,255,255,.24);
+  background: rgba(255, 255, 255, 0.24);
 }
-.kebabBtn:disabled { opacity: 0.65; cursor: default; }
+.kebabBtn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
 
 .adInfo {
   display: flex;
@@ -56,8 +59,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255,255,255,.2);
-  border: 1.5px solid rgba(255,255,255,.4);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
   flex-shrink: 0;
   overflow: hidden;
   display: flex;
@@ -91,7 +94,7 @@
 
 .adSub {
   font-size: 11px;
-  color: rgba(255,255,255,.7);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* ── Messages canvas (patterned bg) ──────────────────────────────────────── */
@@ -125,17 +128,19 @@
   gap: 12px;
   padding: 10px 12px;
   margin: 0 0 12px;
-  background: rgba(255,255,255,.96);
-  border: 1px solid rgba(27,79,228,.12);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(27, 79, 228, 0.12);
   border-radius: 12px;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  transition: background .15s, border-color .15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 .adCard:hover {
   background: #fff;
-  border-color: rgba(27,79,228,.32);
+  border-color: rgba(27, 79, 228, 0.32);
 }
 .adCardImg {
   width: 56px;
@@ -189,13 +194,13 @@
   margin: 14px 0 10px;
 }
 .dateSep span {
-  background: rgba(255,255,255,.92);
+  background: rgba(255, 255, 255, 0.92);
   color: #54656f;
   font-size: 11.5px;
   font-weight: 600;
   padding: 4px 14px;
   border-radius: 99px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 /* ── Bubble rows ─────────────────────────────────────────────────────────── */
@@ -205,8 +210,12 @@
   width: 100%;
   margin: 1px 0;
 }
-.rowSent     { justify-content: flex-start; }   /* RTL: own messages on the right (visually) */
-.rowReceived { justify-content: flex-end; }     /* RTL: peer messages on the left (visually) */
+.rowSent {
+  justify-content: flex-start;
+} /* RTL: own messages on the right (visually) */
+.rowReceived {
+  justify-content: flex-end;
+} /* RTL: peer messages on the left (visually) */
 
 .bubble {
   max-width: 75%;
@@ -256,8 +265,12 @@
   white-space: nowrap;
 }
 
-.tickSent { color: #8696a0; }
-.tickRead { color: #1b4fe4; }
+.tickSent {
+  color: #8696a0;
+}
+.tickRead {
+  color: #1b4fe4;
+}
 
 /* ── Image messages ──────────────────────────────────────────────────────── */
 
@@ -269,12 +282,14 @@
   display: block;
 }
 
-.imgUploadWrap { position: relative; }
+.imgUploadWrap {
+  position: relative;
+}
 
 .uploadOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,.4);
+  background: rgba(0, 0, 0, 0.4);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -293,7 +308,7 @@
   justify-content: center;
   gap: 6px;
   text-align: center;
-  background: rgba(255,255,255,.78);
+  background: rgba(255, 255, 255, 0.78);
   border-radius: 14px;
   padding: 32px 24px;
   margin: auto;
@@ -345,13 +360,18 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .iconBtn:hover:not(:disabled) {
   background: #e5e9ec;
   color: #1b4fe4;
 }
-.iconBtn:disabled { opacity: 0.55; cursor: default; }
+.iconBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
 
 .textInput {
   flex: 1;
@@ -366,11 +386,13 @@
   font-family: inherit;
   max-height: 120px;
   overflow-y: auto;
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   color: #0a1628;
 }
 
-.textInput::placeholder { color: #9aa3b2; }
+.textInput::placeholder {
+  color: #9aa3b2;
+}
 
 .sendBtn {
   background: #1b4fe4;
@@ -384,8 +406,174 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(27,79,228,.34);
+  transition:
+    background 0.15s,
+    transform 0.1s,
+    box-shadow 0.15s;
+  box-shadow: 0 3px 10px rgba(27, 79, 228, 0.34);
 }
-.sendBtn:hover { background: #1340c5; box-shadow: 0 5px 14px rgba(27,79,228,.42); }
-.sendBtn:active { transform: scale(0.94); }
+.sendBtn:hover {
+  background: #1340c5;
+  box-shadow: 0 5px 14px rgba(27, 79, 228, 0.42);
+}
+.sendBtn:active {
+  transform: scale(0.94);
+}
+
+.micBtn {
+  background: #1b4fe4;
+}
+.micBtn:hover {
+  background: #1340c5;
+}
+
+/* ── Voice recording bar ─────────────────────────────────────────────────── */
+
+.recordingBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  background: #f0f2f5;
+  border-top: 1px solid #d1d7db;
+  flex-shrink: 0;
+}
+
+.recordCancelBtn {
+  background: transparent;
+  border: none;
+  color: #e53e3e;
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.recordCancelBtn:hover {
+  background: #fee2e2;
+}
+
+.recordDot {
+  width: 10px;
+  height: 10px;
+  background: #e53e3e;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.recordTimer {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e53e3e;
+  font-variant-numeric: tabular-nums;
+  min-width: 42px;
+}
+
+.recordHint {
+  flex: 1;
+  font-size: 12px;
+  color: #8696a0;
+  text-align: center;
+}
+
+.recordStopBtn {
+  background: #1b4fe4;
+  border: none;
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(27, 79, 228, 0.34);
+  transition: background 0.15s;
+  font-size: 18px;
+}
+.recordStopBtn:hover {
+  background: #1340c5;
+}
+.recordStopBtn:disabled {
+  background: #9aa3b2;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ── Voice message bubble ────────────────────────────────────────────────── */
+
+.voiceBubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.voicePlayBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.voicePlayBtn:hover {
+  opacity: 0.85;
+}
+
+.voicePlayBtnSent {
+  background: #075e54;
+  color: #fff;
+}
+.voicePlayBtnRecv {
+  background: #1b4fe4;
+  color: #fff;
+}
+
+.voiceWave {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 20px;
+}
+
+.voiceBar {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.voiceBarActive {
+  background: #075e54;
+}
+
+.voiceDuration {
+  font-size: 10px;
+  color: #667781;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}

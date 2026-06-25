@@ -23,8 +23,10 @@ export interface ChatMessage {
   senderUid: string;
   senderId: string;
   text: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'voice';
   imageUrl?: string;
+  voiceUrl?: string;
+  duration?: number;
   isRead: boolean;
   readAt: { _seconds: number } | null;
   createdAt: { _seconds: number; _nanoseconds: number };
@@ -35,7 +37,8 @@ interface UseMessagesResult {
   loading: boolean;
   error: string | null;
   sendMessage: (text: string) => Promise<void>;
-  sendImage:   (imageUrl: string) => Promise<void>;
+  sendImage: (imageUrl: string) => Promise<void>;
+  sendVoice: (voiceUrl: string, duration: number) => Promise<void>;
 }
 
 const MESSAGES_LIMIT = 100;
@@ -48,12 +51,15 @@ const MESSAGES_LIMIT = 100;
 export function useMessages(conversationId: string | null): UseMessagesResult {
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const unsubRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
     if (!conversationId || !user?.id) {
+      // Intentional reset when the conversation/user clears — syncing local
+      // state to the absence of an external subscription.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages([]);
       setLoading(false);
       return;
@@ -68,7 +74,7 @@ export function useMessages(conversationId: string | null): UseMessagesResult {
     unsubRef.current = onSnapshot(
       q,
       (snapshot) => {
-        const msgs = snapshot.docs.map(d => ({
+        const msgs = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         })) as ChatMessage[];
@@ -78,7 +84,7 @@ export function useMessages(conversationId: string | null): UseMessagesResult {
 
         // Mark unread received messages as read
         const myId = String(user.id);
-        snapshot.docs.forEach(d => {
+        snapshot.docs.forEach((d) => {
           const data = d.data();
           if (data.senderId !== myId && !data.isRead) {
             updateDoc(d.ref, { isRead: true, readAt: serverTimestamp() }).catch(() => {});
@@ -95,7 +101,9 @@ export function useMessages(conversationId: string | null): UseMessagesResult {
       }
     );
 
-    return () => { unsubRef.current?.(); };
+    return () => {
+      unsubRef.current?.();
+    };
   }, [conversationId, user?.id]);
 
   const sendMessage = async (text: string): Promise<void> => {
@@ -118,5 +126,16 @@ export function useMessages(conversationId: string | null): UseMessagesResult {
     });
   };
 
-  return { messages, loading, error, sendMessage, sendImage };
+  const sendVoice = async (voiceUrl: string, duration: number): Promise<void> => {
+    if (!conversationId || !user?.id) return;
+    await writeChatMessage({
+      conversationId,
+      myId: String(user.id),
+      type: 'voice',
+      voiceUrl,
+      duration,
+    });
+  };
+
+  return { messages, loading, error, sendMessage, sendImage, sendVoice };
 }

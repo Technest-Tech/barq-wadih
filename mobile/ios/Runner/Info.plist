@@ -7,6 +7,9 @@
 		<!-- Required for Face ID login (local_auth) -->
 		<key>NSFaceIDUsageDescription</key>
 		<string>يُستخدم للدخول السريع والآمن إلى حسابك باستخدام بصمة الوجه.</string>
+		<!-- Required for voice messages (record package) -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>نحتاج إلى الوصول للميكروفون لإرسال الرسائل الصوتية في المحادثات.</string>
 		<key>CFBundleDisplayName</key>
 		<string>Barq Wadih</string>
 		<key>CFBundleExecutable</key>

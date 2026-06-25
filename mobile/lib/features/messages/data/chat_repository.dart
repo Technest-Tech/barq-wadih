@@ -72,18 +72,28 @@ class ChatRepository {
     Map<String, String?> peerAvatars = const {},
   }) async {
     final convRef = _fs.collection('conversations').doc(conversationId);
-    await convRef.set({
-      'participantIds':  participantIds,
-      'participantUids': participantUids,
-      'adId':            adId,
-      'adTitle':         adTitle,
-      'adImage':         adImage,
-      'peerNames':       peerNames,
-      'peerAvatars':     peerAvatars,
-    }, SetOptions(mergeFields: [
-      'participantIds', 'participantUids', 'adId', 'adTitle',
-      'adImage', 'peerNames', 'peerAvatars',
-    ]));
+    await convRef.set(
+      {
+        'participantIds': participantIds,
+        'participantUids': participantUids,
+        'adId': adId,
+        'adTitle': adTitle,
+        'adImage': adImage,
+        'peerNames': peerNames,
+        'peerAvatars': peerAvatars,
+      },
+      SetOptions(
+        mergeFields: [
+          'participantIds',
+          'participantUids',
+          'adId',
+          'adTitle',
+          'adImage',
+          'peerNames',
+          'peerAvatars',
+        ],
+      ),
+    );
   }
 
   /// Create a conversation and post the buyer's opening message in one shot.
@@ -100,46 +110,46 @@ class ChatRepository {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
     final meta = await createConversation(adId);
 
-    final conversationId  = meta['conversation_id'] as String;
-    final participantIds  = List<String>.from(meta['participant_ids']  ?? []);
+    final conversationId = meta['conversation_id'] as String;
+    final participantIds = List<String>.from(meta['participant_ids'] ?? []);
     final participantUids = List<String>.from(meta['participant_uids'] ?? []);
-    final ad              = Map<String, dynamic>.from(meta['ad']     as Map);
-    final seller          = Map<String, dynamic>.from(meta['seller'] as Map);
-    final buyer           = Map<String, dynamic>.from(meta['buyer']  as Map);
+    final ad = Map<String, dynamic>.from(meta['ad'] as Map);
+    final seller = Map<String, dynamic>.from(meta['seller'] as Map);
+    final buyer = Map<String, dynamic>.from(meta['buyer'] as Map);
 
-    final sellerId    = seller['id'].toString();
-    final buyerId     = buyer['id'].toString();
+    final sellerId = seller['id'].toString();
+    final buyerId = buyer['id'].toString();
     final sellerIdInt = (seller['id'] as num?)?.toInt();
 
     await _seedConversation(
-      conversationId:  conversationId,
-      participantIds:  participantIds,
+      conversationId: conversationId,
+      participantIds: participantIds,
       participantUids: participantUids,
-      myId:            myId,
-      adId:            ad['id'].toString(),
-      adTitle:         ad['title'] as String? ?? '',
-      adImage:         ad['image'] as String?,
+      myId: myId,
+      adId: ad['id'].toString(),
+      adTitle: ad['title'] as String? ?? '',
+      adImage: ad['image'] as String?,
       peerNames: {
         sellerId: seller['name'] as String? ?? '',
-        buyerId:  buyer['name']  as String? ?? '',
+        buyerId: buyer['name'] as String? ?? '',
       },
       peerAvatars: {
         sellerId: seller['avatar'] as String?,
-        buyerId:  buyer['avatar']  as String?,
+        buyerId: buyer['avatar'] as String?,
       },
     );
 
     await sendMessage(
       conversationId: conversationId,
-      myId:           myId,
-      myUid:          myUid,
-      text:           initialMessage,
+      myId: myId,
+      myUid: myUid,
+      text: initialMessage,
     );
 
     if (sellerIdInt != null) {
       notifyNewMessage(
         conversationId: conversationId,
-        receiverId:     sellerIdInt,
+        receiverId: sellerIdInt,
         messagePreview: initialMessage,
       );
     }
@@ -155,9 +165,11 @@ class ChatRepository {
         .where('participantUids', arrayContains: myUid)
         .orderBy('lastMessageAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ConversationModel.fromFirestore(d.id, d.data()))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((d) => ConversationModel.fromFirestore(d.id, d.data()))
+              .toList(),
+        );
   }
 
   // ── Messages ─────────────────────────────────────────────────────────────────
@@ -171,9 +183,11 @@ class ChatRepository {
         .orderBy('createdAt', descending: false)
         .limit(100)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => MessageModel.fromFirestore(d.id, d.data()))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((d) => MessageModel.fromFirestore(d.id, d.data()))
+              .toList(),
+        );
   }
 
   /// Send a plain text message.
@@ -189,32 +203,99 @@ class ChatRepository {
 
     final data = convSnap.data()!;
     final participants = List<String>.from(data['participantIds'] ?? []);
-    final otherId = participants.firstWhere((id) => id != myId, orElse: () => '');
+    final otherId = participants.firstWhere(
+      (id) => id != myId,
+      orElse: () => '',
+    );
 
     final now = FieldValue.serverTimestamp();
 
     // Write the message
     await convRef.collection('messages').add({
-      'senderUid':  myUid,
-      'senderId':   myId,
-      'text':       text.trim(),
-      'type':       'text',
-      'imageUrl':   null,
-      'isRead':     false,
-      'readAt':     null,
-      'createdAt':  now,
+      'senderUid': myUid,
+      'senderId': myId,
+      'text': text.trim(),
+      'type': 'text',
+      'imageUrl': null,
+      'isRead': false,
+      'readAt': null,
+      'createdAt': now,
     });
 
     // Update conversation metadata
     final currentUnread =
-        ((data['unreadCount'] as Map<dynamic, dynamic>?)?[otherId] as int?) ?? 0;
+        ((data['unreadCount'] as Map<dynamic, dynamic>?)?[otherId] as int?) ??
+        0;
 
     await convRef.update({
-      'lastMessage':         text.trim(),
-      'lastMessageAt':       now,
+      'lastMessage': text.trim(),
+      'lastMessageAt': now,
       'lastMessageSenderId': myId,
       'unreadCount.$otherId': currentUnread + 1,
-      'updatedAt':           now,
+      'updatedAt': now,
+    });
+  }
+
+  /// Upload voice recording to Firebase Storage then send as voice message.
+  Future<void> sendVoice({
+    required String conversationId,
+    required String myId,
+    required String myUid,
+    required File voiceFile,
+    required int duration,
+    void Function(double progress)? onProgress,
+  }) async {
+    final path =
+        'chat_voice/$conversationId/${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final storageRef = FirebaseStorage.instance.ref().child(path);
+    final task = storageRef.putFile(voiceFile);
+
+    if (onProgress != null) {
+      task.snapshotEvents.listen((snap) {
+        if (snap.totalBytes > 0) {
+          onProgress(snap.bytesTransferred / snap.totalBytes);
+        }
+      });
+    }
+
+    await task;
+    final downloadUrl = await storageRef.getDownloadURL();
+
+    final convRef = _fs.collection('conversations').doc(conversationId);
+    final convSnap = await convRef.get();
+    if (!convSnap.exists) return;
+
+    final data = convSnap.data()!;
+    final participants = List<String>.from(data['participantIds'] ?? []);
+    final otherId = participants.firstWhere(
+      (id) => id != myId,
+      orElse: () => '',
+    );
+
+    final now = FieldValue.serverTimestamp();
+    final currentUnread =
+        ((data['unreadCount'] as Map<dynamic, dynamic>?)?[otherId] as int?) ??
+        0;
+
+    await convRef.collection('messages').add({
+      'senderUid': myUid,
+      'senderId': myId,
+      'text': '🎤 رسالة صوتية',
+      'type': 'voice',
+      'imageUrl': null,
+      'voiceUrl': downloadUrl,
+      'duration': duration,
+      'isRead': false,
+      'readAt': null,
+      'createdAt': now,
+    });
+
+    await convRef.update({
+      'lastMessage': '🎤 رسالة صوتية',
+      'lastMessageAt': now,
+      'lastMessageSenderId': myId,
+      'unreadCount.$otherId': currentUnread + 1,
+      'updatedAt': now,
     });
   }
 
@@ -226,7 +307,8 @@ class ChatRepository {
     required File imageFile,
     void Function(double progress)? onProgress,
   }) async {
-    final path = 'chat_images/$conversationId/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+    final path =
+        'chat_images/$conversationId/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
     final storageRef = FirebaseStorage.instance.ref().child(path);
     final task = storageRef.putFile(imageFile);
 
@@ -247,29 +329,33 @@ class ChatRepository {
 
     final data = convSnap.data()!;
     final participants = List<String>.from(data['participantIds'] ?? []);
-    final otherId = participants.firstWhere((id) => id != myId, orElse: () => '');
+    final otherId = participants.firstWhere(
+      (id) => id != myId,
+      orElse: () => '',
+    );
 
     final now = FieldValue.serverTimestamp();
     final currentUnread =
-        ((data['unreadCount'] as Map<dynamic, dynamic>?)?[otherId] as int?) ?? 0;
+        ((data['unreadCount'] as Map<dynamic, dynamic>?)?[otherId] as int?) ??
+        0;
 
     await convRef.collection('messages').add({
-      'senderUid':  myUid,
-      'senderId':   myId,
-      'text':       '📷 صورة',
-      'type':       'image',
-      'imageUrl':   downloadUrl,
-      'isRead':     false,
-      'readAt':     null,
-      'createdAt':  now,
+      'senderUid': myUid,
+      'senderId': myId,
+      'text': '📷 صورة',
+      'type': 'image',
+      'imageUrl': downloadUrl,
+      'isRead': false,
+      'readAt': null,
+      'createdAt': now,
     });
 
     await convRef.update({
-      'lastMessage':           '📷 صورة',
-      'lastMessageAt':         now,
-      'lastMessageSenderId':   myId,
-      'unreadCount.$otherId':  currentUnread + 1,
-      'updatedAt':             now,
+      'lastMessage': '📷 صورة',
+      'lastMessageAt': now,
+      'lastMessageSenderId': myId,
+      'unreadCount.$otherId': currentUnread + 1,
+      'updatedAt': now,
     });
   }
 
@@ -311,10 +397,7 @@ class ChatRepository {
     try {
       await _dio.post(
         '/chat/conversations/$conversationId/notify',
-        data: {
-          'receiver_id':     receiverId,
-          'message_preview': messagePreview,
-        },
+        data: {'receiver_id': receiverId, 'message_preview': messagePreview},
       );
     } catch (_) {
       // Non-fatal — push notifications are Sprint 10

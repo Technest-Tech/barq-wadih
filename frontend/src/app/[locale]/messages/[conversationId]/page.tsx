@@ -3,9 +3,26 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Send, ImagePlus, Mic, MoreVertical, Check, CheckCheck, ShoppingBag } from 'lucide-react';
+import {
+  ArrowRight,
+  Send,
+  ImagePlus,
+  Mic,
+  MicOff,
+  Play,
+  Pause,
+  MoreVertical,
+  Check,
+  CheckCheck,
+  ShoppingBag,
+} from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL, getStorage } from 'firebase/storage';
+import {
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL,
+  getStorage,
+} from 'firebase/storage';
 import { getApp } from 'firebase/app';
 import { db } from '@/lib/firebase/firestore';
 import { useMessages } from '@/lib/hooks/useMessages';
@@ -19,17 +36,26 @@ import styles from './page.module.css';
 
 function formatTime(secs: number): string {
   return new Date(secs * 1000).toLocaleTimeString('ar-SA', {
-    hour: '2-digit', minute: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 function formatDateSeparator(secs: number): string {
-  const d    = new Date(secs * 1000);
-  const now  = new Date();
+  const d = new Date(secs * 1000);
+  const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
   if (diff === 0) return 'اليوم';
   if (diff === 1) return 'أمس';
   return d.toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' });
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
 }
 
 interface ConvMeta {
@@ -49,30 +75,57 @@ export default function ConversationPage() {
   const { user } = useAuthStore();
   const { isReady: firebaseReady } = useFirebaseAuth();
 
-  // Pass null until Firebase Auth is stable; useMessages treats null as "not open".
-  const { messages, loading, sendMessage, sendImage } = useMessages(firebaseReady ? conversationId : null);
+  const { messages, loading, sendMessage, sendImage, sendVoice } = useMessages(
+    firebaseReady ? conversationId : null
+  );
 
-  const [text, setText]                 = useState('');
-  const [convMeta, setConvMeta]         = useState<ConvMeta | null>(null);
+  const [text, setText] = useState('');
+  const [convMeta, setConvMeta] = useState<ConvMeta | null>(null);
   const [imgUploading, setImgUploading] = useState(false);
-  const [imgPreview, setImgPreview]     = useState<string | null>(null);
+  const [imgPreview, setImgPreview] = useState<string | null>(null);
 
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const fileRef     = useRef<HTMLInputElement>(null);
+  // ── Voice recording state ────────────────────────────────────────────────────
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [voiceUploading, setVoiceUploading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Voice playback state ─────────────────────────────────────────────────────
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const myId = String(user?.id ?? '');
 
-  // Load conversation metadata (ad info, participants)
   useEffect(() => {
     if (!conversationId) return;
-    getDoc(doc(db, 'conversations', conversationId)).then(snap => {
-      if (snap.exists()) setConvMeta(snap.data() as ConvMeta);
-    }).catch(() => {});
+    getDoc(doc(db, 'conversations', conversationId))
+      .then((snap) => {
+        if (snap.exists()) setConvMeta(snap.data() as ConvMeta);
+      })
+      .catch(() => {});
   }, [conversationId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, imgPreview]);
+
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
@@ -82,7 +135,7 @@ export default function ConversationPage() {
 
   const getOtherParticipantId = (): string => {
     const ids = convMeta?.participantIds ?? [];
-    return ids.find(id => id !== myId) ?? '';
+    return ids.find((id) => id !== myId) ?? '';
   };
 
   const handleSend = async () => {
@@ -112,16 +165,16 @@ export default function ConversationPage() {
 
     try {
       const storage = getStorage(getApp());
-      const path    = `chat_images/${conversationId}/${Date.now()}_${file.name}`;
-      const sRef    = storageRef(storage, path);
-      const task    = uploadBytesResumable(sRef, file);
+      const path = `chat_images/${conversationId}/${Date.now()}_${file.name}`;
+      const sRef = storageRef(storage, path);
+      const task = uploadBytesResumable(sRef, file);
 
       await new Promise<void>((resolve, reject) => {
         task.on('state_changed', null, reject, () => resolve());
       });
 
       const downloadUrl = await getDownloadURL(task.snapshot.ref);
-      const receiverId  = parseInt(getOtherParticipantId(), 10);
+      const receiverId = parseInt(getOtherParticipantId(), 10);
 
       await sendImage(downloadUrl);
       if (receiverId) notifyNewMessage(conversationId, receiverId, '📷 صورة').catch(() => {});
@@ -133,14 +186,134 @@ export default function ConversationPage() {
     }
   };
 
+  // ── Voice recording ──────────────────────────────────────────────────────────
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((s) => s + 1);
+      }, 1000);
+    } catch {
+      // Microphone permission denied or unavailable — silently ignore
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!mediaRecorderRef.current) return;
+
+    clearInterval(recordingTimerRef.current!);
+    const duration = recordingSeconds;
+    setIsRecording(false);
+    setRecordingSeconds(0);
+
+    await new Promise<void>((resolve) => {
+      mediaRecorderRef.current!.onstop = () => resolve();
+      mediaRecorderRef.current!.stop();
+    });
+
+    mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+
+    if (duration === 0 || audioChunksRef.current.length === 0) return;
+
+    const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    audioChunksRef.current = [];
+
+    setVoiceUploading(true);
+    try {
+      const storage = getStorage(getApp());
+      const path = `chat_voice/${conversationId}/${Date.now()}.webm`;
+      const sRef = storageRef(storage, path);
+      const task = uploadBytesResumable(sRef, blob);
+
+      await new Promise<void>((resolve, reject) => {
+        task.on('state_changed', null, reject, () => resolve());
+      });
+
+      const downloadUrl = await getDownloadURL(task.snapshot.ref);
+      const receiverId = parseInt(getOtherParticipantId(), 10);
+
+      await sendVoice(downloadUrl, duration);
+      if (receiverId)
+        notifyNewMessage(conversationId, receiverId, '🎤 رسالة صوتية').catch(() => {});
+    } finally {
+      setVoiceUploading(false);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (!mediaRecorderRef.current) return;
+    clearInterval(recordingTimerRef.current!);
+    mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+    try {
+      mediaRecorderRef.current.stop();
+    } catch {
+      /* ignore */
+    }
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingSeconds(0);
+  };
+
+  // ── Voice playback ───────────────────────────────────────────────────────────
+
+  const toggleAudio = (msgId: string, url: string) => {
+    if (playingId === msgId && audioRef.current) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
+        setIsAudioPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsAudioPlaying(true);
+      }
+      return;
+    }
+
+    // New message — stop current, start new
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setPlayingId(msgId);
+    setIsAudioPlaying(true);
+
+    audio.play().catch(() => {});
+    audio.onended = () => {
+      setPlayingId(null);
+      setIsAudioPlaying(false);
+    };
+    audio.onpause = () => setIsAudioPlaying(false);
+    audio.onplay = () => setIsAudioPlaying(true);
+  };
+
+  // ── Render messages ──────────────────────────────────────────────────────────
+
   const renderMessages = useCallback(() => {
     const elements: React.ReactNode[] = [];
     let lastDate = '';
 
     messages.forEach((msg, i) => {
-      const secs      = msg.createdAt?._seconds ?? 0;
+      const secs = msg.createdAt?._seconds ?? 0;
       const dateLabel = formatDateSeparator(secs);
-      const isMe      = msg.senderId === myId;
+      const isMe = msg.senderId === myId;
 
       if (dateLabel !== lastDate) {
         lastDate = dateLabel;
@@ -151,15 +324,20 @@ export default function ConversationPage() {
         );
       }
 
-      const tickIcon = isMe
-        ? (msg.isRead
-            ? <CheckCheck size={14} className={styles.tickRead} />
-            : <Check size={14} className={styles.tickSent} />)
-        : null;
+      const tickIcon = isMe ? (
+        msg.isRead ? (
+          <CheckCheck size={14} className={styles.tickRead} />
+        ) : (
+          <Check size={14} className={styles.tickSent} />
+        )
+      ) : null;
 
       if (msg.type === 'image' && msg.imageUrl) {
         elements.push(
-          <div key={msg.id} className={`${styles.bubbleRow} ${isMe ? styles.rowSent : styles.rowReceived}`}>
+          <div
+            key={msg.id}
+            className={`${styles.bubbleRow} ${isMe ? styles.rowSent : styles.rowReceived}`}
+          >
             <div className={`${styles.bubble} ${isMe ? styles.sent : styles.received}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={msg.imageUrl} alt="صورة" className={styles.chatImg} />
@@ -170,9 +348,49 @@ export default function ConversationPage() {
             </div>
           </div>
         );
+      } else if (msg.type === 'voice' && msg.voiceUrl) {
+        const playing = playingId === msg.id && isAudioPlaying;
+        elements.push(
+          <div
+            key={msg.id}
+            className={`${styles.bubbleRow} ${isMe ? styles.rowSent : styles.rowReceived}`}
+          >
+            <div className={`${styles.bubble} ${isMe ? styles.sent : styles.received}`}>
+              <div className={styles.voiceBubble}>
+                <button
+                  className={`${styles.voicePlayBtn} ${isMe ? styles.voicePlayBtnSent : styles.voicePlayBtnRecv}`}
+                  onClick={() => toggleAudio(msg.id, msg.voiceUrl!)}
+                  aria-label={playing ? 'إيقاف مؤقت' : 'تشغيل'}
+                  type="button"
+                >
+                  {playing ? <Pause size={16} /> : <Play size={16} />}
+                </button>
+                <div className={styles.voiceWave}>
+                  {Array.from({ length: 18 }, (_, j) => (
+                    <span
+                      key={j}
+                      className={`${styles.voiceBar} ${playing ? styles.voiceBarActive : ''}`}
+                      style={{
+                        height: `${[6, 10, 14, 8, 12, 16, 6, 10, 14, 8, 12, 16, 6, 10, 14, 8, 12, 6][j]}px`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <span className={styles.voiceDuration}>{formatDuration(msg.duration ?? 0)}</span>
+              </div>
+              <div className={styles.metaRow}>
+                <span className={styles.msgTime}>{formatTime(secs)}</span>
+                {tickIcon}
+              </div>
+            </div>
+          </div>
+        );
       } else {
         elements.push(
-          <div key={msg.id} className={`${styles.bubbleRow} ${isMe ? styles.rowSent : styles.rowReceived}`}>
+          <div
+            key={msg.id}
+            className={`${styles.bubbleRow} ${isMe ? styles.rowSent : styles.rowReceived}`}
+          >
             <div className={`${styles.bubble} ${isMe ? styles.sent : styles.received}`}>
               <p className={styles.msgText}>{msg.text}</p>
               <div className={styles.metaRow}>
@@ -186,23 +404,22 @@ export default function ConversationPage() {
     });
 
     return elements;
-  }, [messages, myId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, myId, playingId, isAudioPlaying]);
 
-  const adHref     = convMeta?.adId ? `/${locale}/ads/${convMeta.adId}` : '#';
-  const otherId    = convMeta?.participantIds?.find(id => id !== myId);
-  const peerName   = (otherId && convMeta?.participantNames?.[otherId])
-    || convMeta?.adTitle
-    || '...';
+  const adHref = convMeta?.adId ? `/${locale}/ads/${convMeta.adId}` : '#';
+  const otherId = convMeta?.participantIds?.find((id) => id !== myId);
+  const peerName = (otherId && convMeta?.participantNames?.[otherId]) || convMeta?.adTitle || '...';
   const peerAvatar = resolveStorageUrl(
     (otherId && convMeta?.participantAvatars?.[otherId]) || null
   );
-  const initial    = peerName.trim().charAt(0).toUpperCase() || '?';
-  const canSend    = text.trim().length > 0;
+  const initial = peerName.trim().charAt(0).toUpperCase() || '?';
+  const canSend = text.trim().length > 0;
+  const isBusy = imgUploading || voiceUploading;
 
   return (
     <div className={styles.page} dir="rtl">
-
-      {/* Header strip — peer avatar, ad title, back, kebab */}
+      {/* Header */}
       <header className={styles.header}>
         <button
           className={styles.backBtn}
@@ -242,7 +459,11 @@ export default function ConversationPage() {
             <Link href={adHref} className={styles.adCard}>
               {convMeta.adImage ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={resolveStorageUrl(convMeta.adImage) ?? ''} alt="" className={styles.adCardImg} />
+                <img
+                  src={resolveStorageUrl(convMeta.adImage) ?? ''}
+                  alt=""
+                  className={styles.adCardImg}
+                />
               ) : (
                 <div className={styles.adCardImgFallback}>
                   <ShoppingBag size={22} />
@@ -284,49 +505,82 @@ export default function ConversationPage() {
       </div>
 
       {/* Composer */}
-      <div className={styles.inputBar}>
-        <button
-          className={styles.iconBtn}
-          onClick={() => fileRef.current?.click()}
-          disabled={imgUploading}
-          aria-label="إرسال صورة"
-          type="button"
-        >
-          <ImagePlus size={20} />
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleImagePick}
-        />
-
-        <textarea
-          ref={textareaRef}
-          className={styles.textInput}
-          placeholder="اكتب رسالتك هنا…"
-          rows={1}
-          value={text}
-          onChange={handleTextChange}
-          onKeyDown={handleKeyDown}
-        />
-
-        {canSend ? (
+      {isRecording ? (
+        /* Recording bar */
+        <div className={styles.recordingBar}>
           <button
-            className={styles.sendBtn}
-            onClick={handleSend}
-            aria-label="إرسال"
+            className={styles.recordCancelBtn}
+            onClick={cancelRecording}
+            aria-label="إلغاء التسجيل"
             type="button"
           >
-            <Send size={18} />
+            ✕
           </button>
-        ) : (
-          <button className={styles.iconBtn} aria-label="تسجيل صوتي" disabled type="button">
-            <Mic size={20} />
+          <span className={styles.recordDot} />
+          <span className={styles.recordTimer}>{formatDuration(recordingSeconds)}</span>
+          <span className={styles.recordHint}>اضغط لإرسال</span>
+          <button
+            className={styles.recordStopBtn}
+            onClick={stopRecording}
+            disabled={voiceUploading}
+            aria-label="إيقاف وإرسال"
+            type="button"
+          >
+            {voiceUploading ? '⏳' : <MicOff size={18} />}
           </button>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Normal input bar */
+        <div className={styles.inputBar}>
+          <button
+            className={styles.iconBtn}
+            onClick={() => fileRef.current?.click()}
+            disabled={isBusy}
+            aria-label="إرسال صورة"
+            type="button"
+          >
+            <ImagePlus size={20} />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImagePick}
+          />
+
+          <textarea
+            ref={textareaRef}
+            className={styles.textInput}
+            placeholder="اكتب رسالتك هنا…"
+            rows={1}
+            value={text}
+            onChange={handleTextChange}
+            onKeyDown={handleKeyDown}
+          />
+
+          {canSend ? (
+            <button
+              className={styles.sendBtn}
+              onClick={handleSend}
+              aria-label="إرسال"
+              type="button"
+            >
+              <Send size={18} />
+            </button>
+          ) : (
+            <button
+              className={`${styles.sendBtn} ${styles.micBtn}`}
+              onClick={startRecording}
+              disabled={isBusy}
+              aria-label="تسجيل رسالة صوتية"
+              type="button"
+            >
+              <Mic size={18} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

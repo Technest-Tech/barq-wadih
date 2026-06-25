@@ -35,17 +35,26 @@ class ConversationModel {
 
   /// Returns the display name for the other participant.
   String otherName(String myId) {
-    final otherId = participantIds.firstWhere((id) => id != myId, orElse: () => '');
+    final otherId = participantIds.firstWhere(
+      (id) => id != myId,
+      orElse: () => '',
+    );
     return peerNames[otherId] ?? adTitle;
   }
 
   /// Returns the avatar URL for the other participant (falls back to ad image).
   String? otherAvatar(String myId) {
-    final otherId = participantIds.firstWhere((id) => id != myId, orElse: () => '');
+    final otherId = participantIds.firstWhere(
+      (id) => id != myId,
+      orElse: () => '',
+    );
     return peerAvatars[otherId] ?? adImage;
   }
 
-  factory ConversationModel.fromFirestore(String id, Map<String, dynamic> data) {
+  factory ConversationModel.fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) {
     DateTime? toDateTime(dynamic v) {
       if (v == null) return null;
       if (v is DateTime) return v;
@@ -57,27 +66,30 @@ class ConversationModel {
     }
 
     return ConversationModel(
-      id:                    id,
-      participantIds:        List<String>.from(data['participantIds'] ?? []),
-      participantUids:       List<String>.from(data['participantUids'] ?? []),
-      adId:                  data['adId']?.toString() ?? '',
-      adTitle:               data['adTitle']?.toString() ?? '',
-      adImage:               data['adImage']?.toString(),
-      lastMessage:           data['lastMessage']?.toString(),
-      lastMessageAt:         toDateTime(data['lastMessageAt']),
-      lastMessageSenderId:   data['lastMessageSenderId']?.toString(),
-      unreadCount:           Map<String, int>.from(
-        (data['unreadCount'] as Map<dynamic, dynamic>? ?? {})
-            .map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
+      id: id,
+      participantIds: List<String>.from(data['participantIds'] ?? []),
+      participantUids: List<String>.from(data['participantUids'] ?? []),
+      adId: data['adId']?.toString() ?? '',
+      adTitle: data['adTitle']?.toString() ?? '',
+      adImage: data['adImage']?.toString(),
+      lastMessage: data['lastMessage']?.toString(),
+      lastMessageAt: toDateTime(data['lastMessageAt']),
+      lastMessageSenderId: data['lastMessageSenderId']?.toString(),
+      unreadCount: Map<String, int>.from(
+        (data['unreadCount'] as Map<dynamic, dynamic>? ?? {}).map(
+          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+        ),
       ),
-      createdAt:             toDateTime(data['createdAt']) ?? DateTime.now(),
-      peerNames:             Map<String, String>.from(
-        (data['peerNames'] as Map<dynamic, dynamic>? ?? {})
-            .map((k, v) => MapEntry(k.toString(), v.toString())),
+      createdAt: toDateTime(data['createdAt']) ?? DateTime.now(),
+      peerNames: Map<String, String>.from(
+        (data['peerNames'] as Map<dynamic, dynamic>? ?? {}).map(
+          (k, v) => MapEntry(k.toString(), v.toString()),
+        ),
       ),
-      peerAvatars:           Map<String, String?>.from(
-        (data['peerAvatars'] as Map<dynamic, dynamic>? ?? {})
-            .map((k, v) => MapEntry(k.toString(), v?.toString())),
+      peerAvatars: Map<String, String?>.from(
+        (data['peerAvatars'] as Map<dynamic, dynamic>? ?? {}).map(
+          (k, v) => MapEntry(k.toString(), v?.toString()),
+        ),
       ),
     );
   }
@@ -88,8 +100,10 @@ class MessageModel {
   final String senderUid;
   final String senderId;
   final String text;
-  final String type; // 'text' | 'image'
+  final String type; // 'text' | 'image' | 'voice'
   final String? imageUrl;
+  final String? voiceUrl;
+  final int? duration; // voice duration in seconds
   final bool isRead;
   final DateTime? readAt;
   final DateTime createdAt;
@@ -101,28 +115,37 @@ class MessageModel {
     required this.text,
     required this.type,
     this.imageUrl,
+    this.voiceUrl,
+    this.duration,
     required this.isRead,
     this.readAt,
     required this.createdAt,
   });
 
   bool get isImage => type == 'image';
+  bool get isVoice => type == 'voice';
 
   factory MessageModel.fromFirestore(String id, Map<String, dynamic> data) {
     DateTime? toDateTime(dynamic v) {
       if (v == null) return null;
-      try { return (v as dynamic).toDate() as DateTime; } catch (_) { return null; }
+      try {
+        return (v as dynamic).toDate() as DateTime;
+      } catch (_) {
+        return null;
+      }
     }
 
     return MessageModel(
-      id:        id,
+      id: id,
       senderUid: data['senderUid']?.toString() ?? '',
-      senderId:  data['senderId']?.toString() ?? '',
-      text:      data['text']?.toString() ?? '',
-      type:      data['type']?.toString() ?? 'text',
-      imageUrl:  data['imageUrl']?.toString(),
-      isRead:    data['isRead'] == true,
-      readAt:    toDateTime(data['readAt']),
+      senderId: data['senderId']?.toString() ?? '',
+      text: data['text']?.toString() ?? '',
+      type: data['type']?.toString() ?? 'text',
+      imageUrl: data['imageUrl']?.toString(),
+      voiceUrl: data['voiceUrl']?.toString(),
+      duration: (data['duration'] as num?)?.toInt(),
+      isRead: data['isRead'] == true,
+      readAt: toDateTime(data['readAt']),
       createdAt: toDateTime(data['createdAt']) ?? DateTime.now(),
     );
   }

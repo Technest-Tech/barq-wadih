@@ -1,11 +1,4 @@
-import {
-  addDoc,
-  collection,
-  doc,
-  increment,
-  serverTimestamp,
-  setDoc,
-} from 'firebase/firestore';
+import { addDoc, collection, doc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firestore';
 import { firebaseAuth } from '@/lib/firebase/auth';
 import { signInWithCustomToken } from 'firebase/auth';
@@ -19,9 +12,9 @@ import { getFirebaseToken } from '@/lib/api/chat';
  */
 export interface ConversationSeed {
   conversationId: string;
-  participantIds:  [string, string];
+  participantIds: [string, string];
   participantUids: [string, string];
-  adId:    string;
+  adId: string;
   adTitle: string;
   adImage: string | null;
   /** Map of participant id -> display name. Used to render the peer's name
@@ -49,7 +42,13 @@ interface ImagePayload extends BaseWrite {
   imageUrl: string;
 }
 
-type WritePayload = TextPayload | ImagePayload;
+interface VoicePayload extends BaseWrite {
+  type: 'voice';
+  voiceUrl: string;
+  duration: number; // seconds
+}
+
+type WritePayload = TextPayload | ImagePayload | VoicePayload;
 
 /**
  * Ensures the current Sanctum-authenticated user is also signed into Firebase Auth.
@@ -61,7 +60,7 @@ export async function ensureFirebaseSignedIn(): Promise<string> {
   if (current) return current.uid;
 
   const token = await getFirebaseToken();
-  const cred  = await signInWithCustomToken(firebaseAuth, token);
+  const cred = await signInWithCustomToken(firebaseAuth, token);
   return cred.user.uid;
 }
 
@@ -86,17 +85,14 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
   const myUid = await ensureFirebaseSignedIn();
 
   if (seed && !seed.participantUids.includes(myUid)) {
-    throw new Error(
-      'تعذّر مطابقة هويتك مع المحادثة. يُرجى تسجيل الخروج ثم الدخول مرة أخرى.'
-    );
+    throw new Error('تعذّر مطابقة هويتك مع المحادثة. يُرجى تسجيل الخروج ثم الدخول مرة أخرى.');
   }
 
   // Identify the recipient for the unread counter.
   // Without a seed (subsequent message from useMessages) we still need to know
   // it — pull it from the seed when we have one; otherwise assume it's NOT us
   // and let the bump apply to the lone known peer key once we read the doc.
-  const otherId = seed?.participantIds.find(id => id !== myId)
-    ?? null;
+  const otherId = seed?.participantIds.find((id) => id !== myId) ?? null;
 
   if (!seed && !otherId) {
     // We don't have the seed and we don't know the peer — fall back to a
@@ -106,27 +102,44 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
     await setDoc(
       doc(db, 'conversations', conversationId),
       {
-        lastMessage: payload.type === 'text' ? payload.text.trim() : '📷 صورة',
-        lastMessageAt:       serverTimestamp(),
+        lastMessage:
+          payload.type === 'text'
+            ? payload.text.trim()
+            : payload.type === 'image'
+              ? '📷 صورة'
+              : '🎤 رسالة صوتية',
+        lastMessageAt: serverTimestamp(),
         lastMessageSenderId: myId,
-        updatedAt:           serverTimestamp(),
+        updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
     await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
       senderUid: myUid,
-      senderId:  myId,
-      isRead:    false,
-      readAt:    null,
+      senderId: myId,
+      isRead: false,
+      readAt: null,
       createdAt: serverTimestamp(),
-      type:      payload.type,
-      text:      payload.type === 'text' ? payload.text.trim() : '📷 صورة',
-      imageUrl:  payload.type === 'image' ? payload.imageUrl : null,
+      type: payload.type,
+      text:
+        payload.type === 'text'
+          ? payload.text.trim()
+          : payload.type === 'image'
+            ? '📷 صورة'
+            : '🎤 رسالة صوتية',
+      imageUrl: payload.type === 'image' ? payload.imageUrl : null,
+      voiceUrl: payload.type === 'voice' ? payload.voiceUrl : null,
+      duration: payload.type === 'voice' ? payload.duration : null,
     });
     return;
   }
 
-  const lastMessage = payload.type === 'text' ? payload.text.trim() : '📷 صورة';
+  const lastMessage =
+    payload.type === 'text'
+      ? payload.text.trim()
+      : payload.type === 'image'
+        ? '📷 صورة'
+        : '🎤 رسالة صوتية';
   const now = serverTimestamp();
 
   const convRef = doc(db, 'conversations', conversationId);
@@ -139,19 +152,19 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
     await setDoc(
       convRef,
       {
-        participantIds:     seed.participantIds,
-        participantUids:    seed.participantUids,
-        participantNames:   seed.participantNames,
+        participantIds: seed.participantIds,
+        participantUids: seed.participantUids,
+        participantNames: seed.participantNames,
         participantAvatars: seed.participantAvatars ?? {},
-        adId:               seed.adId,
-        adTitle:            seed.adTitle,
-        adImage:            seed.adImage,
+        adId: seed.adId,
+        adTitle: seed.adTitle,
+        adImage: seed.adImage,
         lastMessage,
-        lastMessageAt:       now,
+        lastMessageAt: now,
         lastMessageSenderId: myId,
         unreadCount: {
-          [myId]:               0,
-          [otherId as string]:  1,
+          [myId]: 0,
+          [otherId as string]: 1,
         },
         createdAt: now,
         updatedAt: now,
@@ -164,10 +177,10 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
       convRef,
       {
         lastMessage,
-        lastMessageAt:       now,
+        lastMessageAt: now,
         lastMessageSenderId: myId,
         [`unreadCount.${otherId}`]: increment(1),
-        updatedAt:           now,
+        updatedAt: now,
       },
       { merge: true }
     );
@@ -176,12 +189,19 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
   // Append the actual message.
   await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
     senderUid: myUid,
-    senderId:  myId,
-    isRead:    false,
-    readAt:    null,
+    senderId: myId,
+    isRead: false,
+    readAt: null,
     createdAt: now,
-    type:      payload.type,
-    text:      payload.type === 'text' ? payload.text.trim() : '📷 صورة',
-    imageUrl:  payload.type === 'image' ? payload.imageUrl : null,
+    type: payload.type,
+    text:
+      payload.type === 'text'
+        ? payload.text.trim()
+        : payload.type === 'image'
+          ? '📷 صورة'
+          : '🎤 رسالة صوتية',
+    imageUrl: payload.type === 'image' ? payload.imageUrl : null,
+    voiceUrl: payload.type === 'voice' ? payload.voiceUrl : null,
+    duration: payload.type === 'voice' ? payload.duration : null,
   });
 }

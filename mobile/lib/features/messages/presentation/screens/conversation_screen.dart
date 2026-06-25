@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/chat_providers.dart';
@@ -37,12 +41,34 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   bool _uploading = false;
   Map<String, dynamic>? _convMeta;
 
+  // ── Voice recording state ────────────────────────────────────────────────────
+  final _recorder = AudioRecorder();
+  bool _isRecording = false;
+  Duration _recordingDuration = Duration.zero;
+  Timer? _recordingTimer;
+
+  // ── Voice playback state ─────────────────────────────────────────────────────
+  final _player = AudioPlayer();
+  String? _playingMsgId;
+  bool _isPlayerPlaying = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadConvMeta();
       _markRead();
+    });
+    _player.onPlayerComplete.listen((_) {
+      if (mounted)
+        setState(() {
+          _playingMsgId = null;
+          _isPlayerPlaying = false;
+        });
+    });
+    _player.onPlayerStateChanged.listen((state) {
+      if (mounted)
+        setState(() => _isPlayerPlaying = state == PlayerState.playing);
     });
   }
 
@@ -51,6 +77,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
+    _recordingTimer?.cancel();
+    _recorder.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -125,6 +154,98 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  // ── Voice recording ──────────────────────────────────────────────────────────
+
+  Future<void> _startRecording() async {
+    final hasPermission = await _recorder.hasPermission();
+    if (!hasPermission) return;
+
+    final tmpDir = await getTemporaryDirectory();
+    final filePath =
+        '${tmpDir.path}/${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 128000,
+        sampleRate: 44100,
+      ),
+      path: filePath,
+    );
+
+    setState(() {
+      _isRecording = true;
+      _recordingDuration = Duration.zero;
+    });
+
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted)
+        setState(() => _recordingDuration += const Duration(seconds: 1));
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    _recordingTimer?.cancel();
+    final path = await _recorder.stop();
+    final duration = _recordingDuration.inSeconds;
+
+    setState(() {
+      _isRecording = false;
+      _recordingDuration = Duration.zero;
+    });
+
+    if (path == null || duration == 0) return;
+
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    setState(() => _uploading = true);
+    try {
+      await ref
+          .read(chatRepositoryProvider)
+          .sendVoice(
+            conversationId: widget.conversationId,
+            myId: user.id.toString(),
+            myUid: _firebaseUid(),
+            voiceFile: File(path),
+            duration: duration,
+          );
+      _scrollToBottom();
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    _recordingTimer?.cancel();
+    await _recorder.stop();
+    setState(() {
+      _isRecording = false;
+      _recordingDuration = Duration.zero;
+    });
+  }
+
+  // ── Voice playback ───────────────────────────────────────────────────────────
+
+  Future<void> _togglePlay(MessageModel msg) async {
+    if (msg.voiceUrl == null) return;
+
+    if (_playingMsgId == msg.id && _isPlayerPlaying) {
+      await _player.pause();
+      return;
+    }
+
+    if (_playingMsgId == msg.id && !_isPlayerPlaying) {
+      await _player.resume();
+      return;
+    }
+
+    // Different message — stop current and start new
+    await _player.stop();
+    setState(() => _playingMsgId = msg.id);
+    await _player.play(UrlSource(msg.voiceUrl!));
   }
 
   String _firebaseUid() {
@@ -261,7 +382,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         return Column(
           children: [
             if (showSep) _DateSeparator(date: msg.createdAt),
-            _MessageBubble(msg: msg, isMe: isMe),
+            _MessageBubble(
+              msg: msg,
+              isMe: isMe,
+              isPlaying: _playingMsgId == msg.id && _isPlayerPlaying,
+              onPlayTap: msg.isVoice ? () => _togglePlay(msg) : null,
+            ),
           ],
         );
       },
@@ -305,7 +431,6 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       iconTheme: const IconThemeData(color: Colors.white),
       title: Row(
         children: [
-          // Peer avatar
           Container(
             width: 36,
             height: 36,
@@ -382,13 +507,89 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   Widget _buildInputBar() {
+    // ── Recording state UI ───────────────────────────────────────────────────
+    if (_isRecording) {
+      final secs = _recordingDuration.inSeconds;
+      final label =
+          '${(secs ~/ 60).toString().padLeft(2, '0')}:${(secs % 60).toString().padLeft(2, '0')}';
+      return Container(
+        color: _kInputBg,
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+        child: Row(
+          children: [
+            // Cancel
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.redAccent,
+              ),
+              onPressed: _cancelRecording,
+              tooltip: 'إلغاء',
+            ),
+            // Animated pulse dot
+            Container(
+              width: 10,
+              height: 10,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: const BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+              ),
+            ),
+            // Timer
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.redAccent,
+              ),
+            ),
+            const Spacer(),
+            // Swipe hint
+            Text(
+              'اسحب للإلغاء',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            const SizedBox(width: 8),
+            // Stop & send
+            GestureDetector(
+              onTap: _uploading ? null : _stopRecording,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _uploading ? Colors.grey : Colors.redAccent,
+                  shape: BoxShape.circle,
+                ),
+                child: _uploading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.stop_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Normal input UI ──────────────────────────────────────────────────────
     return Container(
       color: _kInputBg,
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Mic FAB on the leading edge (left in RTL appears at start)
+          // Mic / Send FAB on leading edge
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _textController,
             builder: (_, value, __) {
@@ -418,24 +619,27 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   ),
                 );
               }
-              return Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: _kHeaderBlue,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.mic_none_rounded,
-                  color: Colors.white,
-                  size: 22,
+              return GestureDetector(
+                onTap: _uploading ? null : _startRecording,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _uploading ? Colors.grey : _kHeaderBlue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.mic_none_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
               );
             },
           ),
           const SizedBox(width: 8),
 
-          // Pill-shaped input
+          // Pill-shaped input with camera + attach
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -452,7 +656,6 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Camera button
                   IconButton(
                     icon: _uploading
                         ? const SizedBox(
@@ -467,7 +670,6 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     onPressed: _uploading ? null : _pickImage,
                     splashRadius: 22,
                   ),
-                  // Attachment button
                   IconButton(
                     icon: Icon(
                       Icons.attach_file_rounded,
@@ -511,17 +713,23 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 // ── Message bubble ─────────────────────────────────────────────────────────────
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.msg, required this.isMe});
+  const _MessageBubble({
+    required this.msg,
+    required this.isMe,
+    this.isPlaying = false,
+    this.onPlayTap,
+  });
 
   final MessageModel msg;
   final bool isMe;
+  final bool isPlaying;
+  final VoidCallback? onPlayTap;
 
   @override
   Widget build(BuildContext context) {
     final time = DateFormat('HH:mm').format(msg.createdAt);
 
     return Align(
-      // RTL: own messages render on the right (centerRight); peer on the left
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
@@ -580,6 +788,13 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                 )
+              else if (msg.isVoice)
+                _VoiceContent(
+                  duration: msg.duration ?? 0,
+                  isPlaying: isPlaying,
+                  onPlayTap: onPlayTap,
+                  isMe: isMe,
+                )
               else
                 Text(
                   msg.text,
@@ -590,7 +805,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
 
-              // Meta row: time + read receipt for own messages
+              // Meta row: time + read receipt
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Row(
@@ -618,6 +833,110 @@ class _MessageBubble extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Voice message content ──────────────────────────────────────────────────────
+
+class _VoiceContent extends StatelessWidget {
+  const _VoiceContent({
+    required this.duration,
+    required this.isPlaying,
+    required this.isMe,
+    this.onPlayTap,
+  });
+
+  final int duration;
+  final bool isPlaying;
+  final bool isMe;
+  final VoidCallback? onPlayTap;
+
+  String get _durationLabel {
+    final m = (duration ~/ 60).toString().padLeft(2, '0');
+    final s = (duration % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = isMe ? const Color(0xFF075E54) : _kHeaderBlue;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Play / Pause button
+        GestureDetector(
+          onTap: onPlayTap,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: accentColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Waveform bars (decorative)
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: List.generate(18, (i) {
+                  final heights = [
+                    6.0,
+                    10.0,
+                    14.0,
+                    8.0,
+                    12.0,
+                    16.0,
+                    6.0,
+                    10.0,
+                    14.0,
+                    8.0,
+                    12.0,
+                    16.0,
+                    6.0,
+                    10.0,
+                    14.0,
+                    8.0,
+                    12.0,
+                    6.0,
+                  ];
+                  return Expanded(
+                    child: Container(
+                      height: heights[i],
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(
+                        color: isPlaying
+                            ? accentColor
+                            : accentColor.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _durationLabel,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -43,7 +43,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasAll([
             'senderUid', 'senderId', 'text', 'type', 'isRead', 'createdAt'
           ])
-          && request.resource.data.type in ['text', 'image'];
+          && request.resource.data.type in ['text', 'image', 'voice'];
         allow update: if isMember()
           // Only allow marking as read (isRead: true, readAt: timestamp)
           && request.resource.data.diff(resource.data).affectedKeys()
