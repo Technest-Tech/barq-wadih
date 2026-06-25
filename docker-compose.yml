@@ -12,7 +12,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-***REMOVED***}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Bind to loopback only — never expose the DB to the internet.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -30,14 +31,17 @@ services:
     container_name: barq_redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      # Bind to loopback only — never expose Redis to the internet.
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in the compose .env}
     volumes:
       - redis_data:/data
     networks:
       - barq_network
-    command: redis-server --save 20 1 --loglevel warning
+    command: ["sh", "-c", "redis-server --save 20 1 --loglevel warning --requirepass \"$$REDIS_PASSWORD\""]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,7 +55,8 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-***REMOVED***}
       MEILI_ENV: development
     ports:
-      - "${MEILI_PORT:-7700}:7700"
+      # Bind to loopback only — never expose Meilisearch to the internet.
+      - "127.0.0.1:${MEILI_PORT:-7700}:7700"
     volumes:
       - meilisearch_data:/meili_data
     networks:
