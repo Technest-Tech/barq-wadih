@@ -3,20 +3,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   fetchNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   type INotification,
 } from '@/lib/api/notifications';
+import { NOTIFICATION_COUNT_KEY } from '@/lib/hooks/useNotificationCount';
 import Header from '@/components/layout/Header/Header';
 import Footer from '@/components/layout/Footer/Footer';
 import styles from './page.module.css';
 
 function relativeTime(dateStr: string): string {
-  const diffMs  = Date.now() - new Date(dateStr).getTime();
+  const diffMs = Date.now() - new Date(dateStr).getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1)  return 'الآن';
+  if (diffMin < 1) return 'الآن';
   if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `منذ ${diffHr} ساعة`;
@@ -27,54 +29,69 @@ function relativeTime(dateStr: string): string {
 
 function notifIcon(type: string): string {
   switch (type) {
-    case 'new_ad_followed':      return '📢';
-    case 'new_message':          return '💬';
-    case 'new_rating':           return '⭐';
-    case 'commission_approved':  return '✅';
-    case 'commission_rejected':  return '⚠️';
-    default:                     return '🔔';
+    case 'new_ad_followed':
+      return '📢';
+    case 'new_message':
+      return '💬';
+    case 'new_rating':
+      return '⭐';
+    case 'commission_approved':
+      return '✅';
+    case 'commission_rejected':
+      return '⚠️';
+    default:
+      return '🔔';
   }
 }
 
 function notifHref(n: INotification, locale: string): string {
   const data = n.data ?? {};
   if (data.type === 'new_ad' && data.ad_id) return `/${locale}/ads/${data.ad_id}`;
-  if (data.type === 'chat' && data.conversation_id) return `/${locale}/messages/${data.conversation_id}`;
+  if (data.type === 'chat' && data.conversation_id)
+    return `/${locale}/messages/${data.conversation_id}`;
   if (data.type === 'rating' && data.ad_id) return `/${locale}/ads/${data.ad_id}`;
   if (data.type === 'commission_approved' && data.ad_id) return `/${locale}/ads/${data.ad_id}`;
   // Rejected → the pay page, where the seller sees the reason and re-uploads.
-  if (data.type === 'commission_rejected' && data.ad_id) return `/${locale}/post-ad/pay/${data.ad_id}`;
+  if (data.type === 'commission_rejected' && data.ad_id)
+    return `/${locale}/post-ad/pay/${data.ad_id}`;
   return `/${locale}/notifications`;
 }
 
 export default function NotificationsPage() {
   const { locale } = useParams<{ locale: string }>();
-  const [items, setItems]     = useState<INotification[]>([]);
+  const queryClient = useQueryClient();
+  const [items, setItems] = useState<INotification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage]       = useState(1);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   const load = useCallback(async (p: number) => {
     const res = await fetchNotifications(p);
-    setItems((prev) => p === 1 ? res.data : [...prev, ...res.data]);
+    setItems((prev) => (p === 1 ? res.data : [...prev, ...res.data]));
     setHasMore(res.meta.current_page < res.meta.last_page);
     setPage(p);
   }, []);
 
   useEffect(() => {
-    setLoading(true);
+    // Fetch the first page on mount. `loading` defaults to true so we don't set
+    // it synchronously here; we just clear it once the first page resolves.
+    // `load` is a stable useCallback, so this runs once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load(1).finally(() => setLoading(false));
   }, [load]);
 
   async function handleMarkAll() {
     await markAllNotificationsRead();
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    // Drop the header bell badge immediately instead of waiting for the poll.
+    queryClient.invalidateQueries({ queryKey: NOTIFICATION_COUNT_KEY });
   }
 
   async function handleClick(n: INotification) {
     if (!n.is_read) {
       await markNotificationRead(n.id);
-      setItems((prev) => prev.map((i) => i.id === n.id ? { ...i, is_read: true } : i));
+      setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, is_read: true } : i)));
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_COUNT_KEY });
     }
   }
 

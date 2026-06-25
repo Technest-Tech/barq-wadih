@@ -24,6 +24,9 @@ import { useAuthStore } from '@/store/auth.store';
 import { authApi } from '@/lib/api/auth';
 import AuthModal from '@/components/auth/AuthModal';
 import { searchAds, fetchSearchSuggestions, fetchPopularAds, type AdListItem } from '@/lib/api/ads';
+import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth';
+import { useConversations } from '@/lib/hooks/useConversations';
+import { useNotificationCount } from '@/lib/hooks/useNotificationCount';
 import styles from './Header.module.css';
 
 export default function Header() {
@@ -125,7 +128,18 @@ export default function Header() {
   );
 
   const displayName = user?.name?.split(' ')[0] ?? 'حسابي';
-  const unreadNotif = user?.unread_notifications_count ?? 0;
+
+  // ── Live unread badges ──────────────────────────────────────────────────────
+  // Notifications: poll the backend count (no realtime channel); falls back to
+  // the value baked into the cached user object on first paint.
+  const liveNotifCount = useNotificationCount();
+  const unreadNotif = liveNotifCount || (user?.unread_notifications_count ?? 0);
+
+  // Messages: realtime via Firestore. Sign the user into Firebase (reuses the
+  // cached session if the messages page already did) and sum per-conversation
+  // unread counts so the badge updates the instant a new message arrives.
+  const { isReady: firebaseReady } = useFirebaseAuth();
+  const { totalUnread: unreadMessages } = useConversations(isAuthenticated && firebaseReady);
 
   const handleLogout = async () => {
     setUserDropOpen(false);
@@ -571,6 +585,11 @@ export default function Header() {
                   <Link href={`/${locale}/messages`} className={styles.quickNavItem}>
                     <MessageCircle size={18} />
                     <span>الرسائل</span>
+                    {unreadMessages > 0 && (
+                      <span className={styles.badge}>
+                        {unreadMessages > 99 ? '99+' : unreadMessages}
+                      </span>
+                    )}
                   </Link>
                   <Link href={`/${locale}/notifications`} className={styles.quickNavItem}>
                     <Bell size={18} />
@@ -786,6 +805,11 @@ export default function Header() {
               >
                 <MessageCircle size={20} className={styles.drawerNavIcon} />
                 <span>الرسائل</span>
+                {unreadMessages > 0 && (
+                  <span className={styles.drawerBadge}>
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </span>
+                )}
                 <ChevronLeft size={16} className={styles.drawerNavChevron} />
               </Link>
               <Link
