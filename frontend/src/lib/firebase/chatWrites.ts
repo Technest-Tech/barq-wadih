@@ -1,4 +1,13 @@
-import { addDoc, collection, doc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  increment,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase/firestore';
 import { firebaseAuth } from '@/lib/firebase/auth';
 import { signInWithCustomToken } from 'firebase/auth';
@@ -88,52 +97,6 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
     throw new Error('تعذّر مطابقة هويتك مع المحادثة. يُرجى تسجيل الخروج ثم الدخول مرة أخرى.');
   }
 
-  // Identify the recipient for the unread counter.
-  // Without a seed (subsequent message from useMessages) we still need to know
-  // it — pull it from the seed when we have one; otherwise assume it's NOT us
-  // and let the bump apply to the lone known peer key once we read the doc.
-  const otherId = seed?.participantIds.find((id) => id !== myId) ?? null;
-
-  if (!seed && !otherId) {
-    // We don't have the seed and we don't know the peer — fall back to a
-    // best-effort metadata-only update via the doc's existing data. The
-    // calling hook (useMessages) only triggers this AFTER the conversation
-    // exists, so this branch is rare. Use a minimal update:
-    await setDoc(
-      doc(db, 'conversations', conversationId),
-      {
-        lastMessage:
-          payload.type === 'text'
-            ? payload.text.trim()
-            : payload.type === 'image'
-              ? '📷 صورة'
-              : '🎤 رسالة صوتية',
-        lastMessageAt: serverTimestamp(),
-        lastMessageSenderId: myId,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-    await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
-      senderUid: myUid,
-      senderId: myId,
-      isRead: false,
-      readAt: null,
-      createdAt: serverTimestamp(),
-      type: payload.type,
-      text:
-        payload.type === 'text'
-          ? payload.text.trim()
-          : payload.type === 'image'
-            ? '📷 صورة'
-            : '🎤 رسالة صوتية',
-      imageUrl: payload.type === 'image' ? payload.imageUrl : null,
-      voiceUrl: payload.type === 'voice' ? payload.voiceUrl : null,
-      duration: payload.type === 'voice' ? payload.duration : null,
-    });
-    return;
-  }
-
   const lastMessage =
     payload.type === 'text'
       ? payload.text.trim()
@@ -143,6 +106,10 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
   const now = serverTimestamp();
 
   const convRef = doc(db, 'conversations', conversationId);
+
+  // The recipient whose unread counter must be bumped. With a seed we know it
+  // up front; on a subsequent message (no seed) we read it from the doc below.
+  let otherId = seed?.participantIds.find((id) => id !== myId) ?? null;
 
   if (seed) {
     // First-message path: write a fully-populated doc. The Firestore `create`
@@ -172,18 +139,31 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
       { merge: true }
     );
   } else {
-    // Subsequent-message path: doc exists, rule fires `update` → just isParticipant().
-    await setDoc(
-      convRef,
-      {
-        lastMessage,
-        lastMessageAt: now,
-        lastMessageSenderId: myId,
-        [`unreadCount.${otherId}`]: increment(1),
-        updatedAt: now,
-      },
-      { merge: true }
-    );
+    // Subsequent-message path: the conversation doc already exists. Resolve the
+    // recipient from it (the calling hook has no seed), then bump THEIR unread
+    // counter.
+    //
+    // IMPORTANT: the increment MUST go through updateDoc, which interprets
+    // `unreadCount.<id>` as a nested field path. A setDoc(merge:true) with the
+    // same dotted key instead creates a bogus TOP-LEVEL field literally named
+    // "unreadCount.<id>", so the real `unreadCount` map never grows — which
+    // left receivers (mobile + web) with no unread badge after the 1st message.
+    if (!otherId) {
+      const snap = await getDoc(convRef);
+      const ids = (snap.data()?.participantIds as string[] | undefined) ?? [];
+      otherId = ids.find((id) => id !== myId) ?? null;
+    }
+
+    const update: Record<string, unknown> = {
+      lastMessage,
+      lastMessageAt: now,
+      lastMessageSenderId: myId,
+      updatedAt: now,
+    };
+    if (otherId) {
+      update[`unreadCount.${otherId}`] = increment(1);
+    }
+    await updateDoc(convRef, update);
   }
 
   // Append the actual message.
