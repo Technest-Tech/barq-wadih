@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header/Header';
 import Footer from '@/components/layout/Footer/Footer';
 import { fetchMyAds, deleteAd, markAdSold, type AdListItem } from '@/lib/api/ads';
@@ -50,9 +51,13 @@ function formatCountdown(dateStr: string | null): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+type SoldSheet = { id: number; title: string; commission: number };
+
 export default function MyAdsPage() {
   const { ready } = useRequireAuth();
+  const router = useRouter();
   const [ads, setAds] = useState<AdListItem[]>([]);
+  const [soldSheet, setSoldSheet] = useState<SoldSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -116,6 +121,14 @@ export default function MyAdsPage() {
             : a
         )
       );
+      // Mirror the mobile SoldFeeSheet: congratulate and surface the owed
+      // commission with a "pay now" CTA (free categories owe nothing).
+      const sold = ads.find((a) => a.id === id);
+      setSoldSheet({
+        id,
+        title: sold?.title ?? '',
+        commission: Number(updated.payment_amount ?? 0),
+      });
     }
     setActionId(null);
   };
@@ -379,6 +392,58 @@ export default function MyAdsPage() {
             </div>
           )}
         </div>
+
+        {/* ── Sold success sheet (mirrors mobile SoldFeeSheet) ── */}
+        {soldSheet && (
+          <div className={styles.modalOverlay} onClick={() => setSoldSheet(null)}>
+            <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.soldIcon}>✅</div>
+              <h3>تم البيع بنجاح!</h3>
+              {soldSheet.title && <p className={styles.soldAdTitle}>{soldSheet.title}</p>}
+
+              {soldSheet.commission > 0 ? (
+                <>
+                  <div className={styles.commissionCard}>
+                    <span className={styles.commissionLabel}>عمولة المنصة المستحقة</span>
+                    <span className={styles.commissionAmount}>
+                      {soldSheet.commission.toLocaleString('ar-SA')} ر.س
+                    </span>
+                  </div>
+                  <p className={styles.commissionNote}>
+                    عمولة ثابتة شاملة ضريبة القيمة المضافة، تُدفع عبر تحويل بنكي ثم تُراجَع من
+                    الإدارة.
+                  </p>
+                  <div className={styles.modalActions}>
+                    <button
+                      className={styles.modalConfirm}
+                      onClick={() => {
+                        const id = soldSheet.id;
+                        setSoldSheet(null);
+                        router.push(`/ar/post-ad/pay/${id}`);
+                      }}
+                    >
+                      💳 دفع العمولة الآن
+                    </button>
+                    <button className={styles.modalCancel} onClick={() => setSoldSheet(null)}>
+                      لاحقاً
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className={styles.commissionNote}>
+                    هذا القسم مجاني بالكامل — لا توجد عمولة مستحقة.
+                  </p>
+                  <div className={styles.modalActions}>
+                    <button className={styles.modalConfirm} onClick={() => setSoldSheet(null)}>
+                      تم
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Boost confirmation modal ── */}
         {boostTarget && (
