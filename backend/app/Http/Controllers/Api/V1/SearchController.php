@@ -243,6 +243,15 @@ class SearchController extends BaseController
         $scoreParts = [];
         $bindings = [];
 
+        // Joined-phrase bonus: an ad that contains the whole query as one phrase
+        // (e.g. "used cars" together) outscores any ad that merely contains the
+        // individual words separately, so joined ads surface at the very top.
+        $scoreParts[] = '(CASE WHEN title LIKE ? THEN 100 ELSE 0 END)';
+        $bindings[] = "%{$q}%";
+        $scoreParts[] = '(CASE WHEN description LIKE ? THEN 50 ELSE 0 END)';
+        $bindings[] = "%{$q}%";
+
+        // Per-word score: more matching words ranks higher; title beats description.
         foreach ($tokens as $token) {
             $scoreParts[] = '(CASE WHEN title LIKE ? THEN 2 ELSE 0 END)';
             $bindings[] = "%{$token}%";
