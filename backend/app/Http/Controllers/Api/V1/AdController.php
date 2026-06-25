@@ -31,7 +31,8 @@ class AdController extends BaseController
 
         // ── Category ──────────────────────────────────────────────────────────
         if ($request->filled('category_id')) {
-            $query->where('category_id', (int) $request->input('category_id'));
+            $ids = Category::descendantIds((int) $request->input('category_id'));
+            $query->whereIn('category_id', $ids);
         } elseif ($request->filled('category_ids')) {
             $ids = array_filter(
                 array_map('intval', explode(',', $request->input('category_ids'))),

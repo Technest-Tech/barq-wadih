@@ -111,6 +111,24 @@ class Category extends Model
         return $this->parent_id === null;
     }
 
+    /**
+     * Return the given category ID plus all descendant IDs (children +
+     * grandchildren). Supports the 3-level hierarchy used by this platform.
+     * Used by ad filtering so clicking a parent category surfaces ads that
+     * are stored under any of its subcategories.
+     *
+     * @return int[]
+     */
+    public static function descendantIds(int $parentId): array
+    {
+        $childIds = self::where('parent_id', $parentId)->pluck('id')->all();
+        $grandchildIds = $childIds
+            ? self::whereIn('parent_id', $childIds)->pluck('id')->all()
+            : [];
+
+        return array_values(array_unique(array_merge([$parentId], $childIds, $grandchildIds)));
+    }
+
     public function getSlugSourceAttribute(): string
     {
         return $this->name_en;

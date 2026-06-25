@@ -107,7 +107,9 @@ class SearchController extends BaseController
                 $filters = ['status = "active"'];
 
                 if ($categoryId !== null) {
-                    $filters[] = "category_id = {$categoryId}";
+                    $catIds = Category::descendantIds($categoryId);
+                    $catFilter = implode(' OR ', array_map(fn ($id) => "category_id = {$id}", $catIds));
+                    $filters[] = count($catIds) > 1 ? "({$catFilter})" : $catFilter;
                 }
                 if ($cityId !== null) {
                     $filters[] = "city_id = {$cityId}";
@@ -186,7 +188,7 @@ class SearchController extends BaseController
         $this->applyKeywordFilter($query, $q);
 
         if ($categoryId !== null) {
-            $query->where('category_id', $categoryId);
+            $query->whereIn('category_id', Category::descendantIds($categoryId));
         }
         if ($cityId !== null) {
             $query->where('city_id', $cityId);
@@ -344,7 +346,7 @@ class SearchController extends BaseController
             ->orderByDesc('published_at');
 
         if ($categoryId !== null) {
-            $query->where('category_id', $categoryId);
+            $query->whereIn('category_id', Category::descendantIds($categoryId));
         }
 
         $ads = $query->limit($limit)->get();
