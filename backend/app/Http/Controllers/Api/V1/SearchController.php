@@ -6,6 +6,7 @@ use App\Http\Resources\AdListResource;
 use App\Models\Ad;
 use App\Models\Category;
 use App\Models\SearchLog;
+use App\Traits\SearchesAds;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 
 class SearchController extends BaseController
 {
+    use SearchesAds;
+
     // ── Public: Full-text Ad Search ───────────────────────────────────────────
 
     /**
@@ -175,33 +178,12 @@ class SearchController extends BaseController
     ) {
         $query = Ad::with(['images', 'category', 'city', 'region', 'user'])->feed();
 
-        $tokens = $this->tokenize($q);
+        $tokens = $this->searchTokens($q);
 
-        if ($q !== '') {
-            // OR semantics: an ad matches when ANY individual search word appears
-            // in the title or description. A multi-word query such as "جمل فحل"
-            // returns every ad containing "جمل" OR "فحل" — the "no results" state
-            // is only reached when none of the words match anywhere.
-            //
-            // Both sides are Arabic-normalized (alef/hamza variants, ة↔ه, ى↔ي,
-            // tatweel) so "ساعه" matches a stored "ساعة" and "ارانب" matches "أرانب".
-            $titleN = $this->normalizeSql('title');
-            $descN = $this->normalizeSql('description');
-
-            $query->where(function ($sub) use ($q, $tokens, $titleN, $descN) {
-                // Whole-phrase match first (covers exact / multi-word substrings).
-                $phrase = '%'.$this->normalize($q).'%';
-                $sub->whereRaw("{$titleN} LIKE ?", [$phrase])
-                    ->orWhereRaw("{$descN} LIKE ?", [$phrase]);
-
-                // Then each word independently (the OR fix).
-                foreach ($tokens as $token) {
-                    $needle = '%'.$this->normalize($token).'%';
-                    $sub->orWhereRaw("{$titleN} LIKE ?", [$needle])
-                        ->orWhereRaw("{$descN} LIKE ?", [$needle]);
-                }
-            });
-        }
+        // OR-based + Arabic-normalized keyword matching (see SearchesAds trait):
+        // a multi-word query returns ads containing ANY word, and spelling
+        // variants such as "ساعه"/"ساعة" or "ارانب"/"أرانب" still match.
+        $this->applyKeywordFilter($query, $q);
 
         if ($categoryId !== null) {
             $query->where('category_id', $categoryId);
@@ -253,13 +235,13 @@ class SearchController extends BaseController
 
         // Same Arabic normalization as the WHERE clause so scoring matches what
         // the filter found (e.g. a stored "ساعة" still scores for a typed "ساعه").
-        $titleN = $this->normalizeSql('title');
-        $descN = $this->normalizeSql('description');
+        $titleN = $this->normalizeColumnSql('title');
+        $descN = $this->normalizeColumnSql('description');
 
         // Joined-phrase bonus: an ad that contains the whole query as one phrase
         // (e.g. "used cars" together) outscores any ad that merely contains the
         // individual words separately, so joined ads surface at the very top.
-        $phrase = '%'.$this->normalize($q).'%';
+        $phrase = '%'.$this->normalizeSearch($q).'%';
         $scoreParts[] = "(CASE WHEN {$titleN} LIKE ? THEN 100 ELSE 0 END)";
         $bindings[] = $phrase;
         $scoreParts[] = "(CASE WHEN {$descN} LIKE ? THEN 50 ELSE 0 END)";
@@ -267,7 +249,7 @@ class SearchController extends BaseController
 
         // Per-word score: more matching words ranks higher; title beats description.
         foreach ($tokens as $token) {
-            $needle = '%'.$this->normalize($token).'%';
+            $needle = '%'.$this->normalizeSearch($token).'%';
             $scoreParts[] = "(CASE WHEN {$titleN} LIKE ? THEN 2 ELSE 0 END)";
             $bindings[] = $needle;
             $scoreParts[] = "(CASE WHEN {$descN} LIKE ? THEN 1 ELSE 0 END)";
@@ -279,58 +261,6 @@ class SearchController extends BaseController
             ->orderByDesc('relevance_score')
             ->orderByDesc('published_at')
             ->orderByDesc('created_at');
-    }
-
-    /**
-     * Split a search query into distinct words for OR-based matching.
-     * Handles Arabic/English whitespace, de-duplicates and caps the number of
-     * tokens to keep the generated SQL bounded.
-     *
-     * @return string[]
-     */
-    private function tokenize(string $q): array
-    {
-        $parts = preg_split('/\s+/u', trim($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-
-        return array_slice(array_values(array_unique($parts)), 0, 10);
-    }
-
-    /**
-     * Arabic search-normalization map, applied identically to both the query and
-     * the stored column so common spelling variants match each other:
-     *   أ إ آ ٱ → ا   |   ة → ه   |   ى ئ → ي   |   ؤ → و   |   tatweel ـ removed
-     *
-     * @var array<string, string>
-     */
-    private const ARABIC_NORMALIZE = [
-        'أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ٱ' => 'ا',
-        'ة' => 'ه',
-        'ى' => 'ي', 'ئ' => 'ي',
-        'ؤ' => 'و',
-        'ـ' => '',
-    ];
-
-    /** Normalize a search string the same way normalizeSql() normalizes a column. */
-    private function normalize(string $s): string
-    {
-        return strtr(mb_strtolower($s), self::ARABIC_NORMALIZE);
-    }
-
-    /**
-     * Build a SQL expression that normalizes the given column the same way
-     * normalize() normalizes the query, so LIKE comparisons are variant-insensitive.
-     * The map contains only constant, hard-coded characters — no user input — so
-     * inlining them into the SQL is safe.
-     */
-    private function normalizeSql(string $column): string
-    {
-        $expr = "LOWER({$column})";
-
-        foreach (self::ARABIC_NORMALIZE as $from => $to) {
-            $expr = "REPLACE({$expr}, '{$from}', '{$to}')";
-        }
-
-        return $expr;
     }
 
     // ── Public: Autocomplete Suggestions ─────────────────────────────────────

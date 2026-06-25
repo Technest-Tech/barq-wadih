@@ -9,12 +9,17 @@ use App\Http\Resources\AdResource;
 use App\Http\Resources\CategoryFieldResource;
 use App\Models\Ad;
 use App\Models\Category;
+use App\Models\User;
 use App\Services\AdService;
+use App\Traits\SearchesAds;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AdController extends BaseController
 {
+    use SearchesAds;
+
     public function __construct(private readonly AdService $adService) {}
 
     // ── Public: Ad Feed ───────────────────────────────────────────────────────
@@ -29,7 +34,7 @@ class AdController extends BaseController
             $query->where('category_id', (int) $request->input('category_id'));
         } elseif ($request->filled('category_ids')) {
             $ids = array_filter(
-                array_map('intval', explode(',', $request->input('category_ids')))
+                array_map('intval', explode(',', $request->input('category_ids'))),
             );
             if (! empty($ids)) {
                 $query->whereIn('category_id', $ids);
@@ -39,7 +44,7 @@ class AdController extends BaseController
         // ── Location ──────────────────────────────────────────────────────────
         if ($request->filled('city_ids')) {
             $cityIds = array_filter(
-                array_map('intval', explode(',', $request->input('city_ids')))
+                array_map('intval', explode(',', $request->input('city_ids'))),
             );
             if (! empty($cityIds)) {
                 $query->whereIn('city_id', $cityIds);
@@ -65,12 +70,11 @@ class AdController extends BaseController
         }
 
         // ── Full-text search ──────────────────────────────────────────────────
+        // OR-based + Arabic-normalized matching across title/description, so a
+        // multi-word query returns ads containing ANY of the words and spelling
+        // variants (ساعه/ساعة, ارانب/أرانب) still match. See SearchesAds.
         if ($request->filled('q')) {
-            $search = (string) $request->input('q');
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
+            $this->applyKeywordFilter($query, (string) $request->input('q'));
         }
 
         // ── Sort ──────────────────────────────────────────────────────────────
@@ -101,7 +105,7 @@ class AdController extends BaseController
         $ads = $query->paginate(20);
 
         return $this->paginatedResponse(
-            AdListResource::collection($ads)
+            AdListResource::collection($ads),
         );
     }
 
@@ -123,22 +127,22 @@ class AdController extends BaseController
 
     public function store(StoreAdRequest $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $ad = $this->adService->create(
             $user,
             $request->validated(),
-            $request->file('images', [])
+            $request->file('images', []),
         );
 
         // Publishing is free for every category — the ad goes live immediately.
         // The flat commission is only charged after the seller marks it sold.
         return $this->successResponse([
-            'ad'              => new AdResource($ad),
-            'requires_payment'=> false,
-            'payment_amount'  => 0.0,
-            'payment_init_url'=> null,
+            'ad' => new AdResource($ad),
+            'requires_payment' => false,
+            'payment_amount' => 0.0,
+            'payment_init_url' => null,
         ], 'تم نشر الإعلان بنجاح.', 201);
     }
 
@@ -152,7 +156,7 @@ class AdController extends BaseController
             $ad,
             $request->validated(),
             $request->file('images', []),
-            $request->input('remove_image_ids', [])
+            $request->input('remove_image_ids', []),
         );
 
         return $this->successResponse(new AdResource($updated), 'تم تحديث الإعلان بنجاح.');
@@ -172,7 +176,7 @@ class AdController extends BaseController
 
     public function myAds(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $ads = Ad::withTrashed()
@@ -193,11 +197,12 @@ class AdController extends BaseController
         try {
             $this->adService->markAsSold($ad);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('markAsSold failed', [
-                'ad_id'     => $ad->id,
+            Log::error('markAsSold failed', [
+                'ad_id' => $ad->id,
                 'exception' => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
+
             throw $e;
         }
 
@@ -224,20 +229,20 @@ class AdController extends BaseController
 
     public function commissionPreview(Request $request): JsonResponse
     {
-        $price      = (float) $request->input('price', 0);
-        $categoryId = (int)   $request->input('category_id', 0);
+        $price = (float) $request->input('price', 0);
+        $categoryId = (int) $request->input('category_id', 0);
         $sellerType = (string) $request->input('seller_type', 'individual');
 
-        $amount    = $this->adService->calculateCommission($categoryId, $price, false, $sellerType);
+        $amount = $this->adService->calculateCommission($categoryId, $price, false, $sellerType);
         $isFlatFee = $this->adService->isFlatFeeCategory($categoryId, $sellerType);
 
         return $this->successResponse([
-            'price'              => $price,
-            'commission_amount'  => $amount,
-            'commission_rate'    => null,
-            'is_flat_fee'        => true,
+            'price' => $price,
+            'commission_amount' => $amount,
+            'commission_rate' => null,
+            'is_flat_fee' => true,
             'minimum_commission' => null,
-            'note'               => $amount > 0
+            'note' => $amount > 0
                 ? "النشر مجاني. عمولة ثابتة {$amount} ر.س (شاملة الضريبة) تُدفع بعد إتمام البيع."
                 : 'النشر والعمولة مجاناً بالكامل في هذا القسم.',
         ]);
