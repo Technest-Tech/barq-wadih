@@ -4,18 +4,17 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Header from '@/components/layout/Header/Header';
 import Footer from '@/components/layout/Footer/Footer';
-import pm from '@/styles/premium.module.css';
-import styles from '../../post-ad.module.css';
+import styles from './pay.module.css';
 import { fetchAd, type Ad } from '@/lib/api/ads';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { BankTransferPayment } from '../../_components/pay/BankTransferPayment';
 import { usePostAdWizard } from '@/store/postAdWizard.store';
 
 /**
- * Pay landing page — kicks off after the wizard creates a paid-tier ad.
- * Loads the ad to surface the publish fee. While payment gateways are not yet
- * live, the seller pays by bank transfer and uploads a receipt, which an admin
- * reviews before the ad is published.
+ * Pay landing page for the after-sale commission. Loads the ad to surface the
+ * owed commission. While payment gateways are not yet live, the seller pays by
+ * bank transfer and uploads a receipt, which an admin reviews. White theme —
+ * mirrors the mobile bank-transfer flow.
  */
 export default function PayPage() {
   const router = useRouter();
@@ -36,6 +35,11 @@ export default function PayPage() {
 
   if (!ready) return null;
 
+  const goToAd = () => {
+    reset();
+    if (ad) router.push(`/ar/ads/${ad.id}`);
+  };
+
   return (
     <>
       <Header />
@@ -43,7 +47,7 @@ export default function PayPage() {
         <div className={styles.shell}>
           <h1 className={styles.pageTitle}>دفع عمولة البيع</h1>
 
-          {error && <div style={{ color: '#fca5a5', marginBottom: 12 }}>{error}</div>}
+          {error && <div className={styles.error}>{error}</div>}
 
           {ad ? (
             <div className={styles.card}>
@@ -66,56 +70,23 @@ export default function PayPage() {
               </div>
 
               {ad.payment_status === 'paid' ? (
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 14,
-                    background: 'rgba(16,185,129,0.1)',
-                    border: '1px solid rgba(16,185,129,0.3)',
-                    borderRadius: 12,
-                  }}
-                >
-                  ✅ تم استلام العمولة وتأكيدها. شكراً لك.
-                  <div style={{ marginTop: 10 }}>
-                    <button
-                      className={`${pm.pmBtn} ${pm.pmBtnPrimary}`}
-                      onClick={() => {
-                        reset();
-                        router.push(`/ar/ads/${ad.id}`);
-                      }}
-                    >
-                      عرض الإعلان
-                    </button>
-                  </div>
+                <div className={`${styles.statusPanel} ${styles.statusPaid}`}>
+                  <div className={styles.statusTitle}>✅ تم استلام العمولة وتأكيدها</div>
+                  <p className={styles.statusText}>شكراً لك. تم اعتماد دفع عمولة البيع بنجاح.</p>
+                  <button className={styles.btnPrimary} onClick={goToAd}>
+                    عرض الإعلان
+                  </button>
                 </div>
               ) : ad.payment_status === 'under_review' ? (
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 16,
-                    background: 'rgba(245,158,11,0.1)',
-                    border: '1px solid rgba(245,158,11,0.3)',
-                    borderRadius: 12,
-                  }}
-                >
-                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
-                    ⏳ إيصال التحويل قيد المراجعة
-                  </div>
-                  <p style={{ fontSize: 13.5, color: '#cbd5e1', lineHeight: 1.7 }}>
+                <div className={`${styles.statusPanel} ${styles.statusReview}`}>
+                  <div className={styles.statusTitle}>⏳ إيصال التحويل قيد المراجعة</div>
+                  <p className={styles.statusText}>
                     استلمنا إيصال تحويل العمولة. سيقوم الفريق بمراجعته والتحقق منه، وسيتم اعتماد
                     الدفع فور التأكد من التحويل.
                   </p>
-                  <div style={{ marginTop: 12 }}>
-                    <button
-                      className={pm.pmBtn}
-                      onClick={() => {
-                        reset();
-                        router.push(`/ar/ads/${ad.id}`);
-                      }}
-                    >
-                      عرض الإعلان
-                    </button>
-                  </div>
+                  <button className={styles.btnGhost} onClick={goToAd}>
+                    عرض الإعلان
+                  </button>
                 </div>
               ) : (
                 <div style={{ marginTop: 14 }}>

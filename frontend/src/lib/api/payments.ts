@@ -41,9 +41,18 @@ export async function confirmAdPayment(adId: number, reference?: string): Promis
  * Upload a screenshot of the manual bank transfer. Moves the ad's payment into
  * `under_review` for an admin to verify. Returns the freshly-updated ad.
  */
-export async function uploadPaymentProof(adId: number, file: File): Promise<Ad> {
+export async function uploadPaymentProof(
+  adId: number,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<Ad> {
   const formData = new FormData();
   formData.append('proof', file);
-  const res = await apiClient.postFormData<Ad>(ENDPOINTS.AD_PAYMENT_PROOF(adId), formData);
+  const res = await apiClient.postFormData<Ad>(
+    ENDPOINTS.AD_PAYMENT_PROOF(adId),
+    formData,
+    'POST',
+    onProgress
+  );
   return res.data!;
 }
