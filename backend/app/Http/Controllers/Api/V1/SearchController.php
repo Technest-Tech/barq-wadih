@@ -182,15 +182,23 @@ class SearchController extends BaseController
             // in the title or description. A multi-word query such as "جمل فحل"
             // returns every ad containing "جمل" OR "فحل" — the "no results" state
             // is only reached when none of the words match anywhere.
-            $query->where(function ($sub) use ($q, $tokens) {
+            //
+            // Both sides are Arabic-normalized (alef/hamza variants, ة↔ه, ى↔ي,
+            // tatweel) so "ساعه" matches a stored "ساعة" and "ارانب" matches "أرانب".
+            $titleN = $this->normalizeSql('title');
+            $descN = $this->normalizeSql('description');
+
+            $query->where(function ($sub) use ($q, $tokens, $titleN, $descN) {
                 // Whole-phrase match first (covers exact / multi-word substrings).
-                $sub->where('title', 'like', "%{$q}%")
-                    ->orWhere('description', 'like', "%{$q}%");
+                $phrase = '%'.$this->normalize($q).'%';
+                $sub->whereRaw("{$titleN} LIKE ?", [$phrase])
+                    ->orWhereRaw("{$descN} LIKE ?", [$phrase]);
 
                 // Then each word independently (the OR fix).
                 foreach ($tokens as $token) {
-                    $sub->orWhere('title', 'like', "%{$token}%")
-                        ->orWhere('description', 'like', "%{$token}%");
+                    $needle = '%'.$this->normalize($token).'%';
+                    $sub->orWhereRaw("{$titleN} LIKE ?", [$needle])
+                        ->orWhereRaw("{$descN} LIKE ?", [$needle]);
                 }
             });
         }
@@ -243,20 +251,27 @@ class SearchController extends BaseController
         $scoreParts = [];
         $bindings = [];
 
+        // Same Arabic normalization as the WHERE clause so scoring matches what
+        // the filter found (e.g. a stored "ساعة" still scores for a typed "ساعه").
+        $titleN = $this->normalizeSql('title');
+        $descN = $this->normalizeSql('description');
+
         // Joined-phrase bonus: an ad that contains the whole query as one phrase
         // (e.g. "used cars" together) outscores any ad that merely contains the
         // individual words separately, so joined ads surface at the very top.
-        $scoreParts[] = '(CASE WHEN title LIKE ? THEN 100 ELSE 0 END)';
-        $bindings[] = "%{$q}%";
-        $scoreParts[] = '(CASE WHEN description LIKE ? THEN 50 ELSE 0 END)';
-        $bindings[] = "%{$q}%";
+        $phrase = '%'.$this->normalize($q).'%';
+        $scoreParts[] = "(CASE WHEN {$titleN} LIKE ? THEN 100 ELSE 0 END)";
+        $bindings[] = $phrase;
+        $scoreParts[] = "(CASE WHEN {$descN} LIKE ? THEN 50 ELSE 0 END)";
+        $bindings[] = $phrase;
 
         // Per-word score: more matching words ranks higher; title beats description.
         foreach ($tokens as $token) {
-            $scoreParts[] = '(CASE WHEN title LIKE ? THEN 2 ELSE 0 END)';
-            $bindings[] = "%{$token}%";
-            $scoreParts[] = '(CASE WHEN description LIKE ? THEN 1 ELSE 0 END)';
-            $bindings[] = "%{$token}%";
+            $needle = '%'.$this->normalize($token).'%';
+            $scoreParts[] = "(CASE WHEN {$titleN} LIKE ? THEN 2 ELSE 0 END)";
+            $bindings[] = $needle;
+            $scoreParts[] = "(CASE WHEN {$descN} LIKE ? THEN 1 ELSE 0 END)";
+            $bindings[] = $needle;
         }
 
         $query->selectRaw('ads.*, ('.implode(' + ', $scoreParts).') as relevance_score', $bindings)
@@ -278,6 +293,44 @@ class SearchController extends BaseController
         $parts = preg_split('/\s+/u', trim($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         return array_slice(array_values(array_unique($parts)), 0, 10);
+    }
+
+    /**
+     * Arabic search-normalization map, applied identically to both the query and
+     * the stored column so common spelling variants match each other:
+     *   أ إ آ ٱ → ا   |   ة → ه   |   ى ئ → ي   |   ؤ → و   |   tatweel ـ removed
+     *
+     * @var array<string, string>
+     */
+    private const ARABIC_NORMALIZE = [
+        'أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ٱ' => 'ا',
+        'ة' => 'ه',
+        'ى' => 'ي', 'ئ' => 'ي',
+        'ؤ' => 'و',
+        'ـ' => '',
+    ];
+
+    /** Normalize a search string the same way normalizeSql() normalizes a column. */
+    private function normalize(string $s): string
+    {
+        return strtr(mb_strtolower($s), self::ARABIC_NORMALIZE);
+    }
+
+    /**
+     * Build a SQL expression that normalizes the given column the same way
+     * normalize() normalizes the query, so LIKE comparisons are variant-insensitive.
+     * The map contains only constant, hard-coded characters — no user input — so
+     * inlining them into the SQL is safe.
+     */
+    private function normalizeSql(string $column): string
+    {
+        $expr = "LOWER({$column})";
+
+        foreach (self::ARABIC_NORMALIZE as $from => $to) {
+            $expr = "REPLACE({$expr}, '{$from}', '{$to}')";
+        }
+
+        return $expr;
     }
 
     // ── Public: Autocomplete Suggestions ─────────────────────────────────────
