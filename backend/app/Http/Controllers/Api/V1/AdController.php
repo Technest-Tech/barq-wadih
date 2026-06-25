@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AdStatus;
+use App\Enums\ModerationStatus;
 use App\Http\Requests\Ad\StoreAdRequest;
 use App\Http\Requests\Ad\UpdateAdRequest;
 use App\Http\Resources\AdListResource;
@@ -112,14 +114,34 @@ class AdController extends BaseController
 
     // ── Public: Ad Detail ─────────────────────────────────────────────────────
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $ad = Ad::with(['images', 'category', 'city', 'region', 'user', 'fieldValues.field'])
-            ->active()
             ->findOrFail($id);
 
-        // Increment view count (fire-and-forget)
-        $ad->increment('views_count');
+        // The owner (and admins) may view their own ad in any status — needed for
+        // the after-sale pay page, where the ad is "sold" and not active. Everyone
+        // else only sees active + approved ads.
+        //
+        // This route is public (no auth:sanctum middleware), so resolve the bearer
+        // token via the sanctum guard explicitly and promote it onto the default
+        // guard so AdResource's auth()->id() owner checks (payment fields, phone)
+        // see the authenticated owner.
+        $user = $request->user('sanctum');
+        if ($user) {
+            auth()->setUser($user);
+        }
+        $isOwner = $user && $user->id === $ad->user_id;
+        $isAdmin = $user && $user->isAdmin();
+
+        if (! $isOwner && ! $isAdmin) {
+            if ($ad->status !== AdStatus::Active
+                || $ad->moderation_status !== ModerationStatus::Approved) {
+                abort(404);
+            }
+            // Increment view count only for public (non-owner) views.
+            $ad->increment('views_count');
+        }
 
         return $this->successResponse(new AdResource($ad));
     }
