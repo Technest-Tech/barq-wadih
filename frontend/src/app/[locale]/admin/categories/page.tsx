@@ -767,7 +767,7 @@ export default function AdminCategoriesPage() {
                       <input
                         id="cat-image-upload"
                         type="file"
-                        accept="image/jpg,image/jpeg,image/png,image/webp"
+                        accept="image/jpg,image/jpeg,image/png,image/webp,image/svg+xml,.svg"
                         style={{ display: 'none' }}
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -791,7 +791,7 @@ export default function AdminCategoriesPage() {
                         />
                       ) : (
                         <span style={{ color: '#64748b', fontSize: '.85rem' }}>
-                          📁 اضغط لرفع صورة (JPG/PNG/WebP، حد 5MB)
+                          📁 اضغط لرفع صورة (JPG/PNG/WebP/SVG، حد 5MB)
                         </span>
                       )}
                     </div>

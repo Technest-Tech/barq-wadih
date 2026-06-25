@@ -63,6 +63,9 @@ dependencies:
   # Icons — shared with the Next.js web frontend (lucide-react)
   lucide_icons: ^0.257.0
 
+  # SVG rendering (category icon/image uploads can be .svg)
+  flutter_svg: ^2.0.17
+
   # Local KV cache
   hive_flutter: ^1.1.0
   hive: ^2.2.3

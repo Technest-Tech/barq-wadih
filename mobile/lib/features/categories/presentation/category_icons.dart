@@ -1,6 +1,7 @@
 // lib/features/categories/presentation/category_icons.dart
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 IconData categoryIcon(String slug) {
@@ -29,6 +30,18 @@ Widget categoryVisual(
 }) {
   if (image != null && image.startsWith('http')) {
     final fallback = Icon(categoryIcon(slug), color: color, size: iconSize);
+    if (image.toLowerCase().contains('.svg')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: SvgPicture.network(
+          image,
+          width: imageSize,
+          height: imageSize,
+          fit: BoxFit.cover,
+          placeholderBuilder: (_) => fallback,
+        ),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: Image.network(
