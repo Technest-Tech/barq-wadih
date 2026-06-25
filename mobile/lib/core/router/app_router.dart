@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../theme/app_theme.dart';
+import '../widgets/exit_confirm_dialog.dart';
 
 import '../../features/ads/presentation/screens/ad_feed_screen.dart';
 import '../../features/ads/presentation/screens/ad_detail_screen.dart';
@@ -217,44 +217,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.search,
         onExit: (context, state) async {
           if (context.canPop()) return true;
-          final shouldExit = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Text(
-                'هل تريد الخروج؟',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-              ),
-              actionsAlignment: MainAxisAlignment.center,
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text(
-                    'لا',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppTheme.neutralGray600,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text(
-                    'نعم',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-          if (shouldExit == true) SystemNavigator.pop();
+          if (await showExitConfirmDialog(context)) SystemNavigator.pop();
           return false;
         },
         pageBuilder: (context, state) =>

@@ -119,13 +119,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   /// Save credentials (encrypted) so fingerprint login can re-authenticate
-  /// later. Only when the device supports biometrics and we have both fields.
+  /// later. Stored on every successful email sign-in; the fingerprint scan in
+  /// [loginWithBiometrics] is what actually gates their use, so we don't depend
+  /// on the (flaky on Android) availability probe here.
   Future<void> _saveBiometricCredentials(
     String? email,
     String? password,
   ) async {
     if (email == null || email.isEmpty || password == null) return;
-    if (!await BiometricService.instance.isAvailable()) return;
     await _storage.write(key: _kBioEmail, value: email);
     await _storage.write(key: _kBioPassword, value: password);
   }
@@ -149,7 +150,7 @@ class AuthNotifier extends Notifier<AuthState> {
     required String email,
     required String password,
   }) async {
-    if (!await BiometricService.instance.isAvailable()) return false;
+    // The fingerprint scan itself confirms biometrics work on this device.
     final ok = await BiometricService.instance.authenticate(
       reason: 'أكّد بصمتك لتفعيل الدخول السريع لاحقًا',
     );

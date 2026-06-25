@@ -40,7 +40,11 @@ class AdService
 
             $sellerType = $data['seller_type'] ?? 'individual';
             $categoryId = (int) $data['category_id'];
-            $commission = $this->calculateCommission($categoryId, (float) ($data['price'] ?? 0), false, $sellerType);
+
+            // "عند الاتصال" — price is hidden and not stored.
+            $priceHidden = filter_var($data['price_hidden'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $price       = $priceHidden ? null : ($data['price'] ?? null);
+            $commission  = $this->calculateCommission($categoryId, (float) ($price ?? 0), false, $sellerType);
 
             /** @var Ad $ad */
             $ad = $user->ads()->create([
@@ -54,8 +58,8 @@ class AdService
                 'longitude'           => $data['longitude'] ?? null,
                 'title'               => $data['title'],
                 'description'         => $data['description'],
-                'price'               => $data['price'] ?? null,
-                'price_hidden'        => false,
+                'price'               => $price,
+                'price_hidden'        => $priceHidden,
                 'is_negotiable'       => $data['is_negotiable'] ?? false,
                 'is_free'             => false,
                 'contact_phone'       => $data['contact_phone'] ?? null,

@@ -285,6 +285,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Continue as guest
+                Center(
+                  child: GestureDetector(
+                    onTap: () => context.go('/'),
+                    child: Text(
+                      'تصفح كضيف',
+                      style: TextStyle(
+                        color: AppTheme.neutralGray500,
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                        decorationColor: AppTheme.neutralGray500,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 32),
               ],
             ),

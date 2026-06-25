@@ -14,16 +14,17 @@ class BiometricService {
 
   final LocalAuthentication _auth = LocalAuthentication();
 
-  /// Whether the device has biometric hardware that the OS can use *and* the
-  /// user has enrolled at least one fingerprint / face.
+  /// Whether the device can perform a biometric check.
+  ///
+  /// Deliberately does NOT rely on `getAvailableBiometrics()` — that call is
+  /// unreliable on Android (notably emulators), often returning an empty list
+  /// even when a fingerprint is enrolled. We use the stable hardware-capability
+  /// signals instead and let [authenticate] be the real gate.
   Future<bool> isAvailable() async {
     try {
-      final supported = await _auth.isDeviceSupported();
-      if (!supported) return false;
       final canCheck = await _auth.canCheckBiometrics;
-      if (!canCheck) return false;
-      final enrolled = await _auth.getAvailableBiometrics();
-      return enrolled.isNotEmpty;
+      final supported = await _auth.isDeviceSupported();
+      return canCheck && supported;
     } on PlatformException {
       return false;
     }

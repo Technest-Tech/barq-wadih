@@ -9,6 +9,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Category, CategoryChild } from '@/lib/api/categories';
 import type { Region, City } from '@/lib/api/regions';
 import type { District } from '@/lib/api/districts';
+import type { CategoryField } from '@/lib/api/ads';
 
 export type WizardStep =
   | 'category'
@@ -49,7 +50,7 @@ export type WizardDetails = {
   description: string;
   price: string; // Keep as string for the input; cast on submit.
   isFree: boolean; // مجاني — no price at all.
-  isNegotiable: boolean; // قابل للتفاوض.
+  isNegotiable: boolean; // على السوم (مزاد).
   priceHidden: boolean; // اتصل للسعر — distinct from is_free.
   phone: string;
   showPhonePublicly: boolean;
@@ -75,6 +76,8 @@ export type WizardState = {
   images: WizardImage[];
   // Step 8 — Details
   details: WizardDetails;
+  /** Dynamic fields defined for the selected category (e.g. the cars fields). */
+  categoryFields: CategoryField[];
   // Edit mode
   editingAdId: number | null;
 
@@ -96,6 +99,7 @@ export type WizardState = {
   removeImage: (id: string) => void;
   reorderImages: (fromIdx: number, toIdx: number) => void;
   patchDetails: (p: Partial<WizardDetails>) => void;
+  setCategoryFields: (f: CategoryField[]) => void;
   setEditingAdId: (id: number | null) => void;
   reset: () => void;
 };
@@ -125,6 +129,7 @@ const INITIAL_STATE = {
   latLng: null,
   images: [] as WizardImage[],
   details: INITIAL_DETAILS,
+  categoryFields: [] as CategoryField[],
   editingAdId: null,
 };
 
@@ -173,6 +178,7 @@ export const usePostAdWizard = create<WizardState>()(
       },
 
       patchDetails: (p) => set({ details: { ...get().details, ...p } }),
+      setCategoryFields: (categoryFields) => set({ categoryFields }),
       setEditingAdId: (editingAdId) => set({ editingAdId }),
 
       reset: () => set({ ...INITIAL_STATE }),
@@ -280,11 +286,18 @@ export function canAdvance(state: WizardState, step: WizardStep): boolean {
     case 'details': {
       const d = state.details;
       const phoneOk = !d.showPhonePublicly || isValidSaudiPhone(d.phone);
+      // Price required for "fixed" and "على السوم"; only "عند الاتصال" (priceHidden) may omit it.
+      const priceOk = d.priceHidden || d.price.trim().length > 0;
+      // All required dynamic fields (e.g. the cars fields) must be filled.
+      const fieldsOk = state.categoryFields
+        .filter((f) => f.is_required)
+        .every((f) => (d.fields[f.field_key] ?? '').trim().length > 0);
       return (
         d.title.trim().length >= 3 &&
         d.description.trim().length >= 10 &&
         phoneOk &&
-        (d.isFree || d.priceHidden || d.price.trim().length > 0)
+        priceOk &&
+        fieldsOk
       );
     }
     case 'review':

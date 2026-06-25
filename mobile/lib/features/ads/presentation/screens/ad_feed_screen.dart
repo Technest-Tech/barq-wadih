@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/exit_confirm_dialog.dart';
 import '../../../../core/widgets/shimmer_widgets.dart';
 import '../../../categories/data/category_api.dart';
 import '../../../categories/domain/category_model.dart';
@@ -244,11 +245,11 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         if (_selectedCategoryId != null) {
           _applyCategory(null, []);
-        } else {
+        } else if (await showExitConfirmDialog(context)) {
           SystemNavigator.pop();
         }
       },

@@ -57,42 +57,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     context.go(_routes[index]);
   }
 
-  Future<void> _showExitDialog(BuildContext context) async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'هل تريد الخروج؟',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(
-              'لا',
-              style: TextStyle(fontSize: 15, color: AppTheme.neutralGray600),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'نعم',
-              style: TextStyle(
-                fontSize: 15,
-                color: AppTheme.primaryBlue,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (shouldExit == true) SystemNavigator.pop();
-  }
-
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -116,10 +80,12 @@ class _MainShellState extends ConsumerState<MainShell> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
+        // Non-home tabs: back returns to the home tab.
+        // Home tab: AdFeedScreen's own PopScope owns the back behavior
+        // (clear category / show the exit-confirmation dialog), so we do
+        // nothing here to avoid a duplicate dialog.
         if (activeIndex != 0) {
           context.go('/');
-        } else {
-          _showExitDialog(context);
         }
       },
       child: Scaffold(

@@ -49,6 +49,8 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
 
   const { setAuth } = useAuthStore();
   const router = useRouter();
@@ -69,6 +71,11 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: DetailsForm) => {
     setError('');
+    if (!acceptedTerms) {
+      setTermsError(true);
+      return;
+    }
+    setTermsError(false);
     try {
       const res = await authApi.register({
         name: data.name,
@@ -205,6 +212,43 @@ export default function RegisterPage() {
             )}
           </div>
 
+          <label
+            className={`${styles.termsCheckRow} ${termsError ? styles.termsCheckRowError : ''}`}
+          >
+            <input
+              type="checkbox"
+              className={styles.termsCheckbox}
+              checked={acceptedTerms}
+              onChange={(e) => {
+                setAcceptedTerms(e.target.checked);
+                if (e.target.checked) setTermsError(false);
+              }}
+            />
+            <span className={styles.termsCheckLabel}>
+              أوافق على{' '}
+              <a
+                href="/terms"
+                className={styles.termsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                الشروط والأحكام
+              </a>{' '}
+              و{' '}
+              <a
+                href="/privacy"
+                className={styles.termsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                سياسة الخصوصية
+              </a>
+            </span>
+          </label>
+          {termsError && (
+            <span className={styles.fieldError}>يجب الموافقة على الشروط والأحكام للمتابعة</span>
+          )}
+
           <button className={styles.btnPrimary} type="submit" disabled={isSubmitting || success}>
             {isSubmitting ? (
               <Loader2 size={18} className={styles.spinner} />
@@ -224,17 +268,6 @@ export default function RegisterPage() {
         <Link href="login" className={styles.footerLink}>
           تسجيل الدخول
         </Link>
-      </p>
-
-      <p className={styles.terms}>
-        بإنشاء حساب، أنت توافق على{' '}
-        <a href="#" className={styles.termsLink}>
-          الشروط والأحكام
-        </a>{' '}
-        و{' '}
-        <a href="#" className={styles.termsLink}>
-          سياسة الخصوصية
-        </a>
       </p>
     </div>
   );

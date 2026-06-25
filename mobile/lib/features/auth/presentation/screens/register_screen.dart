@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -20,6 +22,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+  bool _acceptedTerms = false;
 
   @override
   void dispose() {
@@ -37,6 +40,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    if (!_acceptedTerms) {
+      _showError('يجب الموافقة على الشروط والأحكام للمتابعة');
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     await ref
         .read(authProvider.notifier)
@@ -337,7 +344,72 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 20),
+
+                      // Terms & conditions checkbox
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _acceptedTerms,
+                              activeColor: AppTheme.primaryBlue,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              onChanged: (v) =>
+                                  setState(() => _acceptedTerms = v ?? false),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.neutralGray600,
+                                  height: 1.5,
+                                ),
+                                children: [
+                                  const TextSpan(text: 'أوافق على '),
+                                  TextSpan(
+                                    text: 'الشروط والأحكام',
+                                    style: const TextStyle(
+                                      color: AppTheme.primaryBlue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => launchUrl(
+                                        Uri.parse(
+                                          'https://barqwadih.com/terms',
+                                        ),
+                                        mode: LaunchMode.externalApplication,
+                                      ),
+                                  ),
+                                  const TextSpan(text: ' و'),
+                                  TextSpan(
+                                    text: 'سياسة الخصوصية',
+                                    style: const TextStyle(
+                                      color: AppTheme.primaryBlue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => launchUrl(
+                                        Uri.parse(
+                                          'https://barqwadih.com/privacy',
+                                        ),
+                                        mode: LaunchMode.externalApplication,
+                                      ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
 
                       _ActionButton(
                         label: 'إنشاء الحساب',

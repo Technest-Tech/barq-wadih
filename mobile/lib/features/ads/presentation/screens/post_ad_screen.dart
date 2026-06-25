@@ -65,6 +65,10 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   _PriceOption _priceOption = _PriceOption.fixed;
   bool _showPhonePublicly = true;
 
+  // Dynamic category field values (e.g. the cars fields) keyed by field_key.
+  final Map<String, TextEditingController> _dynControllers = {};
+  final Map<String, String> _fieldValues = {};
+
   // Step 3 — Images
   final List<XFile> _images = [];
 
@@ -85,7 +89,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       _titleCtrl.text.trim().length >= kTitleMinLen &&
       _descCtrl.text.trim().length >= kDescMinLen &&
       (!_showPhonePublicly || isValidSaudiPhone(_phoneCtrl.text)) &&
-      (_priceOption != _PriceOption.fixed || _priceCtrl.text.trim().isNotEmpty);
+      (_priceOption == _PriceOption.callForPrice ||
+          _priceCtrl.text.trim().isNotEmpty);
 
   @override
   void initState() {
@@ -108,6 +113,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     _priceCtrl.dispose();
     _phoneCtrl.dispose();
     _districtFreeTextCtrl.dispose();
+    for (final c in _dynControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -144,6 +152,10 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
             ? _PriceOption.negotiable
             : _PriceOption.fixed;
         _showPhonePublicly = ad.showPhonePublicly;
+
+        for (final fv in ad.fieldValues) {
+          _fieldValues[fv.fieldKey] = fv.value?.toString() ?? '';
+        }
 
         if (ad.region != null) {
           _selectedRegion = RegionModel(
@@ -260,6 +272,16 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     setState(() => _step--);
   }
 
+  /// Lazily-created controller for a dynamic category field, seeded from any
+  /// existing value and writing back into [_fieldValues] on edit.
+  TextEditingController _dynCtrl(String key) {
+    return _dynControllers.putIfAbsent(key, () {
+      final c = TextEditingController(text: _fieldValues[key] ?? '');
+      c.addListener(() => _fieldValues[key] = c.text);
+      return c;
+    });
+  }
+
   // ── Image picking ──────────────────────────────────────────────────────────
 
   Future<void> _pickImages() async {
@@ -337,7 +359,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         if (regionId != null) 'region_id': regionId.toString(),
         'title': _titleCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
-        if (_priceOption == _PriceOption.fixed &&
+        // Both "أدخل السعر" and "على السوم" send a price; "عند الاتصال" hides it.
+        if (_priceOption != _PriceOption.callForPrice &&
             _priceCtrl.text.trim().isNotEmpty)
           'price': _priceCtrl.text.trim(),
         'is_free': '0',
@@ -352,6 +375,7 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         'pledge_accepted': '1',
         if (_latitude != null) 'latitude': _latitude.toString(),
         if (_longitude != null) 'longitude': _longitude.toString(),
+        ..._fieldValues.map((k, v) => MapEntry('fields[$k]', v)),
       };
 
       if (!_isEditMode) {
@@ -504,10 +528,14 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
                   phoneCtrl: _phoneCtrl,
                   priceOption: _priceOption,
                   showPhonePublicly: _showPhonePublicly,
+                  categoryId: _selectedCategory?.id,
+                  fieldValues: _fieldValues,
                   errors: _fieldErrors,
                   onPriceOptionChanged: (v) => setState(() => _priceOption = v),
                   onShowPhoneChanged: (v) =>
                       setState(() => _showPhonePublicly = v),
+                  onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
+                  dynCtrl: _dynCtrl,
                   onBack: _prev,
                   onNext: () {
                     if (_step2Valid) _next();
@@ -1325,9 +1353,13 @@ class _Step2Details extends ConsumerStatefulWidget {
   final TextEditingController titleCtrl, descCtrl, priceCtrl, phoneCtrl;
   final _PriceOption priceOption;
   final bool showPhonePublicly;
+  final int? categoryId;
+  final Map<String, String> fieldValues;
   final Map<String, String> errors;
   final void Function(_PriceOption) onPriceOptionChanged;
   final void Function(bool) onShowPhoneChanged;
+  final void Function(String, String) onFieldChanged;
+  final TextEditingController Function(String) dynCtrl;
   final VoidCallback onBack, onNext;
 
   const _Step2Details({
@@ -1337,9 +1369,13 @@ class _Step2Details extends ConsumerStatefulWidget {
     required this.phoneCtrl,
     required this.priceOption,
     required this.showPhonePublicly,
+    required this.categoryId,
+    required this.fieldValues,
     required this.errors,
     required this.onPriceOptionChanged,
     required this.onShowPhoneChanged,
+    required this.onFieldChanged,
+    required this.dynCtrl,
     required this.onBack,
     required this.onNext,
   });
@@ -1359,6 +1395,16 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
     final phoneValid =
         !widget.showPhonePublicly || isValidSaudiPhone(phoneText);
 
+    // Dynamic category fields (e.g. the cars fields). Required ones must be
+    // filled before leaving the step.
+    final categoryFieldsState = widget.categoryId != null
+        ? ref.watch(categoryFieldsProvider(widget.categoryId!))
+        : null;
+    final categoryFields = categoryFieldsState?.asData?.value ?? const [];
+    final requiredFieldsFilled = categoryFields
+        .where((f) => f.isRequired)
+        .every((f) => (widget.fieldValues[f.fieldKey] ?? '').trim().isNotEmpty);
+
     // Inline per-field errors shown before the user can leave this step.
     final titleError = titleText.isNotEmpty && titleText.length < kTitleMinLen
         ? 'العنوان يجب أن يكون $kTitleMinLen أحرف على الأقل'
@@ -1371,7 +1417,8 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
         titleText.length >= kTitleMinLen &&
         descText.length >= kDescMinLen &&
         phoneValid &&
-        (widget.priceOption != _PriceOption.fixed ||
+        requiredFieldsFilled &&
+        (widget.priceOption == _PriceOption.callForPrice ||
             widget.priceCtrl.text.trim().isNotEmpty);
 
     return SingleChildScrollView(
@@ -1422,6 +1469,57 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
             ),
           ),
 
+          // ── Dynamic category fields (e.g. cars: النوع/الموديل/الممشى/اللون) ──
+          if (categoryFields.isNotEmpty) ...[
+            _SectionHeader(title: 'المواصفات', icon: Icons.tune_rounded),
+            const SizedBox(height: 12),
+            ...categoryFields.map((f) {
+              final value = (widget.fieldValues[f.fieldKey] ?? '').trim();
+              final missing = f.isRequired && value.isEmpty;
+              if (f.options.isNotEmpty) {
+                return _FormField(
+                  label: f.labelAr,
+                  required: f.isRequired,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: widget.fieldValues[f.fieldKey],
+                    hint: Text(
+                      f.placeholderAr ?? 'اختر...',
+                      style: const TextStyle(color: AppTheme.neutralGray500),
+                    ),
+                    decoration: _inputDecoration(
+                      error: missing ? 'هذا الحقل مطلوب' : null,
+                    ),
+                    items: f.options
+                        .map(
+                          (o) => DropdownMenuItem(
+                            value: o,
+                            child: Text(o, textDirection: TextDirection.rtl),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) widget.onFieldChanged(f.fieldKey, v);
+                    },
+                  ),
+                );
+              }
+              return _FormField(
+                label: f.labelAr,
+                required: f.isRequired,
+                child: TextField(
+                  controller: widget.dynCtrl(f.fieldKey),
+                  textDirection: TextDirection.rtl,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(color: AppTheme.neutralGray900),
+                  decoration: _inputDecoration(
+                    hint: f.placeholderAr ?? '',
+                    error: missing ? 'هذا الحقل مطلوب' : null,
+                  ),
+                ),
+              );
+            }),
+          ],
+
           // ── Price ────────────────────────────────────────────────────────
           _SectionHeader(title: 'السعر', icon: Icons.payments_outlined),
           const SizedBox(height: 12),
@@ -1461,9 +1559,12 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           ),
           const SizedBox(height: 12),
 
-          if (widget.priceOption == _PriceOption.fixed) ...[
+          // Both "أدخل السعر" and "على السوم" require a price; only "عند الاتصال" hides it.
+          if (widget.priceOption != _PriceOption.callForPrice) ...[
             _FormField(
-              label: 'السعر',
+              label: widget.priceOption == _PriceOption.negotiable
+                  ? 'السعر المطلوب (على السوم)'
+                  : 'السعر',
               required: true,
               child: TextField(
                 controller: widget.priceCtrl,

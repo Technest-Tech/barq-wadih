@@ -297,7 +297,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                               ),
                             ),
                             child: const Text(
-                              'قابل للتفاوض',
+                              'على السوم',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange,

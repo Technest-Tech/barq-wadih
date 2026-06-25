@@ -275,7 +275,7 @@ export default function MyAdsPage() {
                         {ad.is_free
                           ? 'مجاني'
                           : `${Number(ad.price ?? 0).toLocaleString('ar-SA')} ر.س`}
-                        {ad.is_negotiable && <span className={styles.neg}>قابل للتفاوض</span>}
+                        {ad.is_negotiable && <span className={styles.neg}>على السوم</span>}
                       </p>
                       <p className={styles.adLocation}>
                         {ad.city?.name_ar} • {ad.category?.name_ar}

@@ -3,14 +3,18 @@
 import { useEffect, useRef } from 'react';
 import pm from '@/styles/premium.module.css';
 import styles from '../../post-ad.module.css';
+import { fetchCategoryFields, type CategoryField, type CategoryFieldOption } from '@/lib/api/ads';
 import { isValidSaudiPhone, usePostAdWizard } from '@/store/postAdWizard.store';
-import { PriceField } from '../shared/PriceField';
 import { WizardFooter } from '../WizardFooter';
+
+type PriceOption = 'fixed' | 'negotiable' | 'call';
 
 export function DetailsStep() {
   const category = usePostAdWizard((s) => s.category);
   const d = usePostAdWizard((s) => s.details);
   const patch = usePostAdWizard((s) => s.patchDetails);
+  const categoryFields = usePostAdWizard((s) => s.categoryFields);
+  const setCategoryFields = usePostAdWizard((s) => s.setCategoryFields);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -23,6 +27,33 @@ export function DetailsStep() {
   useEffect(() => {
     if (textareaRef.current) autoResize(textareaRef.current);
   }, []);
+
+  // Load the selected category's dynamic fields (e.g. the cars fields).
+  useEffect(() => {
+    if (!category) {
+      setCategoryFields([]);
+      return;
+    }
+    fetchCategoryFields(category.id)
+      .then(setCategoryFields)
+      .catch(() => setCategoryFields([]));
+  }, [category, setCategoryFields]);
+
+  // Derive the selected price option from the boolean flags.
+  const priceOption: PriceOption = d.priceHidden ? 'call' : d.isNegotiable ? 'negotiable' : 'fixed';
+  const selectPrice = (opt: PriceOption) => {
+    if (opt === 'fixed') patch({ isFree: false, isNegotiable: false, priceHidden: false });
+    else if (opt === 'negotiable') patch({ isFree: false, isNegotiable: true, priceHidden: false });
+    else patch({ isFree: false, isNegotiable: false, priceHidden: true, price: '' });
+  };
+
+  const normalizeOption = (opt: CategoryFieldOption): { value: string; label: string } => {
+    if (typeof opt === 'string') return { value: opt, label: opt };
+    return {
+      value: String(opt.value),
+      label: String(opt.label_ar ?? opt.label ?? opt.label_en ?? opt.value),
+    };
+  };
 
   return (
     <div>
@@ -82,8 +113,123 @@ export function DetailsStep() {
           </span>
         </div>
 
+        {/* Dynamic category fields (e.g. cars: النوع/الموديل/الممشى/اللون) */}
+        {categoryFields.length > 0 && (
+          <>
+            <div className={pm.pmGridFull}>
+              <h3 className={pm.pmSectionTitle}>
+                <span className={pm.pmSectionTitleIcon}>📋</span>
+                المواصفات
+              </h3>
+            </div>
+            {categoryFields.map((f: CategoryField) => {
+              const val = d.fields[f.field_key] ?? '';
+              const missing = f.is_required && val.trim().length === 0;
+              const setVal = (v: string) => patch({ fields: { ...d.fields, [f.field_key]: v } });
+              return (
+                <div
+                  key={f.id}
+                  className={`${pm.pmField} ${f.field_type === 'text' ? pm.pmGridFull : ''}`}
+                >
+                  <label className={`${pm.pmLabel} ${f.is_required ? pm.pmLabelReq : ''}`}>
+                    {f.label_ar}
+                  </label>
+                  {(f.field_type === 'select' || f.field_type === 'multi_select') &&
+                  Array.isArray(f.options) ? (
+                    <select
+                      className={pm.pmInput}
+                      value={val}
+                      onChange={(e) => setVal(e.target.value)}
+                    >
+                      <option value="">اختر...</option>
+                      {f.options.map((o) => {
+                        const opt = normalizeOption(o);
+                        return (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <input
+                      className={pm.pmInput}
+                      type={
+                        f.field_type === 'number' || f.field_type === 'year' ? 'number' : 'text'
+                      }
+                      placeholder={f.placeholder_ar ?? ''}
+                      value={val}
+                      onChange={(e) => setVal(e.target.value)}
+                    />
+                  )}
+                  {missing && (
+                    <span className={pm.pmHelp} style={{ color: 'var(--color-error)' }}>
+                      هذا الحقل مطلوب
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Price — 3 options mirroring the mobile app */}
         <div className={pm.pmGridFull}>
-          <PriceField />
+          <label className={`${pm.pmLabel} ${pm.pmLabelReq}`}>السعر</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(
+              [
+                { key: 'fixed', label: '💵 أدخل السعر' },
+                { key: 'negotiable', label: '🤝 على السوم' },
+                { key: 'call', label: '📞 عند الاتصال' },
+              ] as { key: PriceOption; label: string }[]
+            ).map((o) => {
+              const active = priceOption === o.key;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() => selectPrice(o.key)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 0',
+                    borderRadius: 10,
+                    border: `2px solid ${active ? '#6366f1' : '#334155'}`,
+                    background: active ? 'rgba(99,102,241,0.18)' : 'transparent',
+                    color: active ? '#a5b4fc' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '.85rem',
+                    cursor: 'pointer',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {priceOption !== 'call' && (
+            <div className={pm.pmInputAffix} style={{ marginTop: 8 }}>
+              <input
+                className={pm.pmInput}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder={priceOption === 'negotiable' ? 'السعر المطلوب' : 'مثال: 45000'}
+                value={d.price}
+                onChange={(e) => patch({ price: e.target.value })}
+              />
+              <span className={pm.pmAffix}>ر.س</span>
+            </div>
+          )}
+          <span className={pm.pmHelp}>
+            {priceOption === 'call'
+              ? 'لن يظهر سعر — يتواصل المشتري معك للسعر.'
+              : priceOption === 'negotiable'
+                ? 'يظهر السعر مع وسم «على السوم» للمشترين.'
+                : 'سيظهر السعر للمشترين.'}
+          </span>
         </div>
 
         <div className={pm.pmGridFull}>
@@ -122,23 +268,26 @@ export function DetailsStep() {
         )}
       </div>
 
-      <MissingFieldsHint details={d} />
+      <MissingFieldsHint />
       <WizardFooter />
     </div>
   );
 }
 
-function MissingFieldsHint({
-  details: d,
-}: {
-  details: ReturnType<typeof usePostAdWizard.getState>['details'];
-}) {
+function MissingFieldsHint() {
+  const d = usePostAdWizard((s) => s.details);
+  const categoryFields = usePostAdWizard((s) => s.categoryFields);
+
   const missing: string[] = [];
   if (d.title.trim().length < 3) missing.push('عنوان الإعلان (3 أحرف على الأقل)');
   if (d.description.trim().length < 10) missing.push('الوصف (10 أحرف على الأقل)');
   if (d.showPhonePublicly && !isValidSaudiPhone(d.phone)) missing.push('رقم جوال سعودي صحيح');
-  if (!d.isFree && !d.priceHidden && d.price.trim().length === 0)
-    missing.push('السعر (أو اختر لا تعرض السعر)');
+  if (!d.priceHidden && d.price.trim().length === 0) missing.push('السعر (أو اختر «عند الاتصال»)');
+  for (const f of categoryFields) {
+    if (f.is_required && (d.fields[f.field_key] ?? '').trim().length === 0) {
+      missing.push(f.label_ar);
+    }
+  }
 
   if (missing.length === 0) return null;
   return (

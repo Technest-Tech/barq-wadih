@@ -913,9 +913,7 @@ function AdCard({ ad, locale }: { ad: AdListItem; locale: string }) {
         <h3 className={styles.adTitle}>{ad.title}</h3>
         <p className={styles.adPrice}>
           {priceText}
-          {ad.is_negotiable && !ad.is_free && (
-            <span className={styles.negText}> · قابل للتفاوض</span>
-          )}
+          {ad.is_negotiable && !ad.is_free && <span className={styles.negText}> · على السوم</span>}
         </p>
         <div className={styles.adMeta}>
           <span className={styles.adCity}>📍 {ad.city?.name_ar ?? '—'}</span>

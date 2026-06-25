@@ -34,7 +34,10 @@ class StoreAdRequest extends FormRequest
             'city_id'        => ['required', 'integer', 'exists:cities,id'],
             'title'          => ['required', 'string', 'min:3', 'max:100'],
             'description'    => ['required', 'string', 'min:10', 'max:5000'],
-            'price'          => ['required', 'numeric', 'min:1', 'max:9999999'],
+            // Price is required for "fixed" and "على السوم" (negotiable); only
+            // "عند الاتصال" (price_hidden) may omit it.
+            'price'          => ['nullable', 'required_unless:price_hidden,1', 'numeric', 'min:1', 'max:9999999'],
+            'price_hidden'   => ['sometimes', 'boolean'],
             'is_negotiable'  => ['sometimes', 'boolean'],
             'contact_phone'  => ['nullable', 'required_if:show_phone_publicly,1', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
             'contact_whatsapp' => ['nullable', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
@@ -71,6 +74,20 @@ class StoreAdRequest extends FormRequest
             if ($isParent) {
                 $v->errors()->add('category_id', 'يجب اختيار تصنيف فرعي وليس تصنيفاً رئيسياً.');
                 return;
+            }
+
+            // Enforce required dynamic category fields (e.g. the cars fields:
+            // النوع/الموديل/الممشى/اللون). Only keys defined for the category count.
+            $requiredFields = \App\Models\CategoryField::where('category_id', $categoryId)
+                ->where('is_required', true)
+                ->get(['field_key', 'label_ar']);
+
+            /** @var array<string, mixed> $submitted */
+            $submitted = (array) $this->input('fields', []);
+            foreach ($requiredFields as $field) {
+                if (blank($submitted[$field->field_key] ?? null)) {
+                    $v->errors()->add("fields.{$field->field_key}", "حقل {$field->label_ar} مطلوب.");
+                }
             }
 
             // District (FK or free-text) and the map pin are all optional — the

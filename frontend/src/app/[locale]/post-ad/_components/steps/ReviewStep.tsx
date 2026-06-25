@@ -36,14 +36,22 @@ export function ReviewStep() {
       }
       fd.append('title', w.details.title);
       fd.append('description', w.details.description);
-      fd.append('price', w.details.isFree ? '0' : w.details.price || '0');
+      // Price required for "fixed" and "على السوم"; omitted for "عند الاتصال".
+      if (!w.details.priceHidden && w.details.price.trim()) {
+        fd.append('price', w.details.price.trim());
+      }
       fd.append('is_negotiable', w.details.isNegotiable ? '1' : '0');
-      fd.append('is_free', w.details.isFree ? '1' : '0');
+      fd.append('is_free', '0');
       fd.append('price_hidden', w.details.priceHidden ? '1' : '0');
       if (w.details.showPhonePublicly && w.details.phone) {
         fd.append('contact_phone', normalizePhone(w.details.phone));
       }
       fd.append('show_phone_publicly', w.details.showPhonePublicly ? '1' : '0');
+
+      // Dynamic category field values (e.g. the cars fields).
+      Object.entries(w.details.fields).forEach(([k, v]) => {
+        if (v && String(v).trim()) fd.append(`fields[${k}]`, String(v).trim());
+      });
 
       const blobs =
         (typeof window !== 'undefined'
@@ -146,7 +154,7 @@ export function ReviewStep() {
 
           <div className={styles.reviewPriceTag}>
             {priceLabel}
-            {w.details.isNegotiable && <span className={styles.negTag}>قابل للتفاوض</span>}
+            {w.details.isNegotiable && <span className={styles.negTag}>على السوم</span>}
           </div>
 
           <div className={styles.reviewDesc}>{w.details.description || 'لا يوجد وصف'}</div>
