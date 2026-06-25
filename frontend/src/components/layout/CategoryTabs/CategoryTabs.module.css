@@ -8,7 +8,7 @@
   overflow-x: hidden;
   width: 100%;
   box-sizing: border-box;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .track {
@@ -23,7 +23,7 @@
   padding: 12px 16px 16px 16px;
   gap: var(--space-3);
   scrollbar-width: thin;
-  scrollbar-color: #CBD5E1 transparent;
+  scrollbar-color: #cbd5e1 transparent;
   box-sizing: border-box;
   width: 100%;
 }
@@ -38,11 +38,11 @@
   border-radius: 99px;
 }
 .track::-webkit-scrollbar-thumb {
-  background-color: #94A3B8;
+  background-color: #94a3b8;
   border-radius: 99px;
 }
 .track::-webkit-scrollbar-thumb:hover {
-  background-color: #64748B;
+  background-color: #64748b;
 }
 
 .tab {
@@ -50,9 +50,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: var(--space-3) var(--space-4);
-  min-width: 90px;
+  gap: 5px;
+  padding: 5px 6px;
+  min-width: 84px;
   text-decoration: none;
   color: var(--text-secondary);
   background: var(--color-neutral-50);
@@ -60,7 +60,10 @@
   border-radius: var(--radius-md);
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
   position: relative;
 }
 
@@ -74,12 +77,12 @@
   color: var(--color-primary-700);
   background: #fff;
   border-color: var(--color-primary-300);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   font-weight: 700;
 }
 
 .tabIcon {
-  font-size: 1.5rem;
+  font-size: 2.25rem;
   line-height: 1;
   transition: transform var(--transition-normal);
 }
@@ -89,11 +92,11 @@
 }
 
 .tabIconImg {
-  width: 36px;
-  height: 36px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
   transition: transform var(--transition-normal);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .tab:hover .tabIconImg {
@@ -101,18 +104,24 @@
 }
 
 .tabName {
-  font-size: var(--text-xs);
-  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-primary-700);
 }
 
 .tabActive .tabName {
   font-weight: var(--font-bold);
+  color: var(--color-primary-800, var(--color-primary-700));
 }
 
 /* ── Skeleton / loading shimmer ────────────────────────────────────────────── */
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
 }
 
 .skeleton {
@@ -125,7 +134,12 @@
   width: 26px;
   height: 26px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-tertiary) 50%, var(--surface-secondary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--surface-secondary) 25%,
+    var(--surface-tertiary) 50%,
+    var(--surface-secondary) 75%
+  );
   background-size: 400px 100%;
   animation: shimmer 1.4s infinite linear;
 }
@@ -135,7 +149,12 @@
   width: 42px;
   height: 10px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-tertiary) 50%, var(--surface-secondary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--surface-secondary) 25%,
+    var(--surface-tertiary) 50%,
+    var(--surface-secondary) 75%
+  );
   background-size: 400px 100%;
   animation: shimmer 1.4s infinite linear;
 }
@@ -148,11 +167,14 @@
   }
 
   .tab {
-    min-width: 68px;
-    padding: 8px var(--space-2);
+    min-width: 66px;
+    padding: 4px 4px;
+    gap: 4px;
     border-radius: var(--radius-md);
     /* Disable transforms on mobile — they create GPU layers and cause scroll jank */
-    transition: background var(--transition-fast), color var(--transition-fast);
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast);
   }
 
   .tab:hover .tabIcon,
@@ -161,10 +183,16 @@
   }
 
   .tabIcon {
-    font-size: 1.25rem;
+    font-size: 1.75rem;
+  }
+
+  .tabIconImg {
+    width: 40px;
+    height: 40px;
   }
 
   .tabName {
-    font-size: 10px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
   }
 }
