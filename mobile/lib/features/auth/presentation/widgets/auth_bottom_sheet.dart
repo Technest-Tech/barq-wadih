@@ -40,6 +40,19 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet> {
     super.dispose();
   }
 
+  Future<void> _loginWithFingerprint() async {
+    await ref.read(authProvider.notifier).loginWithBiometrics();
+    if (!mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState is AuthAuthenticated) {
+      Navigator.of(context).pop();
+      widget.onSuccess();
+    } else if (authState is AuthError) {
+      _showError(authState.message);
+      ref.read(authProvider.notifier).clearError();
+    }
+  }
+
   Future<void> _loginEmail() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _emailError = null);
@@ -84,6 +97,8 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final loading = ref.watch(authProvider) is AuthLoading;
+    final biometricSupported =
+        ref.watch(biometricSupportedProvider).value ?? false;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Directionality(
@@ -239,6 +254,77 @@ class _AuthBottomSheetState extends ConsumerState<_AuthBottomSheet> {
                   ],
                 ),
               ),
+
+              // Fingerprint login — shown when device supports biometrics
+              if (biometricSupported) ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Divider(color: AppTheme.neutralGray200),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'أو',
+                        style: TextStyle(
+                          color: AppTheme.neutralGray500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const Expanded(
+                      child: Divider(color: AppTheme.neutralGray200),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: GestureDetector(
+                    onTap: loading ? null : _loginWithFingerprint,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppTheme.primaryBlue,
+                                AppTheme.primaryBlueLight,
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryBlue.withValues(
+                                  alpha: .25,
+                                ),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.fingerprint_rounded,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'الدخول بالبصمة',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.neutralGray500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 20),
 

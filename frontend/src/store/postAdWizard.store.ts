@@ -11,28 +11,11 @@ import type { Region, City } from '@/lib/api/regions';
 import type { District } from '@/lib/api/districts';
 import type { CategoryField } from '@/lib/api/ads';
 
-export type WizardStep =
-  | 'category'
-  | 'pledge'
-  | 'region'
-  | 'city'
-  | 'district'
-  | 'map'
-  | 'images'
-  | 'details'
-  | 'review';
+// Mirrors the mobile app's flow: pledge → category → details → images →
+// location (region/city/district/map) + submit.
+export type WizardStep = 'pledge' | 'category' | 'details' | 'images' | 'location';
 
-export const STEP_ORDER: WizardStep[] = [
-  'category',
-  'pledge',
-  'region',
-  'city',
-  'district',
-  'map',
-  'images',
-  'details',
-  'review',
-];
+export const STEP_ORDER: WizardStep[] = ['pledge', 'category', 'details', 'images', 'location'];
 
 export type WizardImage = {
   /** Stable id used as the React key. New uploads start with `new-`. */
@@ -117,7 +100,7 @@ const INITIAL_DETAILS: WizardDetails = {
 };
 
 const INITIAL_STATE = {
-  step: 'category' as WizardStep,
+  step: 'pledge' as WizardStep,
   parentCategory: null,
   category: null,
   sellerType: 'individual' as 'individual' | 'dealer' | null,
@@ -269,20 +252,15 @@ export function isValidSaudiPhone(raw: string): boolean {
 
 export function canAdvance(state: WizardState, step: WizardStep): boolean {
   switch (step) {
-    case 'category':
-      return !!state.category;
     case 'pledge':
       return state.pledgeAccepted;
-    case 'region':
-      return !!state.region;
-    case 'city':
-      return !!state.city;
-    case 'district':
-      return !!state.district || state.districtFreeText.trim().length > 0;
-    case 'map':
-      return !!state.latLng;
+    case 'category':
+      return !!state.category;
     case 'images':
       return state.images.filter((i) => !i.removed).length >= 1;
+    case 'location':
+      // A city is required; district and map pin are optional.
+      return !!state.city;
     case 'details': {
       const d = state.details;
       const phoneOk = !d.showPhonePublicly || isValidSaudiPhone(d.phone);
@@ -300,8 +278,6 @@ export function canAdvance(state: WizardState, step: WizardStep): boolean {
         fieldsOk
       );
     }
-    case 'review':
-      return true;
   }
 }
 

@@ -4,15 +4,11 @@ import { useEffect, useState } from 'react';
 import styles from '../post-ad.module.css';
 import { usePostAdWizard } from '@/store/postAdWizard.store';
 import { WizardStepper } from './WizardStepper';
-import { CategoryStep } from './steps/CategoryStep';
 import { PledgeStep } from './steps/PledgeStep';
-import { RegionStep } from './steps/RegionStep';
-import { CityStep } from './steps/CityStep';
-import { DistrictStep } from './steps/DistrictStep';
-import { MapStep } from './steps/MapStep';
-import { ImagesStep } from './steps/ImagesStep';
+import { CategoryStep } from './steps/CategoryStep';
 import { DetailsStep } from './steps/DetailsStep';
-import { ReviewStep } from './steps/ReviewStep';
+import { ImagesStep } from './steps/ImagesStep';
+import { LocationStep } from './steps/LocationStep';
 
 /**
  * PostAdWizard — root client component mounted under /post-ad. The Zustand
@@ -20,7 +16,7 @@ import { ReviewStep } from './steps/ReviewStep';
  * we trigger rehydration in this effect, then render the step UI.
  */
 export function PostAdWizard() {
-  const step = usePostAdWizard(s => s.step);
+  const step = usePostAdWizard((s) => s.step);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -33,7 +29,9 @@ export function PostAdWizard() {
   if (!hydrated) {
     return (
       <div className={styles.shell}>
-        <div className={styles.loadingWrap}><div className={styles.spinner} /></div>
+        <div className={styles.loadingWrap}>
+          <div className={styles.spinner} />
+        </div>
       </div>
     );
   }
@@ -42,15 +40,11 @@ export function PostAdWizard() {
     <div className={styles.shell}>
       <WizardStepper />
       <div className={styles.card}>
+        {step === 'pledge' && <PledgeStep />}
         {step === 'category' && <CategoryStep />}
-        {step === 'pledge'   && <PledgeStep />}
-        {step === 'region'   && <RegionStep />}
-        {step === 'city'     && <CityStep />}
-        {step === 'district' && <DistrictStep />}
-        {step === 'map'      && <MapStep />}
-        {step === 'images'   && <ImagesStep />}
-        {step === 'details'  && <DetailsStep />}
-        {step === 'review'   && <ReviewStep />}
+        {step === 'details' && <DetailsStep />}
+        {step === 'images' && <ImagesStep />}
+        {step === 'location' && <LocationStep />}
       </div>
     </div>
   );
