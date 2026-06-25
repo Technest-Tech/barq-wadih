@@ -6,6 +6,8 @@ use App\Http\Resources\AdListResource;
 use App\Models\Ad;
 use App\Models\Category;
 use App\Models\SearchLog;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -33,25 +35,39 @@ class SearchController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $q          = (string) $request->input('q', '');
+        $q = (string) $request->input('q', '');
         $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
-        $cityId     = $request->filled('city_id')     ? (int) $request->input('city_id')     : null;
-        $regionId   = $request->filled('region_id')   ? (int) $request->input('region_id')   : null;
-        $priceMin   = $request->filled('price_min')   ? (float) $request->input('price_min') : null;
-        $priceMax   = $request->filled('price_max')   ? (float) $request->input('price_max') : null;
-        $isFree     = $request->boolean('is_free');
-        $sort       = $request->input('sort', $q ? 'relevance' : 'newest');
+        $cityId = $request->filled('city_id') ? (int) $request->input('city_id') : null;
+        $regionId = $request->filled('region_id') ? (int) $request->input('region_id') : null;
+        $priceMin = $request->filled('price_min') ? (float) $request->input('price_min') : null;
+        $priceMax = $request->filled('price_max') ? (float) $request->input('price_max') : null;
+        $isFree = $request->boolean('is_free');
+        $sort = $request->input('sort', $q ? 'relevance' : 'newest');
 
         $driver = config('scout.driver', 'collection');
         $useMeilisearch = $driver === 'meilisearch';
 
         if ($useMeilisearch && $q !== '') {
             $ads = $this->searchViaMeilisearch(
-                $q, $categoryId, $cityId, $regionId, $priceMin, $priceMax, $isFree, $sort
+                $q,
+                $categoryId,
+                $cityId,
+                $regionId,
+                $priceMin,
+                $priceMax,
+                $isFree,
+                $sort,
             );
         } else {
             $ads = $this->searchViaEloquent(
-                $q, $categoryId, $cityId, $regionId, $priceMin, $priceMax, $isFree, $sort
+                $q,
+                $categoryId,
+                $cityId,
+                $regionId,
+                $priceMin,
+                $priceMax,
+                $isFree,
+                $sort,
             );
         }
 
@@ -63,7 +79,7 @@ class SearchController extends BaseController
 
     // ── Private: Meilisearch path ─────────────────────────────────────────────
 
-    /** @return \Illuminate\Contracts\Pagination\LengthAwarePaginator */
+    /** @return LengthAwarePaginator */
     private function searchViaMeilisearch(
         string $q,
         ?int $categoryId,
@@ -72,11 +88,17 @@ class SearchController extends BaseController
         ?float $priceMin,
         ?float $priceMax,
         bool $isFree,
-        string $sort
+        string $sort,
     ) {
         try {
             $builder = Ad::search($q, function ($engine, $query, $options) use (
-                $categoryId, $cityId, $regionId, $priceMin, $priceMax, $isFree, $sort
+                $categoryId,
+                $cityId,
+                $regionId,
+                $priceMin,
+                $priceMax,
+                $isFree,
+                $sort
             ) {
                 // ── Build Meilisearch filter expression ───────────────────────
                 $filters = ['status = "active"'];
@@ -104,9 +126,9 @@ class SearchController extends BaseController
 
                 // ── Sort ──────────────────────────────────────────────────────
                 $options['sort'] = match ($sort) {
-                    'price_asc'  => ['price:asc'],
+                    'price_asc' => ['price:asc'],
                     'price_desc' => ['price:desc'],
-                    default      => ['published_at:desc'],
+                    default => ['published_at:desc'],
                 };
 
                 $options['limit'] = 20;
@@ -126,14 +148,21 @@ class SearchController extends BaseController
             ]);
 
             return $this->searchViaEloquent(
-                $q, $categoryId, $cityId, $regionId, $priceMin, $priceMax, $isFree, $sort
+                $q,
+                $categoryId,
+                $cityId,
+                $regionId,
+                $priceMin,
+                $priceMax,
+                $isFree,
+                $sort,
             );
         }
     }
 
     // ── Private: Eloquent fallback path ───────────────────────────────────────
 
-    /** @return \Illuminate\Contracts\Pagination\LengthAwarePaginator */
+    /** @return LengthAwarePaginator */
     private function searchViaEloquent(
         string $q,
         ?int $categoryId,
@@ -142,14 +171,27 @@ class SearchController extends BaseController
         ?float $priceMin,
         ?float $priceMax,
         bool $isFree,
-        string $sort
+        string $sort,
     ) {
         $query = Ad::with(['images', 'category', 'city', 'region', 'user'])->feed();
 
+        $tokens = $this->tokenize($q);
+
         if ($q !== '') {
-            $query->where(function ($sub) use ($q) {
+            // OR semantics: an ad matches when ANY individual search word appears
+            // in the title or description. A multi-word query such as "جمل فحل"
+            // returns every ad containing "جمل" OR "فحل" — the "no results" state
+            // is only reached when none of the words match anywhere.
+            $query->where(function ($sub) use ($q, $tokens) {
+                // Whole-phrase match first (covers exact / multi-word substrings).
                 $sub->where('title', 'like', "%{$q}%")
                     ->orWhere('description', 'like', "%{$q}%");
+
+                // Then each word independently (the OR fix).
+                foreach ($tokens as $token) {
+                    $sub->orWhere('title', 'like', "%{$token}%")
+                        ->orWhere('description', 'like', "%{$token}%");
+                }
             });
         }
 
@@ -174,12 +216,59 @@ class SearchController extends BaseController
 
         // Sort
         match ($sort) {
-            'price_asc'  => $query->reorder()->orderBy('price')->orderByDesc('created_at'),
+            'price_asc' => $query->reorder()->orderBy('price')->orderByDesc('created_at'),
             'price_desc' => $query->reorder()->orderByDesc('price')->orderByDesc('created_at'),
-            default      => $query->reorder()->orderByDesc('published_at')->orderByDesc('created_at'),
+            'relevance' => $this->applyRelevanceSort($query, $q, $tokens),
+            default => $query->reorder()->orderByDesc('published_at')->orderByDesc('created_at'),
         };
 
         return $query->paginate(20);
+    }
+
+    /**
+     * Relevance ordering for the Eloquent path: rank ads that match more of the
+     * search words (and match in the title) above ads that match fewer. Falls
+     * back to recency when there is no query or only a single word.
+     *
+     * @param  Builder  $query
+     */
+    private function applyRelevanceSort($query, string $q, array $tokens): void
+    {
+        if ($q === '' || count($tokens) < 2) {
+            $query->reorder()->orderByDesc('published_at')->orderByDesc('created_at');
+
+            return;
+        }
+
+        $scoreParts = [];
+        $bindings = [];
+
+        foreach ($tokens as $token) {
+            $scoreParts[] = '(CASE WHEN title LIKE ? THEN 2 ELSE 0 END)';
+            $bindings[] = "%{$token}%";
+            $scoreParts[] = '(CASE WHEN description LIKE ? THEN 1 ELSE 0 END)';
+            $bindings[] = "%{$token}%";
+        }
+
+        $query->selectRaw('ads.*, ('.implode(' + ', $scoreParts).') as relevance_score', $bindings)
+            ->reorder()
+            ->orderByDesc('relevance_score')
+            ->orderByDesc('published_at')
+            ->orderByDesc('created_at');
+    }
+
+    /**
+     * Split a search query into distinct words for OR-based matching.
+     * Handles Arabic/English whitespace, de-duplicates and caps the number of
+     * tokens to keep the generated SQL bounded.
+     *
+     * @return string[]
+     */
+    private function tokenize(string $q): array
+    {
+        $parts = preg_split('/\s+/u', trim($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return array_slice(array_values(array_unique($parts)), 0, 10);
     }
 
     // ── Public: Autocomplete Suggestions ─────────────────────────────────────
@@ -205,7 +294,7 @@ class SearchController extends BaseController
         // 1. Popular historical queries that start with this prefix
         $fromLog = SearchLog::query()
             ->where('results_count', '>', 0)
-            ->where('query', 'like', $q . '%')
+            ->where('query', 'like', $q.'%')
             ->selectRaw('query, COUNT(*) as cnt')
             ->groupBy('query')
             ->orderByDesc('cnt')
@@ -216,7 +305,7 @@ class SearchController extends BaseController
         // 2. Matching category names (fill gaps when history is sparse)
         if (count($fromLog) < 5) {
             $needed = 5 - count($fromLog);
-            $fromCats = Category::where('name_ar', 'like', '%' . $q . '%')
+            $fromCats = Category::where('name_ar', 'like', '%'.$q.'%')
                 ->select('name_ar')
                 ->limit($needed + 3)
                 ->pluck('name_ar')
@@ -229,7 +318,7 @@ class SearchController extends BaseController
         if (count($fromLog) < 8) {
             $needed = 8 - count($fromLog);
             $fromAds = Ad::active()
-                ->where('title', 'like', '%' . $q . '%')
+                ->where('title', 'like', '%'.$q.'%')
                 ->orderByDesc('views_count')
                 ->limit($needed * 2)
                 ->pluck('title')
@@ -255,7 +344,7 @@ class SearchController extends BaseController
     public function popular(Request $request): JsonResponse
     {
         $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
-        $limit      = min((int) $request->input('limit', 3), 10);
+        $limit = min((int) $request->input('limit', 3), 10);
 
         $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
             ->active()
@@ -282,17 +371,17 @@ class SearchController extends BaseController
         try {
             $platform = match (true) {
                 str_contains($request->userAgent() ?? '', 'Flutter') => 'android',
-                str_contains($request->userAgent() ?? '', 'iPhone')  => 'ios',
+                str_contains($request->userAgent() ?? '', 'iPhone') => 'ios',
                 default => 'web',
             };
 
             SearchLog::create([
-                'user_id'       => $request->user()?->id,
-                'query'         => mb_substr($q, 0, 255),
-                'category_id'   => $categoryId,
-                'city_id'       => $cityId,
+                'user_id' => $request->user()?->id,
+                'query' => mb_substr($q, 0, 255),
+                'category_id' => $categoryId,
+                'city_id' => $cityId,
                 'results_count' => $total,
-                'platform'      => $platform,
+                'platform' => $platform,
             ]);
         } catch (\Throwable) {
             // Logging should never fail the search request
