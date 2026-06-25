@@ -184,9 +184,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/ads/:id/pay',
         pageBuilder: (context, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+          // In-app navigation passes the fee via `extra`; deep links (e.g. the
+          // "commission rejected" notification) pass it as an `amount` query param.
           final fee = state.extra is num
               ? (state.extra as num).toDouble()
-              : 0.0;
+              : double.tryParse(state.uri.queryParameters['amount'] ?? '') ?? 0.0;
           return _slidePage(
             key: state.pageKey,
             child: BankTransferScreen(adId: id, fee: fee),

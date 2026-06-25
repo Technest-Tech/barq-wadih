@@ -143,6 +143,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           context.push('/payments');
         }
         break;
+      case 'commission_approved':
+        if (data['ad_id'] != null) {
+          context.push('/ads/${data['ad_id']}');
+        }
+        break;
+      case 'commission_rejected':
+        if (data['ad_id'] != null) {
+          final amount = data['amount'];
+          context.push(
+            amount != null
+                ? '/ads/${data['ad_id']}/pay?amount=$amount'
+                : '/ads/${data['ad_id']}/pay',
+          );
+        }
+        break;
     }
   }
 }

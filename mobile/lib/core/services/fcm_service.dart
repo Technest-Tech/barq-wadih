@@ -198,6 +198,18 @@ class FCMService {
         // Route to the fee calculator with the ad price pre-filled.
         if (d['price'] != null) return '/payments?price=${d['price']}';
         return '/payments';
+      case 'commission_approved':
+        if (d['ad_id'] != null) return '/ads/${d['ad_id']}';
+        return '/payments';
+      case 'commission_rejected':
+        // Send the seller to the bank-transfer screen to re-upload a receipt.
+        if (d['ad_id'] != null) {
+          final amount = d['amount'];
+          return amount != null
+              ? '/ads/${d['ad_id']}/pay?amount=$amount'
+              : '/ads/${d['ad_id']}/pay';
+        }
+        return '/payments';
       default:
         return '/notifications';
     }

@@ -27,10 +27,12 @@ function relativeTime(dateStr: string): string {
 
 function notifIcon(type: string): string {
   switch (type) {
-    case 'new_ad_followed': return '📢';
-    case 'new_message':     return '💬';
-    case 'new_rating':      return '⭐';
-    default:                return '🔔';
+    case 'new_ad_followed':      return '📢';
+    case 'new_message':          return '💬';
+    case 'new_rating':           return '⭐';
+    case 'commission_approved':  return '✅';
+    case 'commission_rejected':  return '⚠️';
+    default:                     return '🔔';
   }
 }
 
@@ -39,6 +41,9 @@ function notifHref(n: INotification, locale: string): string {
   if (data.type === 'new_ad' && data.ad_id) return `/${locale}/ads/${data.ad_id}`;
   if (data.type === 'chat' && data.conversation_id) return `/${locale}/messages/${data.conversation_id}`;
   if (data.type === 'rating' && data.ad_id) return `/${locale}/ads/${data.ad_id}`;
+  if (data.type === 'commission_approved' && data.ad_id) return `/${locale}/ads/${data.ad_id}`;
+  // Rejected → the pay page, where the seller sees the reason and re-uploads.
+  if (data.type === 'commission_rejected' && data.ad_id) return `/${locale}/post-ad/pay/${data.ad_id}`;
   return `/${locale}/notifications`;
 }
 

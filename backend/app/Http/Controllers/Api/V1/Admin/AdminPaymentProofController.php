@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Api\V1\BaseController;
+use App\Jobs\SendCommissionReviewNotificationJob;
 use App\Models\Ad;
 use App\Services\AdService;
 use Illuminate\Http\JsonResponse;
@@ -95,6 +96,8 @@ class AdminPaymentProofController extends BaseController
 
         $updated->update(['payment_review_note' => null]);
 
+        SendCommissionReviewNotificationJob::dispatch($ad->id, true)->onQueue('notifications');
+
         return $this->successResponse(
             $this->transform($updated->fresh(['user', 'category', 'city'])),
             __('Commission transfer approved.')
@@ -115,10 +118,14 @@ class AdminPaymentProofController extends BaseController
             return $this->errorResponse(__('Payment already completed for this ad.'), 422);
         }
 
+        $reason = (string) $request->input('reason');
+
         $ad->update([
             'payment_status'      => PaymentStatus::Failed->value,
-            'payment_review_note' => $request->input('reason'),
+            'payment_review_note' => $reason,
         ]);
+
+        SendCommissionReviewNotificationJob::dispatch($ad->id, false, $reason)->onQueue('notifications');
 
         return $this->successResponse(
             $this->transform($ad->fresh(['user', 'category', 'city'])),
