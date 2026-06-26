@@ -48,7 +48,7 @@ export default function Loading() {
         </svg>
       </div>
 
-      <span className={styles.label}>برق وديه</span>
+      <span className={styles.label}>برق واضح</span>
     </div>
   );
 }
