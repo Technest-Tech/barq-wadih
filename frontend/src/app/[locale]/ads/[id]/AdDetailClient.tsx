@@ -557,16 +557,19 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
 
               <div className={styles.hzCard}>
                 <div className={styles.hzTagsRow}>
-                  <Link href={`/${locale}`} className={styles.hzTag}>
-                    كل الحراج
+                  <Link href={`/${locale}/search`} className={styles.hzTag}>
+                    كل الإعلانات
                   </Link>
                   {ad.category && (
-                    <Link href={`/${locale}?category=${ad.category.id}`} className={styles.hzTag}>
+                    <Link
+                      href={`/${locale}/search?category_id=${ad.category.id}`}
+                      className={styles.hzTag}
+                    >
                       {ad.category.name_ar}
                     </Link>
                   )}
                   {ad.city && (
-                    <Link href={`/${locale}?city=${ad.city.id}`} className={styles.hzTag}>
+                    <Link href={`/${locale}/search?city_id=${ad.city.id}`} className={styles.hzTag}>
                       {ad.city.name_ar}
                     </Link>
                   )}
