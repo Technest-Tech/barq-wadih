@@ -1,16 +1,133 @@
 .container {
   min-height: 100svh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 18px;
   background-color: var(--surface-primary);
 }
-.spinner { display: flex; align-items: center; justify-content: center; }
-.ring {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--surface-tertiary);
-  border-top-color: var(--color-primary-600);
+
+/* Stage holds the bolt + the halo glow behind it */
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+}
+
+.halo {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  background: radial-gradient(
+    circle,
+    rgba(245, 166, 35, 0.22) 0%,
+    rgba(245, 166, 35, 0.08) 45%,
+    transparent 70%
+  );
+  animation: haloPulse 1.6s ease-in-out infinite;
+}
+
+.svg {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  animation: glow 1.2s ease-in-out infinite;
+  will-change: filter, transform;
+}
+
+/* Base fill sits a touch translucent so the sweep reads as added energy */
+.fill {
+  opacity: 0.92;
+}
+
+.stroke {
+  stroke: #f5a623;
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* The bright band that travels up through the bolt, like a charging current */
+.sweep {
+  transform-origin: center;
+  animation: sweep 1.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary-600) 0%,
+    var(--color-accent-500) 50%,
+    var(--color-primary-600) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shine 2.2s linear infinite;
+}
+
+@keyframes sweep {
+  0% {
+    transform: translateY(-65%);
+  }
+  100% {
+    transform: translateY(65%);
+  }
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 5px rgba(245, 166, 35, 0.35));
+    transform: scale(0.98);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(245, 166, 35, 0.7));
+    transform: scale(1.04);
+  }
+}
+
+@keyframes haloPulse {
+  0%,
+  100% {
+    transform: scale(0.82);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.85;
+  }
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* Respect users who prefer reduced motion — show a calm, static bolt */
+@media (prefers-reduced-motion: reduce) {
+  .svg,
+  .sweep,
+  .halo,
+  .label {
+    animation: none;
+  }
+  .svg {
+    filter: drop-shadow(0 0 8px rgba(245, 166, 35, 0.45));
+  }
+  .halo {
+    opacity: 0.6;
+  }
 }
