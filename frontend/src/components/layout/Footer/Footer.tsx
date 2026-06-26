@@ -22,9 +22,6 @@ export default function Footer() {
         <div className={styles.links}>
           <div className={styles.col}>
             <h4 className={styles.colTitle}>المنصة</h4>
-            <Link href="/ar/search" className={styles.link}>
-              البحث المتقدم
-            </Link>
             <Link href="/ar/post-ad" className={styles.link}>
               أضف إعلانك
             </Link>
