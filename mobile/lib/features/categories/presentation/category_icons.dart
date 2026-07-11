@@ -98,7 +98,10 @@ const Map<String, IconData> _categoryIcons = {
   'ducks': LucideIcons.bird,
 };
 
-IconData categoryIcon(String slug) => _categoryIcons[slug] ?? LucideIcons.tag;
+IconData categoryIcon(String slug) =>
+    _categoryIcons[slug] ??
+    // Every section ends with an «أخرى» catch-all (other-furniture, other-jobs, …).
+    (slug.startsWith('other-') ? LucideIcons.package : LucideIcons.tag);
 
 /// Category visual: shows the uploaded [image] when present, otherwise falls
 /// back to the slug-mapped Lucide icon. Used everywhere a category is listed

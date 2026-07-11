@@ -40,6 +40,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'شاحنات ومركبات ثقيلة',  'name_en' => 'Trucks & Heavy Vehicles', 'slug' => 'trucks',              'icon' => '🚛', 'sort_order' => 5],
                     ['name_ar' => 'معدات ثقيلة',            'name_en' => 'Heavy Equipment',        'slug' => 'heavy-equipment',     'icon' => '🏗️', 'sort_order' => 6],
                     ['name_ar' => 'لوحات مميزة',            'name_en' => 'Premium Plates',         'slug' => 'premium-plates',      'icon' => '🪪', 'sort_order' => 7],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-vehicles', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -62,7 +63,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'أجهزة شبكات',         'name_en' => 'Networking',            'slug' => 'networking',           'icon' => '📡', 'sort_order' => 7],
                     ['name_ar' => 'أرقام مميزة',          'name_en' => 'Premium Phone Numbers', 'slug' => 'premium-numbers',      'icon' => '📞', 'sort_order' => 8],
                     ['name_ar' => 'حسابات واشتراكات',    'name_en' => 'Accounts & Subscriptions', 'slug' => 'accounts-subscriptions', 'icon' => '🔐', 'sort_order' => 9],
-                    ['name_ar' => 'إلكترونيات أخرى',     'name_en' => 'Other Electronics',     'slug' => 'other-electronics',    'icon' => '🔌', 'sort_order' => 10],
+                    ['name_ar' => 'أخرى',                'name_en' => 'Other',                 'slug' => 'other-electronics',    'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -87,8 +88,10 @@ class CategorySeeder extends Seeder
                         ['name_ar' => 'حمام', 'name_en' => 'Pigeons',  'slug' => 'pigeons',  'icon' => '🕊️', 'sort_order' => 1],
                         ['name_ar' => 'دجاج', 'name_en' => 'Chickens', 'slug' => 'chickens', 'icon' => '🐔', 'sort_order' => 2],
                         ['name_ar' => 'بط',   'name_en' => 'Ducks',    'slug' => 'ducks',    'icon' => '🦆', 'sort_order' => 3],
+                        ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-birds', 'icon' => '📦', 'sort_order' => 99],
                     ]],
                     ['name_ar' => 'أسماك زينة', 'name_en' => 'Ornamental Fish', 'slug' => 'ornamental-fish', 'icon' => '🐠', 'sort_order' => 8],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-animals', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -112,6 +115,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'طاولات وكراسي',  'name_en' => 'Tables & Chairs',   'slug' => 'tables-chairs',    'icon' => '🪑', 'sort_order' => 8],
                     ['name_ar' => 'تحف وديكور',     'name_en' => 'Decor & Antiques',  'slug' => 'decor',            'icon' => '🖼️', 'sort_order' => 9],
                     ['name_ar' => 'أدوات منزلية',   'name_en' => 'Home Tools',        'slug' => 'home-tools',       'icon' => '🪛', 'sort_order' => 10],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-furniture', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -139,6 +143,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'محاسبة ومالية',      'name_en' => 'Accounting & Finance',     'slug' => 'accounting-jobs',   'icon' => '💰', 'sort_order' => 12],
                     ['name_ar' => 'سياحة وفندقة',       'name_en' => 'Tourism & Hotels',         'slug' => 'tourism-jobs',      'icon' => '✈️', 'sort_order' => 13],
                     ['name_ar' => 'قانون وشريعة',       'name_en' => 'Legal',                    'slug' => 'legal-jobs',        'icon' => '⚖️', 'sort_order' => 14],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-jobs', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -160,7 +165,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'تعقيب ومعاملات',  'name_en' => 'Gov. Transactions',     'slug' => 'government-services', 'icon' => '🏛️', 'sort_order' => 6],
                     ['name_ar' => 'خدمات توصيل',     'name_en' => 'Delivery Services',     'slug' => 'delivery-services', 'icon' => '📦', 'sort_order' => 7],
                     ['name_ar' => 'مقاولات',          'name_en' => 'Contracting',           'slug' => 'contracting-services', 'icon' => '🏗️', 'sort_order' => 8],
-                    ['name_ar' => 'خدمات أخرى',      'name_en' => 'Other Services',        'slug' => 'other-services',    'icon' => '🛠️', 'sort_order' => 9],
+                    ['name_ar' => 'أخرى',            'name_en' => 'Other',                 'slug' => 'other-services',    'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -184,6 +189,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'مستلزمات رياضية', 'name_en' => 'Sports Items',       'slug' => 'sports-items',    'icon' => '⚽', 'sort_order' => 8],
                     ['name_ar' => 'الصحة والجمال',  'name_en' => 'Health & Beauty',    'slug' => 'health-beauty',   'icon' => '💄', 'sort_order' => 9],
                     ['name_ar' => 'هدايا وتذكارات', 'name_en' => 'Gifts & Souvenirs',  'slug' => 'gifts',           'icon' => '🎁', 'sort_order' => 10],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-fashion', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -200,7 +206,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'ألعاب أطفال',    'name_en' => "Children's Toys",     'slug' => 'toys',            'icon' => '🧸', 'sort_order' => 2],
                     ['name_ar' => 'رياضة ولياقة',   'name_en' => 'Sports & Fitness',    'slug' => 'sports-fitness',  'icon' => '🏋️', 'sort_order' => 3],
                     ['name_ar' => 'موسيقى وآلات',   'name_en' => 'Music & Instruments', 'slug' => 'music',           'icon' => '🎸', 'sort_order' => 4],
-                    ['name_ar' => 'ترفيه أخرى',     'name_en' => 'Other Entertainment', 'slug' => 'other-entertainment', 'icon' => '🎭', 'sort_order' => 5],
+                    ['name_ar' => 'أخرى',           'name_en' => 'Other',               'slug' => 'other-entertainment', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -216,6 +222,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'عملات وطوابع',    'name_en' => 'Coins & Stamps',      'slug' => 'coins-stamps',    'icon' => '🪙', 'sort_order' => 1],
                     ['name_ar' => 'أسلحة قديمة',     'name_en' => 'Antique Weapons',     'slug' => 'antique-weapons', 'icon' => '⚔️', 'sort_order' => 2],
                     ['name_ar' => 'تراث وأثريات',    'name_en' => 'Heritage Items',      'slug' => 'heritage',        'icon' => '🏺', 'sort_order' => 3],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-antiques', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -231,6 +238,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'كتب ومجلات',   'name_en' => 'Books & Magazines', 'slug' => 'books',         'icon' => '📖', 'sort_order' => 1],
                     ['name_ar' => 'لوحات وفنون',  'name_en' => 'Paintings & Arts',  'slug' => 'arts',          'icon' => '🎨', 'sort_order' => 2],
                     ['name_ar' => 'خط وزخرفة',    'name_en' => 'Calligraphy',       'slug' => 'calligraphy',   'icon' => '✍️', 'sort_order' => 3],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-books-arts', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -246,6 +254,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'صيد أسماك',      'name_en' => 'Fishing',              'slug' => 'fishing',         'icon' => '🎣', 'sort_order' => 1],
                     ['name_ar' => 'صيد طيور وبر',   'name_en' => 'Hunting',              'slug' => 'hunting',         'icon' => '🦅', 'sort_order' => 2],
                     ['name_ar' => 'معدات صيد ورحلات', 'name_en' => 'Hunting & Trip Gear', 'slug' => 'outdoor-gear',    'icon' => '⛺', 'sort_order' => 3],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-hunting-trips', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -262,6 +271,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'حلويات وكيك',    'name_en' => 'Sweets & Cakes',      'slug' => 'sweets',          'icon' => '🎂', 'sort_order' => 2],
                     ['name_ar' => 'مشروبات',         'name_en' => 'Beverages',           'slug' => 'beverages',       'icon' => '☕', 'sort_order' => 3],
                     ['name_ar' => 'منتجات عضوية',   'name_en' => 'Organic Products',    'slug' => 'organic',         'icon' => '🥦', 'sort_order' => 4],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-food', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -278,6 +288,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'بذور وشتلات',    'name_en' => 'Seeds & Seedlings',   'slug' => 'seeds',           'icon' => '🌱', 'sort_order' => 2],
                     ['name_ar' => 'معدات زراعية',   'name_en' => 'Agricultural Tools',  'slug' => 'agri-tools',      'icon' => '🚜', 'sort_order' => 3],
                     ['name_ar' => 'أشجار ونخيل',    'name_en' => 'Trees & Palms',       'slug' => 'trees',           'icon' => '🌴', 'sort_order' => 4],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-agriculture', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -294,6 +305,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'تنظيم فعاليات', 'name_en' => 'Event Planning',      'slug' => 'event-planning',  'icon' => '🎊', 'sort_order' => 2],
                     ['name_ar' => 'مستلزمات حفلات', 'name_en' => 'Party Supplies',      'slug' => 'party-supplies',  'icon' => '🎈', 'sort_order' => 3],
                     ['name_ar' => 'دي جي وفرق',     'name_en' => 'DJs & Bands',         'slug' => 'dj-bands',        'icon' => '🎵', 'sort_order' => 4],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-events', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -311,6 +323,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'شريك سكن',     'name_en' => 'Roommate',            'slug' => 'roommate',          'icon' => '🤝', 'sort_order' => 3],
                     ['name_ar' => 'رحلات وبرامج', 'name_en' => 'Trips & Packages',    'slug' => 'travel-packages',   'icon' => '🗺️', 'sort_order' => 4],
                     ['name_ar' => 'تذاكر طيران',  'name_en' => 'Flight Tickets',      'slug' => 'flight-tickets',    'icon' => '🎫', 'sort_order' => 5],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-travel', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -329,6 +342,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'تدريب رياضي',           'name_en' => 'Sports Training',     'slug' => 'sports-training',    'icon' => '🏋️', 'sort_order' => 4],
                     ['name_ar' => 'تعليم أسهم وعملات',    'name_en' => 'Stocks & Trading',    'slug' => 'stocks-trading',     'icon' => '📈', 'sort_order' => 5],
                     ['name_ar' => 'تدريب ألعاب إلكترونية', 'name_en' => 'Gaming Coaching',     'slug' => 'gaming-coaching',    'icon' => '🎮', 'sort_order' => 6],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-education', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -347,6 +361,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'إدارة سوشيال ميديا', 'name_en' => 'Social Media Mgmt',   'slug' => 'social-media',    'icon' => '📲', 'sort_order' => 4],
                     ['name_ar' => 'كتابة محتوى',       'name_en' => 'Content Writing',      'slug' => 'content-writing', 'icon' => '✍️', 'sort_order' => 5],
                     ['name_ar' => 'ذكاء اصطناعي',      'name_en' => 'AI & Automation',      'slug' => 'ai-automation',   'icon' => '🤖', 'sort_order' => 6],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-programming', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
@@ -362,6 +377,7 @@ class CategorySeeder extends Seeder
                     ['name_ar' => 'مشاريع للبيع',    'name_en' => 'Projects for Sale',    'slug' => 'projects-for-sale', 'icon' => '🏪', 'sort_order' => 1],
                     ['name_ar' => 'شراكات وتمويل',   'name_en' => 'Partnerships',         'slug' => 'partnerships',     'icon' => '🤝', 'sort_order' => 2],
                     ['name_ar' => 'امتيازات تجارية', 'name_en' => 'Franchises',           'slug' => 'franchises',       'icon' => '⭐', 'sort_order' => 3],
+                    ['name_ar' => 'أخرى', 'name_en' => 'Other', 'slug' => 'other-investments', 'icon' => '📦', 'sort_order' => 99],
                 ],
             ],
 
