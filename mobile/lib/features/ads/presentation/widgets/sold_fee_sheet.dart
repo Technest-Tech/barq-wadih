@@ -21,19 +21,23 @@ class SoldFeeSheet extends StatelessWidget {
     required this.commission,
   });
 
-  static Future<void> show(
+  /// Resolves to `true` when the seller closed the sheet with the commission
+  /// still unpaid ("لاحقاً" or a swipe-away), so the caller can point them at
+  /// the places they can pay it from later.
+  static Future<bool> show(
     BuildContext context, {
     required int adId,
     required String adTitle,
     required double commission,
-  }) {
-    return showModalBottomSheet<void>(
+  }) async {
+    final paid = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) =>
           SoldFeeSheet(adId: adId, adTitle: adTitle, commission: commission),
     );
+    return commission > 0 && paid != true;
   }
 
   @override
@@ -92,7 +96,21 @@ class SoldFeeSheet extends StatelessWidget {
                 color: AppTheme.neutralGray900,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
+
+            if (hasCommission) ...[
+              const Text(
+                'وأبرئ ذمتك بدفع عمولة الموقع.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
 
             Text(
               adTitle,
@@ -140,7 +158,6 @@ class SoldFeeSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'وأبرئ ذمتك بدفع عمولة الموقع.\n'
                       'عمولة ثابتة شاملة ضريبة القيمة المضافة، تُدفع عبر تحويل بنكي ثم تُراجَع من الإدارة.',
                       style: TextStyle(
                         fontSize: 12,
@@ -159,7 +176,7 @@ class SoldFeeSheet extends StatelessWidget {
                 height: 52,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                     context.push('/ads/$adId/pay', extra: commission);
                   },
                   icon: const Icon(Icons.account_balance_rounded, size: 20),
