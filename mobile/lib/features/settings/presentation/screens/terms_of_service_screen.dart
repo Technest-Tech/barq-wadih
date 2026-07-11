@@ -93,6 +93,7 @@ class TermsOfServiceScreen extends StatelessWidget {
               title: 'الممنوعات — ما لا يُسمح بنشره',
               color: const Color(0xFFDC2626),
               content:
+                  '🚫 العقارات بكافة أنواعها (بيع، شراء، إيجار، تأجير)\n'
                   '🚫 الأسلحة بجميع أنواعها (بنادق، مسدسات، ذخائر، سكاكين قتالية)\n'
                   '🚫 المخدرات والمؤثرات العقلية والكحول\n'
                   '🚫 الدعوة للتبرع أو المساعدات المالية\n'
@@ -132,6 +133,18 @@ class TermsOfServiceScreen extends StatelessWidget {
             const SizedBox(height: 12),
 
             _buildSection(
+              icon: Icons.assignment_return_outlined,
+              title: 'الاسترجاع والاستبدال',
+              color: const Color(0xFF0891B2),
+              content:
+                  'مؤسسة برق واضح لا تمارس نشاط البيع أو الشراء بل يقتصر نشاطها على التسويق الإلكتروني فقط، '
+                  'حيث تمكن المستخدم من النشر ونشر اعلاناته وفق الضوابط والشروط المحددة في استخدام الموقع. '
+                  'لذلك فإن اتفاقية البيع والشراء وخدمات ما بعد البيع وما يلحق بها من تبعات تقتصر مسئوليتها '
+                  'على البائع والمشتري فقط.',
+            ),
+            const SizedBox(height: 12),
+
+            _buildSection(
               icon: Icons.security_rounded,
               title: 'الأمان والاحتيال',
               color: const Color(0xFFEF4444),
@@ -146,7 +159,7 @@ class TermsOfServiceScreen extends StatelessWidget {
             // Last updated
             Center(
               child: Text(
-                'آخر تحديث: مايو 2026',
+                'آخر تحديث: يوليو 2026',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.neutralGray400,

@@ -51,16 +51,19 @@ class StaticPagesSeeder extends Seeder
 <h2>سادساً: الرسوم والمدفوعات</h2>
 <p>قد يستلزم نشر بعض الإعلانات دفع رسوم محددة. تُعرض الرسوم بوضوح قبل إتمام عملية النشر. جميع المدفوعات نهائية وغير قابلة للاسترداد ما لم تنص سياسة الاسترداد على خلاف ذلك.</p>
 
-<h2>سابعاً: المسؤولية</h2>
+<h2>سابعاً: الاسترجاع والاستبدال</h2>
+<p>مؤسسة برق واضح لا تمارس نشاط البيع أو الشراء بل يقتصر نشاطها على التسويق الإلكتروني فقط حيث تمكن المستخدم من النشر ونشر اعلاناته وفق الضوابط والشروط المحددة في استخدام الموقع. لذلك فإن اتفاقية البيع والشراء وخدمات ما بعد البيع وما يلحق بها من تبعات تقتصر مسئوليتها على البائع والمشتري فقط.</p>
+
+<h2>ثامناً: المسؤولية</h2>
 <p>برق واضح غير مسؤولة عن أي خسائر أو أضرار تنشأ عن تعاملات المستخدمين أو صحة المعلومات المنشورة. يتحمل المستخدم المسؤولية الكاملة عن محتوى إعلاناته وتعاملاته.</p>
 
-<h2>ثامناً: التعديلات</h2>
+<h2>تاسعاً: التعديلات</h2>
 <p>تحتفظ المنصة بحق تعديل هذه الشروط في أي وقت. يُعدّ استمرارك في استخدام المنصة بعد نشر التعديلات قبولاً ضمنياً لها.</p>
 
-<h2>تاسعاً: القانون المنظّم</h2>
+<h2>عاشراً: القانون المنظّم</h2>
 <p>تخضع هذه الشروط لأنظمة المملكة العربية السعودية، وتختص المحاكم السعودية بالنظر في أي نزاع ينشأ عنها.</p>
 
-<p style="color:#888;font-size:0.85em;">آخر تحديث: يناير 2025</p>
+<p style="color:#888;font-size:0.85em;">آخر تحديث: يوليو 2026</p>
 HTML,
                 'content_en'          => <<<'HTML'
 <h2>1. Acceptance of Terms</h2>
@@ -96,16 +99,19 @@ HTML,
 <h2>6. Fees & Payments</h2>
 <p>Some listings may require a fee, which is clearly displayed before publishing. All payments are final and non-refundable unless otherwise stated in the refund policy.</p>
 
-<h2>7. Liability</h2>
+<h2>7. Returns & Exchanges</h2>
+<p>Barq Wadih does not engage in buying or selling. Its activity is limited to electronic marketing only, enabling users to publish their listings in accordance with the rules and conditions set out in the site's terms of use. Accordingly, the sale and purchase agreement, after-sales services, and any consequences arising from them are the sole responsibility of the buyer and the seller.</p>
+
+<h2>8. Liability</h2>
 <p>Barq Wadih is not liable for any losses or damages arising from user transactions or the accuracy of posted information. Users bear full responsibility for their listing content and dealings.</p>
 
-<h2>8. Modifications</h2>
+<h2>9. Modifications</h2>
 <p>The platform reserves the right to modify these Terms at any time. Continued use of the platform after changes are published constitutes acceptance of the updated Terms.</p>
 
-<h2>9. Governing Law</h2>
+<h2>10. Governing Law</h2>
 <p>These Terms are governed by the laws of Saudi Arabia. Saudi courts shall have exclusive jurisdiction over any disputes arising from these Terms.</p>
 
-<p style="color:#888;font-size:0.85em;">Last updated: January 2025</p>
+<p style="color:#888;font-size:0.85em;">Last updated: July 2026</p>
 HTML,
                 'is_published' => true,
             ],

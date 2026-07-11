@@ -84,7 +84,8 @@ class SoldFeeSheet extends StatelessWidget {
             const SizedBox(height: 14),
 
             const Text(
-              'تم البيع بنجاح!',
+              'بارك الله لك في بيعك وشرائك',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -139,6 +140,7 @@ class SoldFeeSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
+                      'وأبرئ ذمتك بدفع عمولة الموقع.\n'
                       'عمولة ثابتة شاملة ضريبة القيمة المضافة، تُدفع عبر تحويل بنكي ثم تُراجَع من الإدارة.',
                       style: TextStyle(
                         fontSize: 12,

@@ -398,7 +398,7 @@ export default function MyAdsPage() {
           <div className={styles.modalOverlay} onClick={() => setSoldSheet(null)}>
             <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
               <div className={styles.soldIcon}>✅</div>
-              <h3>تم البيع بنجاح!</h3>
+              <h3>بارك الله لك في بيعك وشرائك</h3>
               {soldSheet.title && <p className={styles.soldAdTitle}>{soldSheet.title}</p>}
 
               {soldSheet.commission > 0 ? (
@@ -410,6 +410,8 @@ export default function MyAdsPage() {
                     </span>
                   </div>
                   <p className={styles.commissionNote}>
+                    وأبرئ ذمتك بدفع عمولة الموقع.
+                    <br />
                     عمولة ثابتة شاملة ضريبة القيمة المضافة، تُدفع عبر تحويل بنكي ثم تُراجَع من
                     الإدارة.
                   </p>
