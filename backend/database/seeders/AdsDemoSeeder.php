@@ -74,9 +74,6 @@ class AdsDemoSeeder extends Seeder
             'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200&q=80',
             'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80',
         ],
-        'government-jobs' => [
-            'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80',
-        ],
         'freelance' => [
             'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?w=1200&q=80',
             'https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?w=1200&q=80',
@@ -357,10 +354,6 @@ class AdsDemoSeeder extends Seeder
 
             ['_slug' => 'private-jobs', 'title' => 'مطلوب مطور ويب Laravel - دوام كامل',
              'description' => "شركة ناشئة تبحث عن مطور Laravel/Vue، خبرة 2+ سنوات.\nمزايا: عمل عن بعد جزئي، أسهم في الشركة، تأمين طبي شامل.",
-             'price' => null, 'is_free' => true],
-
-            ['_slug' => 'government-jobs', 'title' => 'إعلان وظائف هيئة حكومية - تقنية معلومات',
-             'description' => "هيئة حكومية تعلن عن شواغر في تقنية المعلومات بمختلف المسميات. التقديم عبر منصة جدارات حتى 10/06.",
              'price' => null, 'is_free' => true],
 
             ['_slug' => 'freelance', 'title' => 'مصمم جرافيك حر - تصاميم سوشيال ميديا',

@@ -161,7 +161,6 @@ HTML,
 <ul>
   <li>الاطلاع على بياناتك الشخصية وتصحيحها أو حذفها.</li>
   <li>إلغاء الاشتراك في الرسائل التسويقية.</li>
-  <li>طلب نسخة من بياناتك عبر صفحة التواصل.</li>
 </ul>
 
 <h2>٨. التواصل</h2>
@@ -207,7 +206,6 @@ HTML,
 <ul>
   <li>Access, correct, or delete your personal data.</li>
   <li>Unsubscribe from marketing communications.</li>
-  <li>Request a copy of your data via the Contact page.</li>
 </ul>
 
 <h2>8. Contact</h2>

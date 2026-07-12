@@ -55,7 +55,6 @@ const Map<String, IconData> _categoryIcons = {
   'office-furniture': LucideIcons.lampDesk,
 
   // ── Jobs ─────────────────────────────────────────────────────────────────
-  'government-jobs': LucideIcons.landmark,
   'private-jobs': LucideIcons.building2,
   'freelance': LucideIcons.laptop,
   'seeking-employee': LucideIcons.userPlus,
