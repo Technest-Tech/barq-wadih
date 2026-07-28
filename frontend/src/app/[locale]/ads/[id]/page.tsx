@@ -50,7 +50,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ...(ogImage ? { images: [ogImage] } : {}),
     },
     alternates: {
-      canonical: `/ads/${ad.id}`,
+      // Self-referencing canonical for the current locale (must be the real,
+      // non-redirecting URL). Pointing at /ads/{id} sent Google to a redirect,
+      // which caused "Duplicate without user-selected canonical" in Search Console.
+      canonical: `/${locale}/ads/${ad.id}`,
       languages: {
         ar: `/ar/ads/${ad.id}`,
         en: `/en/ads/${ad.id}`,

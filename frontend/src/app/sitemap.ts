@@ -15,15 +15,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         languages: { ar: `${BASE_URL}/ar`, en: `${BASE_URL}/en` },
       },
     },
-    {
-      url: `${BASE_URL}/ar/search`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-      alternates: {
-        languages: { ar: `${BASE_URL}/ar/search`, en: `${BASE_URL}/en/search` },
-      },
-    },
   ];
 
   // Dynamic ad pages
