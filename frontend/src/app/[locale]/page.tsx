@@ -11,10 +11,13 @@ type Props = { params: Promise<{ locale: string }> };
 // user-selected canonical".
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
+  // localePrefix 'as-needed' + defaultLocale 'ar': the Arabic home is '/', and
+  // '/ar' 307-redirects to it. Canonicals/hreflang must use the real URLs.
+  const isArabic = locale === 'ar';
   return {
     alternates: {
-      canonical: `/${locale}`,
-      languages: { ar: '/ar', en: '/en' },
+      canonical: isArabic ? '/' : `/${locale}`,
+      languages: { ar: '/', en: '/en' },
     },
   };
 }

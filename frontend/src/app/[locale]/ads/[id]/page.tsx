@@ -50,12 +50,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ...(ogImage ? { images: [ogImage] } : {}),
     },
     alternates: {
-      // Self-referencing canonical for the current locale (must be the real,
-      // non-redirecting URL). Pointing at /ads/{id} sent Google to a redirect,
-      // which caused "Duplicate without user-selected canonical" in Search Console.
-      canonical: `/${locale}/ads/${ad.id}`,
+      // localePrefix is 'as-needed' with defaultLocale 'ar', so the Arabic URL
+      // is UNPREFIXED (/ads/{id}); /ar/ads/{id} 307-redirects to it. Canonicals
+      // and hreflang must use the real, non-redirecting URLs.
+      canonical: isArabic ? `/ads/${ad.id}` : `/${locale}/ads/${ad.id}`,
       languages: {
-        ar: `/ar/ads/${ad.id}`,
+        ar: `/ads/${ad.id}`,
         en: `/en/ads/${ad.id}`,
       },
     },
@@ -108,20 +108,11 @@ export default async function AdDetailPage({ params }: Props) {
   const { id } = await params;
   const ad = await fetchAdServer(id);
 
+  // Ad doesn't exist (deleted/expired). Return a real HTTP 404 via notFound()
+  // instead of rendering a 404-looking page with a 200 status — the latter is
+  // what Google reported as "Soft 404" in Search Console.
   if (!ad) {
-    return (
-      <>
-        <Header />
-        <main className={styles.main}>
-          <div className={styles.notFound}>
-            <span>404</span>
-            <h2>الإعلان غير موجود</h2>
-            <Link href="/ar" className={styles.backLink}>← العودة للرئيسية</Link>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
+    notFound();
   }
 
   // Map server data to client Ad type (image field name mapping is no longer necessary since the API matches)
