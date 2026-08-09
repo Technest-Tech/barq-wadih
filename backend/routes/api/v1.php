@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AdPaymentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DistrictController;
 use App\Http\Controllers\Api\V1\BannerController;
+use App\Http\Controllers\Api\V1\BoostController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CategoryFollowController;
 use App\Http\Controllers\Api\V1\ChatController;
@@ -52,6 +53,9 @@ Route::get('ads/commission-preview',   [AdController::class, 'commissionPreview'
 Route::get('ads/mine',                 [AdController::class, 'myAds'])->middleware('auth:sanctum')->name('ads.mine');
 Route::get('ads/{ad}',                 [AdController::class, 'show'])->name('ads.show');
 Route::get('categories/{category}/fields', [AdController::class, 'categoryFields'])->name('categories.fields');
+
+// Sprint 13: Boost pricing & cooldown rules (public — clients read it before acting)
+Route::get('boost-config',             [BoostController::class, 'config'])->name('boost.config');
 
 // ── Sprint 7: Search — public, Meilisearch-powered with Eloquent fallback ─────
 Route::get('search',                   [SearchController::class, 'index'])->name('search.index');
@@ -104,6 +108,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('ads/{ad}/sold',   [AdController::class, 'markSold'])->name('ads.sold');
     Route::patch('ads/{ad}',       [AdController::class, 'update'])->name('ads.update');
     Route::delete('ads/{ad}',      [AdController::class, 'destroy'])->name('ads.destroy');
+
+    // Sprint 13: Boost / Refresh — controller + service existed but were never routed.
+    Route::post('ads/{ad}/boost',         [BoostController::class, 'boost'])->name('ads.boost');
+    Route::post('ads/{ad}/refresh',       [BoostController::class, 'refresh'])->name('ads.refresh');
+    Route::get('ads/{ad}/boost-history',  [BoostController::class, 'history'])->name('ads.boost.history');
 
     // Publish-fee payment lifecycle (mocked driver in dev, Moyasar later)
     Route::post('ads/{ad}/payment/init',    [AdPaymentController::class, 'init'])->name('ads.payment.init');
