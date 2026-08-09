@@ -202,7 +202,10 @@ class AdController extends BaseController
         /** @var User $user */
         $user = $request->user();
 
-        $ads = Ad::withTrashed()
+        // Deliberately NOT withTrashed(): a soft-deleted ad must stay gone for
+        // the seller. It used to come back with a "deleted" badge, and tapping
+        // حذف on it 404'd because route-model binding skips trashed rows.
+        $ads = Ad::query()
             ->where('user_id', $user->id)
             ->with(['images', 'category', 'city', 'user'])
             ->latest()
