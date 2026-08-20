@@ -200,6 +200,37 @@ class SeedDemoChats extends Command
         $base = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents";
         $ok   = true;
 
+        $this->line("Firestore project: {$projectId}");
+        $this->newLine();
+
+        // Reproduce the exact query the app runs for the Messages tab, so a
+        // missing composite index or an empty result shows up here rather than
+        // as a silently blank screen on the device.
+        $res = Http::withToken($token)->acceptJson()->post("{$base}:runQuery", [
+            'structuredQuery' => [
+                'from'    => [['collectionId' => 'conversations']],
+                'where'   => ['fieldFilter' => [
+                    'field' => ['fieldPath' => 'participantUids'],
+                    'op'    => 'ARRAY_CONTAINS',
+                    'value' => ['stringValue' => strval($demo->id)],
+                ]],
+                'orderBy' => [[
+                    'field'     => ['fieldPath' => 'lastMessageAt'],
+                    'direction' => 'DESCENDING',
+                ]],
+            ],
+        ]);
+
+        if ($res->failed()) {
+            $this->error('  App query FAILED ('.$res->status().'): '.$res->body());
+            $ok = false;
+        } else {
+            $hits = collect($res->json())->filter(fn ($row) => isset($row['document']))->count();
+            $this->info("  App query (participantUids array-contains \"{$demo->id}\", order by lastMessageAt desc): {$hits} hit(s)");
+        }
+
+        $this->newLine();
+
         foreach ($ads->values() as $ad) {
             $meta   = $chat->buildConversationMetadata($demo, $ad);
             $convId = $meta['conversation_id'];
