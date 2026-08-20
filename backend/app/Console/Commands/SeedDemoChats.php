@@ -41,7 +41,8 @@ class SeedDemoChats extends Command
         {--count=3 : How many conversations to create}
         {--seller-domain=barqwadih.sa : Only seed against sellers on this email domain}
         {--allow-real-sellers : Drop the demo-domain guard and use live sellers}
-        {--dry-run : Print what would be written without touching Firestore}';
+        {--dry-run : Print what would be written without touching Firestore}
+        {--verify : Read the seeded threads back from Firestore and report}';
 
     protected $description = 'Seed pre-populated chat history into the App Review demo account';
 
@@ -80,6 +81,12 @@ class SeedDemoChats extends Command
         $email  = (string) $this->option('email');
         $count  = max(1, (int) $this->option('count'));
         $dryRun = (bool) $this->option('dry-run');
+        $verify = (bool) $this->option('verify');
+
+        // Verifying is a read against the live project, so it needs a token.
+        if ($verify) {
+            $dryRun = false;
+        }
 
         $demo = User::where('email', $email)->first();
 
@@ -134,6 +141,10 @@ class SeedDemoChats extends Command
         $projectId = $this->projectId();
         $token     = $dryRun ? null : $this->accessToken();
 
+        if ($verify) {
+            return $this->verifySeeded($projectId, $token, $chat, $demo, $ads);
+        }
+
         $created = 0;
 
         foreach ($ads->values() as $i => $ad) {
@@ -169,6 +180,54 @@ class SeedDemoChats extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    // ── Verification ─────────────────────────────────────────────────────────
+
+    /**
+     * Reads each seeded thread back and reports what Firestore actually holds,
+     * so a run can be confirmed without trusting the write responses alone.
+     *
+     * @param  \Illuminate\Support\Collection<int, Ad>  $ads
+     */
+    private function verifySeeded(
+        string $projectId,
+        string $token,
+        ChatService $chat,
+        User $demo,
+        $ads,
+    ): int {
+        $base = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents";
+        $ok   = true;
+
+        foreach ($ads->values() as $ad) {
+            $meta   = $chat->buildConversationMetadata($demo, $ad);
+            $convId = $meta['conversation_id'];
+
+            $doc = $this->firestoreGet($token, "{$base}/conversations/{$convId}");
+
+            if (! $doc) {
+                $this->error("  MISSING  {$convId} — conversation document not found");
+                $ok = false;
+
+                continue;
+            }
+
+            $msgs   = $this->firestoreGet($token, "{$base}/conversations/{$convId}/messages");
+            $count  = count($msgs['documents'] ?? []);
+            $ids    = array_map(
+                static fn (array $d): string => basename((string) ($d['name'] ?? '')),
+                $msgs['documents'] ?? [],
+            );
+            $last   = $doc['fields']['lastMessage']['stringValue'] ?? '';
+            $unread = $doc['fields']['unreadCount']['mapValue']['fields'][strval($demo->id)]['integerValue'] ?? '?';
+
+            $this->info("  OK  {$convId} — {$count} message(s), demo unread={$unread}");
+            $this->line('      ids:  '.implode(', ', $ids));
+            $this->line('      last: '.$last);
+        }
+
+        return $ok ? self::SUCCESS : self::FAILURE;
     }
 
     // ── Firestore REST ───────────────────────────────────────────────────────
@@ -289,6 +348,14 @@ class SeedDemoChats extends Command
     private function ts(int $epoch): string
     {
         return gmdate('Y-m-d\TH:i:s\Z', $epoch);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function firestoreGet(string $token, string $url): ?array
+    {
+        $res = Http::withToken($token)->acceptJson()->get($url);
+
+        return $res->successful() ? $res->json() : null;
     }
 
     private function firestore(string $token, string $method, string $url, array $body): void
