@@ -131,6 +131,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('ads/{ad}/refresh', [BoostController::class, 'refresh'])->name('ads.refresh');
     Route::get('ads/{ad}/boost-history', [BoostController::class, 'history'])->name('ads.boost.history');
 
+    // Sprint 13: Boost / Refresh — controller + service existed but were never routed.
+    Route::post('ads/{ad}/boost',         [BoostController::class, 'boost'])->name('ads.boost');
+    Route::post('ads/{ad}/refresh',       [BoostController::class, 'refresh'])->name('ads.refresh');
+    Route::get('ads/{ad}/boost-history',  [BoostController::class, 'history'])->name('ads.boost.history');
+
     // Publish-fee payment lifecycle (mocked driver in dev, Moyasar later)
     Route::post('ads/{ad}/payment/init', [AdPaymentController::class, 'init'])->name('ads.payment.init');
     Route::post('ads/{ad}/payment/confirm', [AdPaymentController::class, 'confirm'])->name('ads.payment.confirm');
