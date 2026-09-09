@@ -2,6 +2,8 @@ package com.barqwadih.barq_wadih
 
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.tiktok.TikTokBusinessSdk
@@ -47,21 +49,43 @@ class MainActivity : FlutterFragmentActivity() {
                 @Suppress("DEPRECATION")
                 installed.versionCode.toLong()
             }
-            AppUpdateManagerFactory.create(applicationContext).appUpdateInfo
+            val installer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                packageManager.getInstallSourceInfo(packageName).installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getInstallerPackageName(packageName)
+            }
+            val base = mapOf(
+                "platform" to "android", "bundleId" to packageName,
+                "version" to installed.versionName.orEmpty(),
+                "buildNumber" to installedCode, "sdkVersion" to Build.VERSION.SDK_INT,
+                "storeInstalled" to (installer == "com.android.vending" && !BuildConfig.DEBUG),
+                "playAvailabilityKnown" to false,
+            )
+            val updateTask = AppUpdateManagerFactory.create(applicationContext).appUpdateInfo
+            val handler = Handler(Looper.getMainLooper())
+            var replied = false
+            val timeout = Runnable {
+                if (!replied) { replied = true; result.success(base) }
+            }
+            handler.postDelayed(timeout, 7000)
+            updateTask
                 .addOnSuccessListener { info ->
-                    result.success(mapOf(
-                        "platform" to "android",
-                        "bundleId" to packageName,
-                        "version" to installed.versionName.orEmpty(),
-                        "buildNumber" to installedCode,
+                    if (replied) return@addOnSuccessListener
+                    replied = true
+                    handler.removeCallbacks(timeout)
+                    result.success(base + mapOf(
+                        "playAvailabilityKnown" to true,
                         "availableBuildNumber" to info.availableVersionCode(),
                         "updateAvailable" to
                             (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE),
                     ))
                 }
                 .addOnFailureListener {
-                    // Offline or sideloaded builds must remain usable.
-                    result.success(null)
+                    if (replied) return@addOnFailureListener
+                    replied = true
+                    handler.removeCallbacks(timeout)
+                    result.success(base)
                 }
         } catch (_: Exception) {
             result.success(null)

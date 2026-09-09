@@ -17,6 +17,10 @@ import 'features/settings/providers/theme_provider.dart';
 import 'features/settings/providers/locale_provider.dart';
 
 /// Root application widget.
+final appUpdateServiceProvider = Provider<AppUpdateService>(
+  (ref) => AppUpdateService(),
+);
+
 class BarqWadihApp extends ConsumerStatefulWidget {
   const BarqWadihApp({super.key});
 
@@ -26,12 +30,14 @@ class BarqWadihApp extends ConsumerStatefulWidget {
 
 class _BarqWadihAppState extends ConsumerState<BarqWadihApp>
     with WidgetsBindingObserver {
-  final _updates = AppUpdateService();
+  late final AppUpdateService _updates;
+  Timer? _updatePromptRetry;
   bool _updateDialogOpen = false;
   AppUpdate? _pendingUpdate;
   @override
   void initState() {
     super.initState();
+    _updates = ref.read(appUpdateServiceProvider);
     WidgetsBinding.instance.addObserver(this);
     // Listen for notification taps (background / local) and navigate.
     FCMService.pendingRoute.addListener(_onPendingRoute);
@@ -53,6 +59,7 @@ class _BarqWadihAppState extends ConsumerState<BarqWadihApp>
 
   @override
   void dispose() {
+    _updatePromptRetry?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     FCMService.pendingRoute.removeListener(_onPendingRoute);
     FCMService.inboundPush.removeListener(_onInboundPush);
@@ -90,15 +97,21 @@ class _BarqWadihAppState extends ConsumerState<BarqWadihApp>
         .routerDelegate
         .navigatorKey
         .currentContext;
-    if (navigatorContext == null || !navigatorContext.mounted) return;
+    if (navigatorContext == null || !navigatorContext.mounted) {
+      _updatePromptRetry?.cancel();
+      _updatePromptRetry = Timer(const Duration(milliseconds: 200), () {
+        if (mounted) unawaited(_checkForUpdate());
+      });
+      return;
+    }
     _updateDialogOpen = true;
     _pendingUpdate = null;
     try {
-      await showDialog<void>(
+      final openedStore = await showDialog<bool>(
         context: navigatorContext,
         builder: (_) => AppUpdateDialog(update: update),
       );
-      await _updates.remindTomorrow();
+      if (openedStore != true) await _updates.remindTomorrow(update);
     } finally {
       _updateDialogOpen = false;
     }

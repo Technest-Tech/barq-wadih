@@ -1,72 +1,81 @@
-# Android and iPhone update prompts
+# Startup update popup — Android and iOS
 
-The iOS app checks Apple's public Lookup API after the first frame and when
-returning to the foreground. It reads the installed version from the iOS bundle,
-compares numeric release versions (not build numbers), and opens the verified
-`apps.apple.com` listing when the user chooses Update now.
+Both platforms check after the initial app frame and on returning to the
+foreground. The app shows an Arabic/English **Update now / Later** dialog with a
+direct link to its own store page. It remains usable offline and never forces an
+installation. No push notifications or background broadcasts are involved.
 
-- Checks are limited to once per hour in a running app.
-- Closing the prompt postpones reminders for 24 hours, including after restart.
-- Offline, timeout, missing listing and malformed responses silently skip the check.
-- Releases requiring a newer iOS version are skipped.
-- The lookup uses the Saudi storefront, the app's primary market. Override with
-  `--dart-define=APP_STORE_COUNTRY=xx` for a different distribution market. This
-  is a build setting, not detection of the user's Apple account storefront.
-- Arabic/English and the existing light/dark theme are supported.
+## Detection
 
-Publish a new iOS release containing this code using the normal App Store release
-process. Users must install that release once before receiving prompts for later
-releases. Subsequent releases need no backend version change: the check uses the
-public listing after Apple makes the release available there. TestFlight builds
-and uploads still awaiting release do not constitute a public update.
+- Public endpoint: `GET /api/v1/app-updates` (no authentication or user data).
+- iOS compares the configured published server release with Apple's public
+  Lookup API and uses the newer compatible release. A stale server setting
+  cannot hide a newer App Store release; a server policy still works if Apple
+  lookup fails. Versions are compared numerically; OS compatibility
+  is checked. The fallback uses Saudi Arabia (`APP_STORE_COUNTRY=sa`), the app's
+  primary market; configure a different build storefront if needed.
+- Android queries Google Play's App Update API. A successful Play answer is
+  authoritative for that account/device/rollout. A configured server release
+  is a fallback only if Play is unavailable, the installation came from Google
+  Play, and Android SDK requirements are satisfied. Debug/sideloaded builds
+  cannot use this fallback to imply store-update compatibility.
+- Android compares version codes, so a newer build with the same display name
+  can prompt. iOS compares public release versions, not TestFlight build numbers.
+- All store URLs are canonical and restricted to this app. Server data cannot
+  redirect users to an arbitrary website.
 
-This feature is an optional in-app prompt on Android and iOS, not a background
-push broadcast. It does not force installation or reinstall
-the app. No new Flutter dependencies are required.
+Checks are throttled to once every five minutes in the same app process. Every
+cold launch can check immediately. “Later” postpones that specific release for
+24 hours, including after restarting; a newer release is never hidden by an
+older release's reminder. Successfully opening the store does not set the
+24-hour reminder. An update arriving while the app is backgrounded waits until
+foreground; navigation readiness is retried rather than silently losing it.
 
-Validation: `flutter test test/app_update_test.dart test/widget_test.dart`.
-Device smoke test before publication: on an iPhone running an older public
-version containing this feature, verify prompt, Later/relaunch suppression,
-Update now → App Store, and offline launch. A current or newer installed version
-must not prompt.
+## Publish a release
 
+Store checks discover newly available releases automatically when the server
+policy is unset. For explicit server control, edit the production backend `.env`
+AFTER the release is downloadable in all intended storefronts and its rollout
+is complete. Do not set published flags while uploading, waiting for review, or
+running a partial rollout. Use the actual version and OS requirements from the
+store release:
 
-## Android
+```dotenv
+APP_UPDATE_IOS_PUBLISHED=true
+APP_UPDATE_IOS_VERSION=<published iOS version>
+APP_UPDATE_IOS_MINIMUM_OS=<minimum iOS version>
+APP_UPDATE_ANDROID_PUBLISHED=true
+APP_UPDATE_ANDROID_VERSION=<published Android display version>
+APP_UPDATE_ANDROID_BUILD=<published Android version code>
+APP_UPDATE_ANDROID_MINIMUM_SDK=<minimum Android API level>
+```
 
-Android now participates in the same startup/foreground checks and reminder
-schedule. Its native `installedInfo` channel queries the Google Play App Update
-API (app-update 2.1.0). The app shows a prompt only when Play reports an update
-available for this device/account and the available version code exceeds the
-installed code. This respects Play rollout eligibility rather than scraping a
-public listing. “Update now” opens this app's Google Play listing; this is not an
-embedded flexible download/install flow. No automatic or forced installation.
+Then run `php artisan config:cache` and inspect `/api/v1/app-updates`. Missing,
+unpublished or invalid policies return null. Set a platform's published flag
+false to withdraw its server override; actual native store checks still apply.
+No API credentials, database migration or scheduler are needed.
 
-Google Play returns a build number, not the human-readable release version, so
-the Android dialog says “A new version is available” rather than showing a build
-number as a version. Failure, unavailable Play services, and sideloaded APKs skip
-the prompt safely. Native checks time out after 10 seconds in Flutter.
+These flags default to false. The deployment of the endpoint does not advertise
+a nonexistent release. The next mobile store release must include this code;
+previously installed binaries cannot be changed remotely. Users need to install
+this implementation once to receive prompts for subsequent releases.
 
-## Releasing and reaching existing users
+## Validation
 
-Uploading a build is not the same as publishing it. Wait for store approval and
-actual release availability before expecting a prompt. Increase Android's
-version code with every release; increase iOS's public version for each new App
-Store release. The current local version is 1.0.3+15; rebuilding this exact version
-does not create a newer public iOS update.
+- `php artisan test --filter=AppUpdatePolicyTest`
+- `flutter test test/app_update_test.dart test/app_update_policy_test.dart test/app_update_startup_test.dart test/widget_test.dart`
+- `flutter build apk --profile --no-pub`
 
-Users on an older Android version without this feature must update once before
-it can detect later releases. The same applies to iOS versions predating its
-lookup-based prompt. You cannot remotely add this logic to already installed
-binaries. A separate release-announcement push could reach existing users who
-have registered push tokens and granted notification permission; it is not sent
-or automated by this feature and cannot guarantee delivery to every user.
+Tests cover real app startup on both target platforms, background/resume,
+release-specific postponement, store links, numeric versions/builds, invalid
+policies, compatibility, concurrent checks, and offline fallback. For final
+store eligibility validation, use an older Google Play-installed build with the
+matching signing certificate and an eligible newer internal-test release, and
+an iPhone with an older public version that already contains this feature. A
+sideloaded APK cannot prove Google Play eligibility. Confirm current versions do
+not show a popup and Later does not suppress the next release.
 
-Android end-to-end validation requires a Play-installed/owned app with the same
-application ID and signing certificate as an eligible newer release. Test using
-Google Play internal testing/internal app sharing as documented by Google.
-A sideloaded debug/profile APK cannot validate production update eligibility.
-
-Sources:
+Official references:
 - https://developer.android.com/guide/playcore/in-app-updates/kotlin-java
 - https://developer.android.com/guide/playcore/in-app-updates/test
 - https://support.apple.com/102629

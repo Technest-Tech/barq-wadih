@@ -213,115 +213,131 @@ class _AdCardState extends State<AdCard> {
   }
 
   Widget _buildImageSection(AdListModel ad) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.isGrid ? 8 : 10),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Hero(
-            tag: 'ad-image-${ad.id}',
-            child: ad.primaryImage != null
-                ? AppCachedImage(
-                    // Use the thumbnail alone unless its request fails.
-                    imageUrl: ad.primaryImage!.imageUrl,
-                    lowResolutionUrl: ad.primaryImage!.thumbnailUrl,
-                    preferPreview: true,
-                    // Preserve the complete photo, including its top and bottom.
-                    fit: BoxFit.contain,
-                    memCacheWidth: widget.isGrid ? 640 : 400,
-                    errorWidget: _ImagePlaceholder(icon: ad.category?.icon),
-                  )
-                : _ImagePlaceholder(icon: ad.category?.icon),
-          ),
-          // Boosted badge — amber gold top-left
-          if (ad.isBoosted)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                color: AppTheme.accentGold,
-                child: const Text(
-                  '⚡ مميز',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                ),
+    final radius = widget.isGrid ? 8.0 : 10.0;
+    return Container(
+      padding: const EdgeInsets.all(1),
+      decoration: BoxDecoration(
+        color: AppTheme.neutralGray100,
+        border: Border.all(color: AppTheme.neutralGray200),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius - 1),
+        child: ColoredBox(
+          color: AppTheme.neutralGray100,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Hero(
+                tag: 'ad-image-${ad.id}',
+                child: ad.primaryImage != null
+                    ? AppCachedImage(
+                        // Use the thumbnail alone unless its request fails.
+                        imageUrl: ad.primaryImage!.imageUrl,
+                        lowResolutionUrl: ad.primaryImage!.thumbnailUrl,
+                        preferPreview: true,
+                        // Fill the thumbnail frame without empty margins.
+                        fit: BoxFit.cover,
+                        backgroundColor: AppTheme.neutralGray100,
+                        memCacheWidth: widget.isGrid ? 640 : 400,
+                        errorWidget: _ImagePlaceholder(icon: ad.category?.icon),
+                      )
+                    : _ImagePlaceholder(icon: ad.category?.icon),
               ),
-            ),
-          // Image count badge
-          if (ad.imagesCount > 1)
-            Positioned(
-              bottom: 5,
-              right: 5,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: .5),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.photo_library_outlined,
-                      size: 9,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${ad.imagesCount}',
-                      style: const TextStyle(
+              // Boosted badge — amber gold top-left
+              if (ad.isBoosted)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    color: AppTheme.accentGold,
+                    child: const Text(
+                      '⚡ مميز',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 9,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          // Favorite button
-          if (widget.onFavorite != null)
-            Positioned(
-              bottom: 5,
-              left: 5,
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  widget.onFavorite!();
-                },
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .92),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: .12),
-                        blurRadius: 4,
+              // Image count badge
+              if (ad.imagesCount > 1)
+                Positioned(
+                  bottom: 5,
+                  right: 5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: .5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.photo_library_outlined,
+                          size: 9,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${ad.imagesCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // Favorite button
+              if (widget.onFavorite != null)
+                Positioned(
+                  bottom: 5,
+                  left: 5,
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      widget.onFavorite!();
+                    },
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .92),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: .12),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    widget.isFavorited
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    size: 14,
-                    color: widget.isFavorited
-                        ? Colors.red
-                        : AppTheme.neutralGray500,
+                      child: Icon(
+                        widget.isFavorited
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        size: 14,
+                        color: widget.isFavorited
+                            ? Colors.red
+                            : AppTheme.neutralGray500,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

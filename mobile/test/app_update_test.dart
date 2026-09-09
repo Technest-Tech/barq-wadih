@@ -17,6 +17,7 @@ void main() {
   late Dio dio;
   AppUpdateService service() => AppUpdateService(
     dio: dio,
+    releasePolicy: () async => null,
     now: () => now,
     installedInfo: () async => {
       'bundleId': 'com.barqwadih.app',
@@ -31,6 +32,7 @@ void main() {
     requests = 0;
     listing = {
       'bundleId': 'com.barqwadih.app',
+      'trackId': 6800784915,
       'version': '1.0.3',
       'minimumOsVersion': '15.0',
       'trackViewUrl': 'https://apps.apple.com/sa/app/id6800784915',
@@ -80,9 +82,14 @@ void main() {
   });
 
   test('snooze persists across launches and expires after one day', () async {
-    await service().remindTomorrow();
+    await service().remindTomorrow(
+      AppUpdate(
+        '1.0.3',
+        Uri.parse('https://apps.apple.com/sa/app/id6800784915'),
+      ),
+    );
     expect(await service().check(), isNull);
-    expect(requests, 0);
+    expect(requests, 1);
     now = now.add(const Duration(days: 1));
     expect(await service().check(), isNotNull);
   });
@@ -157,7 +164,7 @@ void main() {
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
-              onPressed: () => showDialog<void>(
+              onPressed: () => showDialog<bool>(
                 context: context,
                 builder: (_) => AppUpdateDialog(
                   update:
@@ -256,6 +263,7 @@ void main() {
       };
       AppUpdateService android() => AppUpdateService(
         dio: dio,
+        releasePolicy: () async => null,
         installedInfo: () async => info,
         now: () => now,
       );

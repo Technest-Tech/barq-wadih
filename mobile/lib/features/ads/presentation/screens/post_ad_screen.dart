@@ -1932,14 +1932,37 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: Text(
-            'اختر القسم',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.neutralGray600,
-            ),
+          child: Row(
             textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'اختر القسم',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.neutralGray600,
+                ),
+                textDirection: TextDirection.rtl,
+              ),
+              const SizedBox(width: 8),
+              // Real-estate listings are suspended. Say so where the seller
+              // picks a category, not after they have filled in the form.
+              const Expanded(
+                child: Text(
+                  'لا نقبل أي عروض عقارية حالياً',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.colorError,
+                  ),
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.left,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
         const Divider(height: 1, color: AppTheme.neutralGray100),

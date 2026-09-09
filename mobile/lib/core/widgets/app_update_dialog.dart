@@ -34,7 +34,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     }
     if (!mounted) return;
     if (opened) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     } else {
       setState(() {
         _opening = false;
@@ -79,7 +79,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(false),
           child: Text(ar ? 'لاحقًا' : 'Later'),
         ),
         FilledButton(

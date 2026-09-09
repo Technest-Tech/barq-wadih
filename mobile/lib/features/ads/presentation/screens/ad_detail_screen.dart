@@ -274,8 +274,6 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
         body: SingleChildScrollView(
           child: Column(
             children: [
-              AdImageGallery(adId: ad.id, images: ad.images),
-
               // Title + Price + Meta
               Container(
                 color: Colors.white,
@@ -411,6 +409,43 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                   ],
                 ),
               ),
+
+              // Description
+              Container(
+                width: double.infinity,
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(top: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'الوصف',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.neutralGray800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      ad.description.isEmpty
+                          ? 'لا يوجد وصف للإعلان.'
+                          : ad.description,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF475569),
+                        height: 1.8,
+                      ),
+                      textDirection: TextDirection.rtl,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Photos — shown after the written details.
+              AdImageGallery(adId: ad.id, images: ad.images),
 
               // Seller Row
               Container(
@@ -573,40 +608,6 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                     ],
                   ),
                 ),
-
-              // Description
-              Container(
-                width: double.infinity,
-                color: Colors.white,
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(top: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'الوصف',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.neutralGray800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      ad.description.isEmpty
-                          ? 'لا يوجد وصف للإعلان.'
-                          : ad.description,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF475569),
-                        height: 1.8,
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                  ],
-                ),
-              ),
 
               if (ad.isVehicleCategory && (ad.user?.isDealer ?? false))
                 const DealerVehicleCommissionNotice(),
@@ -1063,6 +1064,19 @@ class _DetailSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // Same order as the loaded screen — title, then description, then
+            // the photos. Keeping them in step stops the hero image jumping up
+            // the page when the real content replaces this.
+            Container(
+              height: 24,
+              width: double.infinity,
+              color: Colors.grey[200],
+            ),
+            const SizedBox(height: 12),
+            Container(height: 16, width: 120, color: Colors.grey[200]),
+            const SizedBox(height: 20),
+            Container(height: 14, width: 200, color: Colors.grey[200]),
+            const SizedBox(height: 16),
             SizedBox(
               height: 300,
               width: double.infinity,
@@ -1078,16 +1092,6 @@ class _DetailSkeleton extends StatelessWidget {
                       ),
               ),
             ),
-            const SizedBox(height: 16),
-            Container(
-              height: 24,
-              width: double.infinity,
-              color: Colors.grey[200],
-            ),
-            const SizedBox(height: 12),
-            Container(height: 16, width: 120, color: Colors.grey[200]),
-            const SizedBox(height: 20),
-            Container(height: 14, width: 200, color: Colors.grey[200]),
           ],
         ),
       ),
