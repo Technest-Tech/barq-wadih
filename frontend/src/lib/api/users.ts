@@ -8,6 +8,10 @@ import type { AdListItem } from './ads';
 export interface SellerProfile {
   id: number;
   name: string;
+  /** Public @handle, e.g. "ahmd_aamr". Null only for pre-backfill rows. */
+  username: string | null;
+  /** Canonical shareable link, e.g. "https://barqwadih.com/@ahmd_aamr". */
+  profile_url: string | null;
   avatar: string | null;
   cover_image: string | null;
   bio: string | null;

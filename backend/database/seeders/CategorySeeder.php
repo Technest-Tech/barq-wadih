@@ -15,8 +15,9 @@ class CategorySeeder extends Seeder
         $otherFees = ['publish_fee_individual' => 0.00, 'publish_fee_dealer' => 0.00];
 
         // Flat commissions (SAR, VAT-inclusive): collected AFTER the sale.
-        // Cars & Vehicles: 99 ر.س. Phones & all other paid sections: 10 ر.س. Free sections: 0.
-        $carsDeferred = ['deferred_commission_individual' => 99.00, 'deferred_commission_dealer' => 99.00];
+        // Cars & Vehicles: individuals 99 ر.س, dealers 35 ر.س.
+        // Phones & all other paid sections: 10 ر.س. Free sections: 0.
+        $carsDeferred = ['deferred_commission_individual' => 99.00, 'deferred_commission_dealer' => 35.00];
         $otherDeferred = ['deferred_commission_individual' => 10.00, 'deferred_commission_dealer' => 10.00];
         $phonesDeferred = $otherDeferred;
 

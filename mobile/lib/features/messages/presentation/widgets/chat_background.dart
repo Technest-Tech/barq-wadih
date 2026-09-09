@@ -38,7 +38,7 @@ class _DoodlePainter extends CustomPainter {
       ..color = const Color(0xFF8E9AA6).withValues(alpha: 0.18);
 
     // Walk a grid of tiles; each tile picks 3 glyphs from a deterministic stream.
-    final cols = (size.width  / _tile).ceil() + 1;
+    final cols = (size.width / _tile).ceil() + 1;
     final rows = (size.height / _tile).ceil() + 1;
 
     for (int r = 0; r < rows; r++) {
@@ -89,8 +89,8 @@ class _DoodlePainter extends CustomPainter {
     final rect = Rect.fromLTWH(o.dx - 12, o.dy - 7, 24, 14);
     c.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), p);
     final flap = Path()
-      ..moveTo(rect.left,  rect.top + 1)
-      ..lineTo(o.dx,       o.dy + 4)
+      ..moveTo(rect.left, rect.top + 1)
+      ..lineTo(o.dx, o.dy + 4)
       ..lineTo(rect.right, rect.top + 1);
     c.drawPath(flap, p);
   }
@@ -122,7 +122,10 @@ class _DoodlePainter extends CustomPainter {
   static void _drawHeadphones(Canvas c, Paint p, Offset o) {
     c.drawArc(
       Rect.fromCenter(center: o, width: 26, height: 22),
-      pi, pi, false, p,
+      pi,
+      pi,
+      false,
+      p,
     );
     c.drawRRect(
       RRect.fromRectAndRadius(
@@ -143,7 +146,7 @@ class _DoodlePainter extends CustomPainter {
   static void _drawKey(Canvas c, Paint p, Offset o) {
     c.drawCircle(Offset(o.dx - 8, o.dy), 4, p);
     c.drawLine(Offset(o.dx - 4, o.dy), Offset(o.dx + 12, o.dy), p);
-    c.drawLine(Offset(o.dx + 8,  o.dy), Offset(o.dx + 8,  o.dy + 4), p);
+    c.drawLine(Offset(o.dx + 8, o.dy), Offset(o.dx + 8, o.dy + 4), p);
     c.drawLine(Offset(o.dx + 12, o.dy), Offset(o.dx + 12, o.dy + 5), p);
   }
 
@@ -168,9 +171,9 @@ class _DoodlePainter extends CustomPainter {
     final house = Path()
       ..moveTo(o.dx - 10, o.dy + 8)
       ..lineTo(o.dx - 10, o.dy - 2)
-      ..lineTo(o.dx,       o.dy - 10)
-      ..lineTo(o.dx + 10,  o.dy - 2)
-      ..lineTo(o.dx + 10,  o.dy + 8)
+      ..lineTo(o.dx, o.dy - 10)
+      ..lineTo(o.dx + 10, o.dy - 2)
+      ..lineTo(o.dx + 10, o.dy + 8)
       ..close();
     c.drawPath(house, p);
     c.drawRect(Rect.fromLTWH(o.dx - 3, o.dy + 1, 6, 7), p);

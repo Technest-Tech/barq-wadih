@@ -33,6 +33,16 @@ class AdminAdResource extends JsonResource
             'commission_amount' => (float) ($this->commission_amount ?? 0),
             'commission_status' => $this->commission_status?->value,
 
+            // ── Publish-fee payment (manual bank transfer) ───────────────
+            'payment_status'             => $this->payment_status,
+            'payment_amount'             => (float) ($this->payment_amount ?? 0),
+            'payment_provider'           => $this->payment_provider,
+            'payment_reference'          => $this->payment_reference,
+            'payment_proof_url'          => $this->payment_proof_url,
+            'payment_proof_uploaded_at'  => $this->payment_proof_uploaded_at?->toISOString(),
+            'payment_review_note'        => $this->payment_review_note,
+            'paid_at'                    => $this->paid_at?->toISOString(),
+
             // ── Contact ─────────────────────────────────────────────────
             'contact_phone'     => $this->contact_phone,
             'contact_whatsapp'  => $this->contact_whatsapp,

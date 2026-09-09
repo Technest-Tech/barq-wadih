@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,9 +17,20 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  /// Guards the auto-clear so it runs once per loaded list rather than on
+  /// every rebuild. Reset when the user pulls to refresh, so notifications
+  /// that arrive while the screen is open get cleared too.
+  bool _autoClearDone = false;
+
   @override
   Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(notificationsListProvider);
+
+    // Opening the notification centre is the user reading their notifications,
+    // so clear them here instead of waiting for a tap on each one. Only the
+    // server state and the badges change — the list keeps the highlight it
+    // loaded with, so the user can still see which ones were new this visit.
+    _autoClearUnread(notificationsAsync.value);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
@@ -51,6 +64,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           }
           return RefreshIndicator(
             onRefresh: () async {
+              _autoClearDone = false;
               ref.invalidate(notificationsListProvider);
               ref.invalidate(unreadNotificationCountProvider);
             },
@@ -98,21 +112,45 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  Future<void> _markAllRead() async {
+  void _autoClearUnread(List<NotificationModel>? items) {
+    if (_autoClearDone || items == null) return;
+    if (!items.any((n) => !n.isRead)) return;
+    _autoClearDone = true;
+    // Called from build — defer the work so it never fires mid-frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_clearUnread());
+    });
+  }
+
+  /// Clear unread state on the server without redrawing the list.
+  Future<void> _clearUnread() async {
     try {
       await ref.read(notificationRepositoryProvider).markAllRead();
-      ref.invalidate(notificationsListProvider);
-      ref.invalidate(unreadNotificationCountProvider);
-    } catch (_) {}
+    } catch (_) {
+      // Let the next visit retry rather than leaving the badge wrong forever.
+      _autoClearDone = false;
+      return;
+    }
+    await refreshUnreadNotifications(ref);
+  }
+
+  /// The explicit toolbar action — same clear, but redraw so the user sees the
+  /// highlights disappear and knows the button did something.
+  Future<void> _markAllRead() async {
+    await _clearUnread();
+    _autoClearDone = true;
+    ref.invalidate(notificationsListProvider);
   }
 
   Future<void> _handleTap(NotificationModel n) async {
-    // Mark as read
+    // Belt and braces: opening the screen already cleared everything, so this
+    // only matters if that call failed. Deliberately does not invalidate the
+    // list — re-fetching under the user's finger makes the row flicker as the
+    // tap navigates away.
     if (!n.isRead) {
       try {
         await ref.read(notificationRepositoryProvider).markRead(n.id);
-        ref.invalidate(notificationsListProvider);
-        ref.invalidate(unreadNotificationCountProvider);
+        await refreshUnreadNotifications(ref);
       } catch (_) {}
     }
 

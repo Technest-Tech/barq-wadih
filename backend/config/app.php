@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public Website URL
+    |--------------------------------------------------------------------------
+    |
+    | Root of the Next.js frontend. The API is served from a different host
+    | (api.barqwadih.com), so shareable links handed back to clients — public
+    | profile URLs, for instance — must be built from this value instead of
+    | APP_URL.
+    |
+    */
+
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'https://barqwadih.com'), '/'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
@@ -101,7 +115,7 @@ return [
 
     'previous_keys' => [
         ...array_filter(
-            explode(',', (string) env('APP_PREVIOUS_KEYS', ''))
+            explode(',', (string) env('APP_PREVIOUS_KEYS', '')),
         ),
     ],
 

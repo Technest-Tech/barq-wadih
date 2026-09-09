@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 class HowToSellScreen extends StatelessWidget {
   const HowToSellScreen({super.key});
@@ -243,7 +244,7 @@ class HowToSellScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
+                      child: RiyalText(
                         fee,
                         style: const TextStyle(
                           fontSize: 12,
@@ -355,12 +356,13 @@ class HowToSellScreen extends StatelessWidget {
     (
       Icons.publish_rounded,
       'انشر الإعلان',
-      'بعد مراجعة جميع التفاصيل ودفع رسوم النشر، سيظهر إعلانك للمشترين فوراً.',
+      'بعد مراجعة جميع التفاصيل والموافقة على التعهد، انشر إعلانك مجاناً ليظهر للمشترين.',
     ),
   ];
 
   static const _fees = [
-    '🚗 السيارات والمركبات: 99 ر.س (تُدفع بعد البيع)',
+    '🚗 السيارات والمركبات / أفراد: 99 ر.س (تُدفع بعد البيع)',
+    '🚗 السيارات والمركبات / معارض: 35 ر.س (تُدفع بعد البيع)',
     '📱 الجوالات والأقسام الأخرى: 10 ر.س (تُدفع بعد البيع)',
     '💼 الوظائف: مجاني بالكامل',
     '📌 جميع الأسعار تشمل ضريبة القيمة المضافة 15%.',

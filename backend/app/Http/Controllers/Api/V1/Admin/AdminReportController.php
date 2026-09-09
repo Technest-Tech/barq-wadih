@@ -8,6 +8,7 @@ use App\Enums\ReportStatus;
 use App\Http\Controllers\Api\V1\BaseController;
 use App\Http\Resources\AdminReportResource;
 use App\Models\Report;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,6 +24,7 @@ class AdminReportController extends BaseController
         $query = Report::with([
             'reporter:id,name,avatar',
             'ad' => fn ($q) => $q->withTrashed()->with(['images', 'user:id,name,avatar', 'category:id,name_ar']),
+            'reportedUser' => fn ($q) => $q->withTrashed()->select(['id', 'name', 'avatar']),
             'admin:id,name',
         ]);
 
@@ -42,11 +44,11 @@ class AdminReportController extends BaseController
         if ($sort === 'priority') {
             // Pending first, then by newest
             $query->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'reviewed' THEN 2 WHEN 'resolved' THEN 3 WHEN 'dismissed' THEN 4 ELSE 5 END")
-                  ->latest();
+                ->latest();
         } else {
             $query->orderBy(
                 in_array($sort, ['created_at', 'status'], true) ? $sort : 'created_at',
-                $request->input('dir', 'desc')
+                $request->input('dir', 'desc'),
             );
         }
 
@@ -65,6 +67,9 @@ class AdminReportController extends BaseController
             'ad' => fn ($q) => $q->withTrashed()->with([
                 'images', 'user:id,name,avatar,phone,email,is_verified', 'category:id,name_ar,name_en', 'city:id,name_ar',
             ]),
+            'reportedUser' => fn ($q) => $q->withTrashed()->select([
+                'id', 'name', 'avatar', 'phone', 'email', 'is_active', 'is_verified',
+            ]),
             'admin:id,name',
         ]);
 
@@ -80,18 +85,18 @@ class AdminReportController extends BaseController
     {
         $request->validate([
             'admin_action' => 'required|string|in:no_action,ad_removed,user_warned,user_banned',
-            'admin_note'   => 'nullable|string|max:1000',
+            'admin_note' => 'nullable|string|max:1000',
         ]);
 
-        /** @var \App\Models\User $admin */
+        /** @var User $admin */
         $admin = $request->user();
 
         $report->update([
-            'status'       => ReportStatus::Resolved->value,
-            'admin_id'     => $admin->id,
+            'status' => ReportStatus::Resolved->value,
+            'admin_id' => $admin->id,
             'admin_action' => $request->input('admin_action'),
-            'admin_note'   => $request->input('admin_note'),
-            'resolved_at'  => now(),
+            'admin_note' => $request->input('admin_note'),
+            'resolved_at' => now(),
         ]);
 
         // ── Side effects based on admin action ──────────────────────────
@@ -102,13 +107,18 @@ class AdminReportController extends BaseController
             $report->ad->delete();
         }
 
-        if ($action === AdminAction::UserBanned && $report->ad?->user) {
-            $report->ad->user->update(['is_active' => false]);
+        if ($action === AdminAction::UserBanned) {
+            $reportedUser = $report->reportedUser ?? $report->ad?->user;
+            $reportedUser?->update(['is_active' => false]);
         }
 
         return $this->successResponse(
-            new AdminReportResource($report->fresh()),
-            'تم معالجة البلاغ بنجاح.'
+            new AdminReportResource($report->fresh()->load([
+                'reporter', 'reportedUser' => fn ($q) => $q->withTrashed(),
+                'ad' => fn ($q) => $q->withTrashed()->with(['images', 'user', 'category']),
+                'admin',
+            ])),
+            'تم معالجة البلاغ بنجاح.',
         );
     }
 
@@ -119,20 +129,24 @@ class AdminReportController extends BaseController
      */
     public function dismiss(Request $request, Report $report): JsonResponse
     {
-        /** @var \App\Models\User $admin */
+        /** @var User $admin */
         $admin = $request->user();
 
         $report->update([
-            'status'       => ReportStatus::Dismissed->value,
-            'admin_id'     => $admin->id,
+            'status' => ReportStatus::Dismissed->value,
+            'admin_id' => $admin->id,
             'admin_action' => AdminAction::NoAction->value,
-            'admin_note'   => $request->input('admin_note', 'بلاغ غير صحيح'),
-            'resolved_at'  => now(),
+            'admin_note' => $request->input('admin_note', 'بلاغ غير صحيح'),
+            'resolved_at' => now(),
         ]);
 
         return $this->successResponse(
-            new AdminReportResource($report->fresh()),
-            'تم رفض البلاغ.'
+            new AdminReportResource($report->fresh()->load([
+                'reporter', 'reportedUser' => fn ($q) => $q->withTrashed(),
+                'ad' => fn ($q) => $q->withTrashed()->with(['images', 'user', 'category']),
+                'admin',
+            ])),
+            'تم رفض البلاغ.',
         );
     }
 }

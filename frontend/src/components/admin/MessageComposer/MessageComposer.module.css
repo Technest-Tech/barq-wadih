@@ -1,0 +1,149 @@
+.overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  direction: rtl;
+}
+
+.modal {
+  background: var(--admin-surface); border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  width: 100%; max-width: 560px; max-height: 90vh;
+  display: flex; flex-direction: column;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 20px; border-bottom: 1px solid var(--admin-border);
+}
+.title { font-size: 16px; font-weight: 800; color: var(--admin-text); }
+.close {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  border: none; background: var(--admin-surface-hover); color: var(--admin-text-secondary);
+  cursor: pointer; font-size: 13px;
+}
+.close:hover { color: var(--admin-text); }
+.close:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+
+.field { display: flex; flex-direction: column; gap: 8px; }
+.label {
+  font-size: 13px; font-weight: 600; color: var(--admin-text-secondary);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.optional { font-weight: 400; color: var(--admin-text-muted); }
+.counter { font-size: 11px; font-weight: 500; color: var(--admin-text-muted); }
+.hint { font-size: 12px; color: var(--admin-text-muted); line-height: 1.6; }
+
+.input, .textarea {
+  width: 100%; padding: 10px 12px; font-family: inherit; font-size: 13px;
+  background: var(--admin-bg); color: var(--admin-text);
+  border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm);
+  transition: border-color 0.2s;
+}
+.input:focus, .textarea:focus { outline: none; border-color: var(--admin-accent); }
+.textarea { resize: vertical; line-height: 1.8; min-height: 96px; }
+
+/* ── Audience segmented control ──────────────────────────────────────────── */
+.segmented {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--admin-bg); border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+}
+.segment {
+  flex: 1; padding: 8px 12px; font-family: inherit; font-size: 13px; font-weight: 600;
+  border: none; background: transparent; color: var(--admin-text-secondary);
+  border-radius: calc(var(--admin-radius-sm) - 2px); cursor: pointer; transition: all 0.2s;
+}
+.segment:hover { color: var(--admin-text); }
+.segmentActive { background: var(--admin-accent); color: #fff; }
+.segmentActive:hover { color: #fff; }
+
+/* ── User search results ─────────────────────────────────────────────────── */
+.results {
+  border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm);
+  background: var(--admin-bg); max-height: 220px; overflow-y: auto;
+}
+.resultEmpty { padding: 14px; font-size: 12px; color: var(--admin-text-muted); text-align: center; }
+
+.result {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border: none; background: transparent; cursor: pointer;
+  font-family: inherit; text-align: start;
+  border-bottom: 1px solid var(--admin-border); transition: background 0.15s;
+}
+.result:last-child { border-bottom: none; }
+.result:hover { background: var(--admin-surface-hover); }
+.resultPicked { background: rgba(99, 102, 241, 0.08); }
+
+.resultAvatar {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--admin-accent), #a855f7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+}
+.resultInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.resultName {
+  font-size: 13px; font-weight: 600; color: var(--admin-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.resultMeta { font-size: 11px; color: var(--admin-text-muted); }
+.resultTick { font-size: 14px; font-weight: 700; color: var(--admin-accent); flex-shrink: 0; }
+
+/* ── Picked chips ────────────────────────────────────────────────────────── */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  background: rgba(99, 102, 241, 0.12); color: var(--admin-accent);
+}
+.chip button {
+  border: none; background: none; cursor: pointer; padding: 0;
+  color: inherit; font-size: 11px; line-height: 1; opacity: 0.75;
+}
+.chip button:hover { opacity: 1; }
+
+/* ── Preview ─────────────────────────────────────────────────────────────── */
+.preview { display: flex; flex-direction: column; gap: 8px; }
+.previewLabel { font-size: 12px; font-weight: 600; color: var(--admin-text-muted); }
+.previewCard {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
+  background: var(--admin-bg); border: 1px dashed var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+}
+.previewIcon { font-size: 16px; flex-shrink: 0; }
+.previewText { min-width: 0; }
+.previewTitle {
+  font-size: 13px; font-weight: 700; color: var(--admin-text);
+  margin-bottom: 3px; word-break: break-word;
+}
+.previewBody {
+  font-size: 12px; line-height: 1.7; color: var(--admin-text-secondary);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 16px 20px; border-top: 1px solid var(--admin-border);
+}
+.cancelBtn, .sendBtn {
+  padding: 9px 20px; font-family: inherit; font-size: 13px; font-weight: 600;
+  border-radius: var(--admin-radius-sm); cursor: pointer; transition: all 0.2s;
+}
+.cancelBtn {
+  border: 1px solid var(--admin-border); background: transparent;
+  color: var(--admin-text-secondary);
+}
+.cancelBtn:hover { background: var(--admin-surface-hover); color: var(--admin-text); }
+.sendBtn { border: 1px solid var(--admin-accent); background: var(--admin-accent); color: #fff; }
+.sendBtn:hover:not(:disabled) { background: var(--admin-accent-hover); }
+.cancelBtn:disabled, .sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 520px) {
+  .overlay { padding: 0; }
+  .modal { max-width: none; height: 100%; max-height: 100%; border-radius: 0; }
+}

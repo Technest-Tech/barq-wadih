@@ -1,6 +1,8 @@
 // ── Server-side fetchers — Sprint 18 ──────────────────────────────────────
 // Used by Server Components for SSR data fetching (no Axios/client state).
 
+import type { SellerProfile } from './users';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
 interface ApiResponse<T> {
@@ -43,6 +45,31 @@ export async function fetchAdServer(id: string | number): Promise<AdServerData |
     if (!res.ok) return null;
 
     const json: ApiResponse<AdServerData> = await res.json();
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch a public seller profile for SSR — used for Open Graph metadata on the
+ * shareable /@{handle} link, which social crawlers read without running JS.
+ *
+ * `ref` is either a numeric id ("42") or a handle prefixed with "@"
+ * ("@ahmd_aamr"); the API resolves both on the same route. It goes into the
+ * path unescaped — "@" is a legal path character and Laravel matches on the
+ * raw segment — so callers must validate its shape first.
+ */
+export async function fetchSellerProfileServer(ref: string): Promise<SellerProfile | null> {
+  try {
+    const res = await fetch(`${API_BASE}/v1/users/${ref}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!res.ok) return null;
+
+    const json: ApiResponse<SellerProfile> = await res.json();
     return json.data ?? null;
   } catch {
     return null;

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/biometric_service.dart';
 import '../../../../core/services/fcm_service.dart';
+import '../../../../core/services/marketing_tracking_service.dart';
 import '../../../notifications/data/notification_providers.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/auth_user.dart';
@@ -69,6 +73,7 @@ class AuthNotifier extends Notifier<AuthState> {
       state = const AuthLoading();
       final user = await _repo.me();
       state = AuthAuthenticated(user);
+      unawaited(ref.read(marketingTrackingProvider).identify(user));
       // Re-register FCM token on each app start when already authenticated.
       FCMService.instance.registerToken(
         ref.read(notificationRepositoryProvider),
@@ -105,6 +110,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await _repo.login(email: email, password: password);
       await _storage.write(key: _kAuthToken, value: result.token);
       state = AuthAuthenticated(result.user);
+      unawaited(ref.read(marketingTrackingProvider).identify(result.user));
+      unawaited(
+        ref.read(marketingTrackingProvider).track(MarketingEvent.login),
+      );
       FCMService.instance.registerToken(
         ref.read(notificationRepositoryProvider),
       );
@@ -178,6 +187,10 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       await _storage.write(key: _kAuthToken, value: result.token);
       state = AuthAuthenticated(result.user);
+      unawaited(ref.read(marketingTrackingProvider).identify(result.user));
+      unawaited(
+        ref.read(marketingTrackingProvider).track(MarketingEvent.registration),
+      );
       FCMService.instance.registerToken(
         ref.read(notificationRepositoryProvider),
       );
@@ -196,6 +209,10 @@ class AuthNotifier extends Notifier<AuthState> {
       // Save credentials so fingerprint login works on subsequent sign-ins.
       await _saveBiometricCredentials(email, password);
       state = AuthAuthenticated(result.user);
+      unawaited(ref.read(marketingTrackingProvider).identify(result.user));
+      unawaited(
+        ref.read(marketingTrackingProvider).track(MarketingEvent.login),
+      );
       FCMService.instance.registerToken(
         ref.read(notificationRepositoryProvider),
       );
@@ -220,6 +237,14 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       await _storage.write(key: _kAuthToken, value: result.token);
       state = AuthAuthenticated(result.user);
+      unawaited(ref.read(marketingTrackingProvider).identify(result.user));
+      unawaited(
+        ref
+            .read(marketingTrackingProvider)
+            .track(
+              result.isNew ? MarketingEvent.registration : MarketingEvent.login,
+            ),
+      );
       FCMService.instance.registerToken(
         ref.read(notificationRepositoryProvider),
       );
@@ -231,6 +256,7 @@ class AuthNotifier extends Notifier<AuthState> {
   // ── Logout ────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
+    await ref.read(marketingTrackingProvider).logout();
     await FCMService.instance.deregisterToken(
       ref.read(notificationRepositoryProvider),
     );
@@ -240,12 +266,35 @@ class AuthNotifier extends Notifier<AuthState> {
     state = const AuthUnauthenticated();
   }
 
+  /// Permanently deletes the backend account and all public content, then
+  /// removes local credentials so the deleted identity cannot sign in again.
+  Future<void> deleteAccount() async {
+    try {
+      await FCMService.instance.deregisterToken(
+        ref.read(notificationRepositoryProvider),
+      );
+    } catch (_) {
+      // Account deletion must remain available even when push is unreachable.
+    }
+
+    await _repo.deleteAccount();
+    await ref.read(marketingTrackingProvider).logout();
+    await _clearBiometricCredentials();
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {
+      // The server deletion is authoritative.
+    }
+    state = const AuthUnauthenticated();
+  }
+
   void clearError() {
     if (state is AuthError) state = const AuthUnauthenticated();
   }
 
   void refreshUser(AuthUser user) {
     state = AuthAuthenticated(user);
+    unawaited(ref.read(marketingTrackingProvider).identify(user));
   }
 }
 

@@ -2,19 +2,30 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    function isConversationParticipant(conversationId) {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/conversations/$(conversationId))
+        && request.auth.uid in firestore.get(
+          /databases/(default)/documents/conversations/$(conversationId)
+        ).data.participantUids;
+    }
+
     // Chat images — only authenticated participants can upload/read
     match /chat_images/{conversationId}/{fileName} {
-      allow read:  if request.auth != null;
-      allow write: if request.auth != null
+      allow read: if isConversationParticipant(conversationId);
+      allow create, update: if isConversationParticipant(conversationId)
         && request.resource.size < 10 * 1024 * 1024  // 10 MB max
         && request.resource.contentType.matches('image/.*');
+      allow delete: if isConversationParticipant(conversationId);
     }
 
     // Chat voice messages — only authenticated participants can upload/read
     match /chat_voice/{conversationId}/{fileName} {
-      allow read:  if request.auth != null;
-      allow write: if request.auth != null
-        && request.resource.size < 20 * 1024 * 1024;  // 20 MB max
+      allow read: if isConversationParticipant(conversationId);
+      allow create, update: if isConversationParticipant(conversationId)
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*|video/webm');
+      allow delete: if isConversationParticipant(conversationId);
     }
   }
 }

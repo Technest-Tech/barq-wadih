@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../features/notifications/data/notification_repository.dart';
@@ -14,6 +15,9 @@ Future<void> _onFcmBackgroundMessage(RemoteMessage message) async {}
 
 const _channelId = 'barqwadih_main';
 const _channelName = 'إشعارات برق وديه';
+
+/// Native side of the app-icon badge (see ios/Runner/AppDelegate.swift).
+const _badgeChannel = MethodChannel('com.barqwadih.app/push_registration');
 
 /// Singleton that wires together FCM push delivery and local notification
 /// display, token lifecycle management, and tap-to-navigate routing.
@@ -27,21 +31,40 @@ class FCMService {
   FCMService._();
   static final FCMService instance = FCMService._();
 
-  final _messaging = FirebaseMessaging.instance;
+  // Resolved on demand, not in the constructor: FirebaseMessaging.instance
+  // throws until Firebase.initializeApp() has run, and the badge helpers below
+  // touch neither Firebase nor the network. Building the singleton must not
+  // depend on a Firebase that may not be up yet.
+  FirebaseMessaging get _messaging => FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   StreamSubscription<String>? _tokenRefreshSub;
-  bool _isRegistered = false;
 
   /// Listen to this notifier to drive notification-tap navigation.
   /// Set back to null after consuming the value.
   static final pendingRoute = ValueNotifier<String?>(null);
+
+  /// Bumped once per inbound push. Listen to it to refresh anything derived
+  /// from the notification table — the unread bell badge above all, which
+  /// would otherwise stay stale until the next screen rebuild.
+  static final inboundPush = ValueNotifier<int>(0);
 
   // ── Initialisation ────────────────────────────────────────────────────────
 
   Future<void> init() async {
     // Register the top-level background handler first.
     FirebaseMessaging.onBackgroundMessage(_onFcmBackgroundMessage);
+
+    // iOS suppresses notification banners while the app is in the foreground
+    // unless presentation is enabled explicitly. Let APNs present the remote
+    // notification natively; Android continues to use the local channel below.
+    if (Platform.isIOS) {
+      await _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
 
     // Create Android high-importance notification channel.
     if (Platform.isAndroid) {
@@ -104,36 +127,106 @@ class FCMService {
   /// Request permission and register the FCM token with the backend.
   /// Call after every successful login / register.
   Future<void> registerToken(NotificationRepository repo) async {
-    _isRegistered = false;
     await _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
 
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
+    // Every call site fires this un-awaited, so a throw here would surface as
+    // an unhandled async error and be swallowed in release.
+    final NotificationSettings settings;
+    try {
+      settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint('FCMService: permission request failed — $e');
+      return;
+    }
+    debugPrint(
+      'FCMService: notification authorization — '
+      '${settings.authorizationStatus.name}',
     );
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
-    final token = await _messaging.getToken();
-    if (token != null) await _register(token, repo);
-
-    // Keep the backend in sync when FCM rotates the token.
+    // Subscribe *before* fetching. On iOS the first getToken() can come up
+    // empty while APNs registration is still in flight, and the token then
+    // only ever arrives through this stream — so it has to be listening
+    // already, and it must register unconditionally rather than only when an
+    // earlier attempt succeeded.
     _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) {
-      if (_isRegistered) _register(newToken, repo);
+      _register(newToken, repo);
     });
+
+    final token = await _fetchToken();
+    if (token != null) await _register(token, repo);
+  }
+
+  /// Resolve the FCM token, tolerating the iOS APNs handshake.
+  ///
+  /// iOS cannot mint an FCM token until Apple has handed back an APNs token —
+  /// a network round-trip that is usually still running when we are called
+  /// right after login. Calling getToken() before it lands throws
+  /// `firebase_messaging/apns-token-not-set`, so wait for APNs first and
+  /// swallow the failure if it never comes; onTokenRefresh picks it up later.
+  Future<String?> _fetchToken() async {
+    if (Platform.isIOS) {
+      for (var attempt = 0; attempt < 10; attempt++) {
+        try {
+          if (await _messaging.getAPNSToken() != null) break;
+        } catch (_) {
+          // Keep waiting — a throw here means APNs is not ready yet.
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+    }
+    try {
+      return await _messaging.getToken();
+    } catch (e) {
+      debugPrint('FCMService: getToken failed, awaiting onTokenRefresh — $e');
+      return null;
+    }
   }
 
   /// Deactivate the device token on the backend then clear state.
   /// Call just before logout.
   Future<void> deregisterToken(NotificationRepository repo) async {
-    _isRegistered = false;
     await _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
     try {
       final token = await _messaging.getToken();
       if (token != null) await repo.deactivateDevice(token);
     } catch (_) {}
+  }
+
+  // ── App-icon badge ────────────────────────────────────────────────────────
+
+  /// Set the app-icon badge to [count].
+  ///
+  /// The push payload carries a badge number, but only a *new* push can move
+  /// it — reading notifications inside the app has to reset it from here, or
+  /// the icon keeps advertising notifications the user has already seen.
+  Future<void> setAppBadge(int count) async {
+    if (Platform.isIOS) {
+      try {
+        await _badgeChannel.invokeMethod<void>('setBadgeCount', {
+          'count': count,
+        });
+      } catch (e) {
+        debugPrint('FCMService: setBadgeCount failed — $e');
+      }
+      return;
+    }
+
+    // Android launchers derive their badge from the delivered notifications,
+    // so clearing the tray is what clears the dot.
+    if (count == 0) {
+      try {
+        await _localNotifications.cancelAll();
+      } catch (e) {
+        debugPrint('FCMService: cancelAll failed — $e');
+      }
+    }
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
@@ -144,15 +237,28 @@ class FCMService {
         fcmToken: token,
         deviceType: Platform.isIOS ? 'ios' : 'android',
       );
-      _isRegistered = true;
-    } catch (_) {
-      _isRegistered = false;
+    } catch (e) {
+      debugPrint('FCMService: device registration failed — $e');
     }
   }
 
   void _showForegroundNotification(RemoteMessage message) {
+    debugPrint(
+      'FCMService: foreground message received — '
+      'id=${message.messageId}, type=${message.data['type']}',
+    );
+    // Announce it before any early return below, so the bell badge refreshes
+    // even on iOS where the banner is presented natively.
+    inboundPush.value++;
     final n = message.notification;
-    if (n == null) return;
+    if (n == null) {
+      debugPrint('FCMService: message has no notification payload');
+      return;
+    }
+
+    // Native foreground presentation is enabled in init() on iOS. Posting a
+    // second local notification here would create duplicate banners.
+    if (Platform.isIOS) return;
 
     _localNotifications.show(
       n.hashCode,
@@ -187,8 +293,9 @@ class FCMService {
         if (d['ad_id'] != null) return '/ads/${d['ad_id']}';
         return '/notifications';
       case 'chat':
-        if (d['conversation_id'] != null)
+        if (d['conversation_id'] != null) {
           return '/messages/${d['conversation_id']}';
+        }
         return '/messages';
       case 'rating':
         if (d['ad_id'] != null) return '/ads/${d['ad_id']}';

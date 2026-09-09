@@ -17,6 +17,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
+  bool _acceptedTerms = false;
 
   @override
   void dispose() {
@@ -26,6 +27,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _login() async {
+    if (!_acceptedTerms) {
+      _showError('يجب قراءة الشروط والأحكام والموافقة عليها قبل تسجيل الدخول');
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     await ref
         .read(authProvider.notifier)
@@ -41,6 +46,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _loginWithFingerprint() async {
+    if (!_acceptedTerms) {
+      _showError('يجب قراءة الشروط والأحكام والموافقة عليها قبل تسجيل الدخول');
+      return;
+    }
     await ref.read(authProvider.notifier).loginWithBiometrics();
     if (!mounted) return;
     final authState = ref.read(authProvider);
@@ -134,6 +143,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTermsAcceptance() {
+    const linkStyle = TextStyle(
+      color: AppTheme.primaryBlue,
+      fontWeight: FontWeight.w700,
+      fontSize: 13,
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: _acceptedTerms,
+            activeColor: AppTheme.primaryBlue,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+            onChanged: (value) =>
+                setState(() => _acceptedTerms = value ?? false),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'قرأت وأوافق على ',
+                style: TextStyle(
+                  color: AppTheme.neutralGray600,
+                  fontSize: 13,
+                  height: 1.6,
+                ),
+              ),
+              InkWell(
+                onTap: () => context.push('/terms-of-service'),
+                child: const Text('الشروط والأحكام', style: linkStyle),
+              ),
+              const Text(
+                ' و',
+                style: TextStyle(color: AppTheme.neutralGray600, fontSize: 13),
+              ),
+              InkWell(
+                onTap: () => context.push('/privacy-policy'),
+                child: const Text('سياسة الخصوصية', style: linkStyle),
+              ),
+            ],
           ),
         ),
       ],
@@ -244,6 +308,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      _buildTermsAcceptance(),
                       const SizedBox(height: 20),
                       _AuthButton(
                         label: 'دخول',

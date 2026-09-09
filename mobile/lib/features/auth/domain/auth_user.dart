@@ -3,6 +3,13 @@
 class AuthUser {
   final int id;
   final String name;
+
+  /// Public @handle (without the "@"), e.g. "ahmd_aamr".
+  final String? username;
+
+  /// Canonical shareable link — https://barqwadih.com/@ahmd_aamr.
+  final String? profileUrl;
+
   final String? email;
   final String? phone;
   final String? avatarUrl;
@@ -23,6 +30,8 @@ class AuthUser {
   const AuthUser({
     required this.id,
     required this.name,
+    this.username,
+    this.profileUrl,
     this.email,
     this.phone,
     this.avatarUrl,
@@ -43,24 +52,26 @@ class AuthUser {
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
-      id:                          json['id'] as int,
-      name:                        json['name'] as String,
-      email:                       json['email'] as String?,
-      phone:                       json['phone'] as String?,
-      avatarUrl:                   json['avatar_url'] as String?,
-      bio:                         json['bio'] as String?,
-      role:                        json['role'] as String,
-      locale:                      json['locale'] as String,
-      isVerified:                  json['is_verified'] as bool? ?? false,
-      isDealer:                    json['is_dealer'] as bool? ?? false,
-      isActive:                    json['is_active'] as bool? ?? true,
-      avgRating:                   json['avg_rating'] as String? ?? '0',
-      ratingCount:                 json['rating_count'] as int? ?? 0,
-      totalAdsCount:               json['total_ads_count'] as int? ?? 0,
-      unreadNotificationsCount:    json['unread_notifications_count'] as int? ?? 0,
-      phoneVerifiedAt:             json['phone_verified_at'] as String?,
-      emailVerifiedAt:             json['email_verified_at'] as String?,
-      createdAt:                   json['created_at'] as String? ?? '',
+      id: json['id'] as int,
+      name: json['name'] as String,
+      username: json['username'] as String?,
+      profileUrl: json['profile_url'] as String?,
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      avatarUrl: json['avatar_url'] as String?,
+      bio: json['bio'] as String?,
+      role: json['role'] as String,
+      locale: json['locale'] as String,
+      isVerified: json['is_verified'] as bool? ?? false,
+      isDealer: json['is_dealer'] as bool? ?? false,
+      isActive: json['is_active'] as bool? ?? true,
+      avgRating: json['avg_rating'] as String? ?? '0',
+      ratingCount: json['rating_count'] as int? ?? 0,
+      totalAdsCount: json['total_ads_count'] as int? ?? 0,
+      unreadNotificationsCount: json['unread_notifications_count'] as int? ?? 0,
+      phoneVerifiedAt: json['phone_verified_at'] as String?,
+      emailVerifiedAt: json['email_verified_at'] as String?,
+      createdAt: json['created_at'] as String? ?? '',
     );
   }
 

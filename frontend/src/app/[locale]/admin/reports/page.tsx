@@ -15,6 +15,9 @@ const ACTION_OPTIONS = [
   { value: 'user_banned', label: 'حظر المستخدم' },
 ];
 
+const reportTarget = (report: AdminReport) =>
+  report.ad?.title || report.reported_user?.name || 'محتوى غير متاح';
+
 export default function AdminReportsPage() {
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, per_page: 20, total: 0 });
@@ -70,7 +73,7 @@ export default function AdminReportsPage() {
           <div className={s.modal} onClick={e => e.stopPropagation()}>
             <h3 className={s.modalTitle}>⚖️ معالجة البلاغ</h3>
             <p className={s.modalBody}>
-              البلاغ على: &quot;{resolveModal.ad?.title || '—'}&quot;<br />
+              البلاغ على: &quot;{reportTarget(resolveModal)}&quot;<br />
               السبب: {REASON_LABELS[resolveModal.reason] || resolveModal.reason}
               {resolveModal.description && <><br/>التفاصيل: {resolveModal.description}</>}
             </p>
@@ -122,7 +125,7 @@ export default function AdminReportsPage() {
           <div className={s.tableWrap}>
             <table className={s.table}>
               <thead><tr>
-                <th>المُبلّغ</th><th>الإعلان</th><th>السبب</th><th>التفاصيل</th>
+                <th>المُبلّغ</th><th>المحتوى أو المستخدم</th><th>السبب</th><th>التفاصيل</th>
                 <th>الحالة</th><th>الإجراء</th><th>التاريخ</th><th>إجراءات</th>
               </tr></thead>
               <tbody>
@@ -137,7 +140,7 @@ export default function AdminReportsPage() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {r.ad?.primary_image && <img src={r.ad.primary_image} alt="" className={s.thumbnail} style={{ width: 36, height: 36 }} />}
-                        <span style={{ color: 'var(--admin-text)', fontWeight: 600 }}>{r.ad?.title || '—'}</span>
+                        <span style={{ color: 'var(--admin-text)', fontWeight: 600 }}>{reportTarget(r)}</span>
                       </div>
                     </td>
                     <td><span className={`${s.badge} ${s.yellow}`}>{REASON_LABELS[r.reason] || r.reason}</span></td>

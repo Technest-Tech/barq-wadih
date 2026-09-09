@@ -1,23 +1,28 @@
 // lib/features/ads/presentation/screens/ad_detail_screen.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/marketing_tracking_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/presentation/report_sheet.dart';
-import '../../../ratings/data/rating_providers.dart';
-import '../../../ratings/domain/rating_model.dart';
-import '../../../ratings/presentation/widgets/rating_submit_sheet.dart';
+import '../../../questions/presentation/widgets/ad_comments_section.dart';
 import '../../../favorites/data/favorite_repository.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
 import '../widgets/contact_sheet.dart';
+import '../widgets/ad_image_gallery.dart';
+import '../widgets/dealer_vehicle_commission_notice.dart';
 import '../widgets/sold_fee_sheet.dart';
+import '../../../../core/widgets/app_cached_image.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 // ── Related ads provider ──────────────────────────────────────────────────────
 
@@ -38,7 +43,9 @@ final relatedAdsProvider =
 
 class AdDetailScreen extends ConsumerStatefulWidget {
   final int adId;
-  const AdDetailScreen({super.key, required this.adId});
+  final AdImageModel? previewImage;
+
+  const AdDetailScreen({super.key, required this.adId, this.previewImage});
 
   @override
   ConsumerState<AdDetailScreen> createState() => _AdDetailScreenState();
@@ -74,6 +81,19 @@ class _AdDetailScreenState extends ConsumerState<AdDetailScreen> {
           .toggleFavorite(widget.adId);
       ref.invalidate(favoritesListProvider);
       if (mounted) setState(() => _isFavorite = newStatus);
+      if (newStatus) {
+        unawaited(
+          ref
+              .read(marketingTrackingProvider)
+              .track(
+                MarketingEvent.addToWishlist,
+                properties: {
+                  'content_id': widget.adId.toString(),
+                  'content_type': 'product',
+                },
+              ),
+        );
+      }
     } catch (_) {
     } finally {
       if (mounted) setState(() => _toggling = false);
@@ -90,7 +110,8 @@ class _AdDetailScreenState extends ConsumerState<AdDetailScreen> {
         isFavorite: _isFavorite ?? false,
         onToggleFavorite: _toggleFavorite,
       ),
-      loading: () => const _DetailSkeleton(),
+      loading: () =>
+          _DetailSkeleton(adId: widget.adId, previewImage: widget.previewImage),
       error: (err, _) => _ErrorScaffold(
         onRetry: () => ref.invalidate(adDetailProvider(widget.adId)),
       ),
@@ -117,13 +138,37 @@ class _HarajDetailScaffold extends ConsumerStatefulWidget {
 }
 
 class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
-  final _pageController = PageController();
-  int _currentImageIndex = 0;
-
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Warm the next stacked photo while recording the detail view.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        ref
+            .read(marketingTrackingProvider)
+            .track(
+              MarketingEvent.viewContent,
+              properties: {
+                'content_id': widget.ad.id.toString(),
+                'content_name': widget.ad.title,
+                if (widget.ad.category != null)
+                  'content_category': widget.ad.category!.nameAr,
+                'content_type': 'product',
+                if (widget.ad.price != null) 'value': widget.ad.price,
+                if (widget.ad.price != null) 'currency': 'SAR',
+              },
+            ),
+      );
+      if (widget.ad.images.length < 2) return;
+      unawaited(
+        precacheAppImage(
+          context,
+          widget.ad.images[1].imageUrl,
+          memCacheWidth: 1280,
+        ).catchError((_) {}),
+      );
+    });
   }
 
   void _openContactSheet() {
@@ -135,37 +180,34 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
     );
   }
 
-  void _openRatingSheet() {
-    if (widget.ad.user == null) return;
-    showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => RatingSubmitSheet(
-        adId: widget.ad.id,
-        sellerName: widget.ad.user!.name,
-      ),
-    ).then((submitted) {
-      if (submitted == true) {
-        ref.invalidate(adRatingsProvider(widget.ad.id));
-        if (widget.ad.user != null) {
-          ref.invalidate(userRatingSummaryProvider(widget.ad.user!.id));
-        }
-      }
-    });
-  }
+  Future<void> _share() async {
+    final link = AppConstants.adWebUrl(widget.ad.id);
+    final text =
+        '${widget.ad.title}\n${widget.ad.priceDisplay}\n$link\nبرق واضح';
 
-  void _share() {
-    final text = '${widget.ad.title}\n${widget.ad.priceDisplay}\nبرق واضح';
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم نسخ رابط الإعلان'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    // iPad needs an anchor rect for the share popover.
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
+    try {
+      await Share.share(
+        text,
+        subject: widget.ad.title,
+        sharePositionOrigin: origin,
+      );
+    } catch (_) {
+      // No share targets available — fall back to the clipboard.
+      await Clipboard.setData(ClipboardData(text: text));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم نسخ رابط الإعلان'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   String _formatMemberSince(DateTime? dt) {
@@ -232,13 +274,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
         body: SingleChildScrollView(
           child: Column(
             children: [
-              // Image Carousel
-              _ImageCarousel(
-                images: ad.images,
-                controller: _pageController,
-                currentIndex: _currentImageIndex,
-                onPageChanged: (i) => setState(() => _currentImageIndex = i),
-              ),
+              AdImageGallery(adId: ad.id, images: ad.images),
 
               // Title + Price + Meta
               Container(
@@ -273,7 +309,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                                 : const Color(0xFF0075C4),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Text(
+                          child: RiyalText(
                             ad.priceDisplay,
                             style: const TextStyle(
                               color: Colors.white,
@@ -290,17 +326,17 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: .12),
+                              color: Colors.red.withValues(alpha: .12),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Colors.orange.withValues(alpha: .4),
+                                color: Colors.red.withValues(alpha: .4),
                               ),
                             ),
                             child: const Text(
                               'على السوم',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.orange,
+                                color: Colors.red,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -572,6 +608,9 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 ),
               ),
 
+              if (ad.isVehicleCategory && (ad.user?.isDealer ?? false))
+                const DealerVehicleCommissionNotice(),
+
               // Disclaimer
               Container(
                 width: double.infinity,
@@ -580,14 +619,14 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                   horizontal: 16,
                   vertical: 12,
                 ),
-                color: const Color(0xFFFFF8E1),
+                color: const Color(0xFFFFEBEE),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(
                       Icons.info_outline,
                       size: 16,
-                      color: Color(0xFFF57F17),
+                      color: Color(0xFFD32F2F),
                     ),
                     const SizedBox(width: 8),
                     const Expanded(
@@ -596,7 +635,7 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                         textDirection: TextDirection.rtl,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFFF57F17),
+                          color: Color(0xFFD32F2F),
                           fontWeight: FontWeight.w600,
                           height: 1.5,
                         ),
@@ -647,8 +686,8 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                 ),
               ),
 
-              // Ratings & Reviews Section
-              _RatingsSection(ad: ad, onWriteReview: _openRatingSheet),
+              // Comments Section
+              AdCommentsSection(adId: ad.id, sellerId: ad.user?.id),
 
               // Related Ads Section
               if (ad.category != null)
@@ -665,7 +704,10 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
 
         // ── Bottom Navigation Bar ──────────────────────────────────────
         bottomNavigationBar: Container(
-          height: 70,
+          // Keep the 70pt action area above the home indicator. A fixed 70pt
+          // total height left only ~36pt for the row on Face ID devices,
+          // clipping the icon labels and triggering a RenderFlex overflow.
+          height: 70 + MediaQuery.paddingOf(context).bottom,
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
@@ -724,111 +766,6 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
   }
 }
 
-// ── Image Carousel ────────────────────────────────────────────────────────────
-
-class _ImageCarousel extends StatelessWidget {
-  final List<AdImageModel> images;
-  final PageController controller;
-  final int currentIndex;
-  final ValueChanged<int> onPageChanged;
-
-  const _ImageCarousel({
-    required this.images,
-    required this.controller,
-    required this.currentIndex,
-    required this.onPageChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (images.isEmpty) {
-      return Container(
-        height: 280,
-        color: Colors.grey[200],
-        child: const Center(
-          child: Icon(Icons.image, size: 64, color: Colors.grey),
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 300,
-      child: Stack(
-        children: [
-          // Swipeable pages
-          PageView.builder(
-            controller: controller,
-            onPageChanged: onPageChanged,
-            itemCount: images.length,
-            itemBuilder: (context, i) => CachedNetworkImage(
-              imageUrl: AppConstants.normalizeImageUrl(images[i].imageUrl),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              placeholder: (_, __) => Container(color: Colors.grey[200]),
-              errorWidget: (_, __, ___) => Container(
-                color: Colors.grey[200],
-                child: const Center(
-                  child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                ),
-              ),
-            ),
-          ),
-
-          // Counter badge
-          Positioned(
-            top: 12,
-            left: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${currentIndex + 1} / ${images.length}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-
-          // Dot indicators
-          if (images.length > 1)
-            Positioned(
-              bottom: 12,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(images.length > 8 ? 8 : images.length, (
-                  i,
-                ) {
-                  final displayIndex = images.length > 8
-                      ? currentIndex.clamp(0, 7)
-                      : currentIndex;
-                  final isActive = i == displayIndex;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: isActive ? 16 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: isActive ? Colors.white : Colors.white54,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  );
-                }),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Field Value Chip ──────────────────────────────────────────────────────────
 
 class _FieldValueChip extends StatelessWidget {
@@ -868,341 +805,6 @@ class _FieldValueChip extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Ratings & Reviews Section ─────────────────────────────────────────────────
-
-class _RatingsSection extends ConsumerWidget {
-  final AdDetailModel ad;
-  final VoidCallback onWriteReview;
-
-  const _RatingsSection({required this.ad, required this.onWriteReview});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ratingsAsync = ref.watch(adRatingsProvider(ad.id));
-
-    return Container(
-      color: Colors.white,
-      margin: const EdgeInsets.only(top: 2),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      color: Color(0xFFFFC107),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 6),
-                    const Flexible(
-                      child: Text(
-                        'التقييمات والآراء',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.neutralGray800,
-                        ),
-                      ),
-                    ),
-                    if ((ad.user?.ratingCount ?? 0) > 0) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '(${ad.user!.ratingCount})',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.neutralGray500,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              // Write review button
-              if (ad.user != null)
-                GestureDetector(
-                  onTap: onWriteReview,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0075C4),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.edit, size: 14, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          'اكتب تقييم',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Average rating summary
-          if ((ad.user?.avgRating ?? 0) > 0) ...[
-            _RatingSummaryRow(
-              avgRating: ad.user!.avgRating!,
-              ratingCount: ad.user!.ratingCount ?? 0,
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-          ],
-
-          // Ratings list
-          ratingsAsync.when(
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(
-                  color: Color(0xFF0075C4),
-                  strokeWidth: 2,
-                ),
-              ),
-            ),
-            error: (e, _) => Center(
-              child: Column(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 32),
-                  const SizedBox(height: 8),
-                  Text(
-                    'تعذر تحميل التقييمات',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  ),
-                  TextButton(
-                    onPressed: () => ref.invalidate(adRatingsProvider(ad.id)),
-                    child: const Text('إعادة المحاولة'),
-                  ),
-                ],
-              ),
-            ),
-            data: (ratings) {
-              if (ratings.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.star_outline,
-                          size: 48,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'لا توجد تقييمات بعد\nكن أول من يقيّم هذا الإعلان',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                children: ratings
-                    .take(3)
-                    .map((r) => _RatingCard(rating: r))
-                    .toList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Rating Summary Row ────────────────────────────────────────────────────────
-
-class _RatingSummaryRow extends StatelessWidget {
-  final double avgRating;
-  final int ratingCount;
-  const _RatingSummaryRow({required this.avgRating, required this.ratingCount});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          avgRating.toStringAsFixed(1),
-          style: const TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF0A1628),
-            height: 1,
-          ),
-        ),
-        const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: List.generate(
-                5,
-                (i) => Icon(
-                  i < avgRating.round()
-                      ? Icons.star_rounded
-                      : Icons.star_outline_rounded,
-                  color: const Color(0xFFFFC107),
-                  size: 20,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$ratingCount تقييم',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.neutralGray500,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// ── Rating Card ───────────────────────────────────────────────────────────────
-
-class _RatingCard extends StatelessWidget {
-  final RatingModel rating;
-  const _RatingCard({required this.rating});
-
-  String _timeAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inDays == 0) return 'اليوم';
-    if (diff.inDays == 1) return 'أمس';
-    if (diff.inDays < 30) return 'منذ ${diff.inDays} يوم';
-    if (diff.inDays < 365) return 'منذ ${(diff.inDays / 30).floor()} شهر';
-    return 'منذ ${(diff.inDays / 365).floor()} سنة';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: .15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Reviewer row
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: const Color(0xFF0075C4),
-                backgroundImage: rating.rater.avatar != null
-                    ? NetworkImage(
-                        AppConstants.normalizeImageUrl(rating.rater.avatar!),
-                      )
-                    : null,
-                child: rating.rater.avatar == null
-                    ? Text(
-                        rating.rater.name.isNotEmpty
-                            ? rating.rater.name[0]
-                            : '؟',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      rating.rater.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: AppTheme.neutralGray800,
-                      ),
-                    ),
-                    Text(
-                      _timeAgo(rating.createdAt),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.neutralGray500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Stars
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(
-                  5,
-                  (i) => Icon(
-                    i < rating.stars
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
-                    size: 15,
-                    color: i < rating.stars
-                        ? const Color(0xFFFFC107)
-                        : Colors.grey[300],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Comment
-          if (rating.comment != null && rating.comment!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              rating.comment!,
-              textDirection: TextDirection.rtl,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF475569),
-                height: 1.5,
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -1308,7 +910,19 @@ class _RelatedAdCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push('/ads/${ad.id}'),
+      onTapDown: (_) {
+        final image = ad.primaryImage;
+        if (image != null) {
+          unawaited(
+            precacheAppImage(
+              context,
+              image.imageUrl,
+              memCacheWidth: 1280,
+            ).catchError((_) {}),
+          );
+        }
+      },
+      onTap: () => context.push('/ads/${ad.id}', extra: ad),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -1331,14 +945,11 @@ class _RelatedAdCard extends StatelessWidget {
                   top: Radius.circular(12),
                 ),
                 child: ad.primaryImage != null
-                    ? CachedNetworkImage(
-                        imageUrl: AppConstants.normalizeImageUrl(
-                          ad.primaryImage!.thumbnailUrl,
-                        ),
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) =>
-                            Container(color: Colors.grey[200]),
-                        errorWidget: (_, __, ___) => Container(
+                    ? AppCachedImage(
+                        imageUrl: ad.primaryImage!.thumbnailUrl,
+                        fit: BoxFit.contain,
+                        memCacheWidth: 640,
+                        errorWidget: Container(
                           color: Colors.grey[200],
                           child: const Icon(Icons.image, color: Colors.grey),
                         ),
@@ -1367,7 +978,7 @@ class _RelatedAdCard extends StatelessWidget {
                     textAlign: TextAlign.right,
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  RiyalText(
                     ad.priceDisplay,
                     style: const TextStyle(
                       fontSize: 13,
@@ -1437,7 +1048,10 @@ class _BottomAction extends StatelessWidget {
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 class _DetailSkeleton extends StatelessWidget {
-  const _DetailSkeleton();
+  final int adId;
+  final AdImageModel? previewImage;
+
+  const _DetailSkeleton({required this.adId, this.previewImage});
 
   @override
   Widget build(BuildContext context) {
@@ -1449,10 +1063,20 @@ class _DetailSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
+            SizedBox(
               height: 300,
               width: double.infinity,
-              color: Colors.grey[200],
+              child: Hero(
+                tag: 'ad-image-$adId',
+                child: previewImage == null
+                    ? ColoredBox(color: Colors.grey[200]!)
+                    : AppCachedImage(
+                        imageUrl: previewImage!.imageUrl,
+                        lowResolutionUrl: previewImage!.thumbnailUrl,
+                        fit: BoxFit.contain,
+                        memCacheWidth: 1280,
+                      ),
+              ),
             ),
             const SizedBox(height: 16),
             Container(
@@ -1516,14 +1140,16 @@ class _MoreOptionsDialogState extends ConsumerState<_MoreOptionsDialog> {
     try {
       final result = await ref.read(adRepositoryProvider).markSold(widget.adId);
       ref.invalidate(adDetailProvider(widget.adId));
+      ref.read(myAdsProvider.notifier).replaceLocally(result);
       if (mounted) {
         Navigator.pop(context); // close the dialog
-        await SoldFeeSheet.show(
+        final deferred = await SoldFeeSheet.show(
           context,
           adId: widget.adId,
           adTitle: result.title,
           commission: result.paymentAmount ?? 0,
         );
+        if (deferred && mounted) showCommissionDeferredHint(context);
       }
     } catch (e) {
       if (mounted) {
@@ -1605,6 +1231,8 @@ class _MoreOptionsDialogState extends ConsumerState<_MoreOptionsDialog> {
                   Navigator.pop(context);
                   showModalBottomSheet<void>(
                     context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
                     builder: (_) => ReportSheet(adId: widget.adId),
                   );
                 },

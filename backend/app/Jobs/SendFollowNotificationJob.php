@@ -55,6 +55,7 @@ class SendFollowNotificationJob implements ShouldQueue
             [
                 'type'        => 'new_ad',
                 'ad_id'       => $ad->id,
+                'ad_title'    => $ad->title,
                 'category_id' => $ad->category_id,
             ],
         );

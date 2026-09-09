@@ -36,21 +36,22 @@ export default function ConversationList({ activeConversationId }: Props) {
 
   const myId = String(user?.id ?? '');
 
+  // Threads seeded by the mobile app carry `peerNames`/`peerAvatars`; ones
+  // seeded here carry `participantNames`/`participantAvatars`. Accept both.
   const peerNameOf = (c: typeof conversations[number]) => {
     const otherId = c.participantIds.find(id => id !== myId);
-    if (otherId && c.participantNames?.[otherId]) {
-      return c.participantNames[otherId];
-    }
-    return c.adTitle ?? 'محادثة';
+    const name =
+      (otherId && (c.participantNames?.[otherId] ?? c.peerNames?.[otherId])) || null;
+    return name ?? c.adTitle ?? 'محادثة';
   };
 
   const peerAvatarOf = (c: typeof conversations[number]): string | null => {
     const otherId = c.participantIds.find(id => id !== myId);
-    if (otherId && c.participantAvatars?.[otherId]) {
-      return resolveStorageUrl(c.participantAvatars[otherId]);
-    }
-    // Backwards-compat: older docs predate participantAvatars; fall back to
-    // the ad image so the row isn't empty.
+    const avatar =
+      (otherId && (c.participantAvatars?.[otherId] ?? c.peerAvatars?.[otherId])) || null;
+    if (avatar) return resolveStorageUrl(avatar);
+    // Backwards-compat: older docs predate both maps; fall back to the ad
+    // image so the row isn't empty.
     return resolveStorageUrl(c.adImage);
   };
 

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/marketing_tracking_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
@@ -29,7 +30,10 @@ class _SearchNotifier extends Notifier<_SearchState> {
   );
 }
 
-final _searchNotifier = NotifierProvider.autoDispose<_SearchNotifier, _SearchState>(_SearchNotifier.new);
+final _searchNotifier =
+    NotifierProvider.autoDispose<_SearchNotifier, _SearchState>(
+      _SearchNotifier.new,
+    );
 
 // ── Recent Searches ───────────────────────────────────────────────────────────
 
@@ -67,8 +71,8 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
-  final _focus      = FocusNode();
-  Timer?  _debounce;
+  final _focus = FocusNode();
+  Timer? _debounce;
   List<String> _recent = [];
 
   @override
@@ -98,15 +102,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (trimmed.isEmpty) return;
     _focus.unfocus();
     await _saveSearch(trimmed);
+    unawaited(
+      ref
+          .read(marketingTrackingProvider)
+          .track(MarketingEvent.search, properties: {'search_string': trimmed}),
+    );
     ref.read(_searchNotifier.notifier).setQuery(trimmed);
     setState(() {
-      _recent = [trimmed, ..._recent.where((r) => r != trimmed).take(_maxRecent - 1)];
+      _recent = [
+        trimmed,
+        ..._recent.where((r) => r != trimmed).take(_maxRecent - 1),
+      ];
     });
   }
 
   void _tapRecent(String term) {
     _controller.text = term;
-    _controller.selection = TextSelection.fromPosition(TextPosition(offset: term.length));
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: term.length),
+    );
     _submitSearch(term);
   }
 
@@ -123,9 +137,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final searchState  = ref.watch(_searchNotifier);
-    final filter       = searchState.filter;
-    final hasQuery     = filter.q?.isNotEmpty ?? false;
+    final searchState = ref.watch(_searchNotifier);
+    final filter = searchState.filter;
+    final hasQuery = filter.q?.isNotEmpty ?? false;
 
     final resultsState = hasQuery ? ref.watch(searchProvider(filter)) : null;
 
@@ -184,15 +198,21 @@ class _SearchBar extends StatelessWidget {
   final VoidCallback onClear;
 
   const _SearchBar({
-    required this.controller, required this.focusNode,
-    required this.onChanged, required this.onSubmitted, required this.onClear,
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onSubmitted,
+    required this.onClear,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 42,
-      decoration: BoxDecoration(color: AppTheme.neutralGray100, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: AppTheme.neutralGray100,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: TextField(
         controller: controller,
         focusNode: focusNode,
@@ -203,16 +223,27 @@ class _SearchBar extends StatelessWidget {
         style: const TextStyle(fontSize: 15, color: AppTheme.neutralGray900),
         decoration: InputDecoration(
           hintText: 'ابحث عن كل شيء...',
-          hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
+          hintStyle: const TextStyle(
+            color: AppTheme.neutralGray500,
+            fontSize: 14,
+          ),
           hintTextDirection: TextDirection.rtl,
           border: InputBorder.none,
-          prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.neutralGray500, size: 20),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppTheme.neutralGray500,
+            size: 20,
+          ),
           suffixIcon: ListenableBuilder(
             listenable: controller,
             builder: (_, __) => controller.text.isNotEmpty
                 ? GestureDetector(
                     onTap: onClear,
-                    child: const Icon(Icons.cancel_rounded, color: AppTheme.neutralGray500, size: 18),
+                    child: const Icon(
+                      Icons.cancel_rounded,
+                      color: AppTheme.neutralGray500,
+                      size: 18,
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
@@ -231,7 +262,12 @@ class _RecentSearches extends StatelessWidget {
   final VoidCallback onClearAll;
   final ValueChanged<String> onRemove;
 
-  const _RecentSearches({required this.recent, required this.onTap, required this.onClearAll, required this.onRemove});
+  const _RecentSearches({
+    required this.recent,
+    required this.onTap,
+    required this.onClearAll,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -240,9 +276,20 @@ class _RecentSearches extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_rounded, size: 64, color: AppTheme.neutralGray200),
+            Icon(
+              Icons.search_rounded,
+              size: 64,
+              color: AppTheme.neutralGray200,
+            ),
             SizedBox(height: 12),
-            Text('ابحث في آلاف الإعلانات', style: TextStyle(fontSize: 16, color: AppTheme.neutralGray500, fontWeight: FontWeight.w500)),
+            Text(
+              'ابحث في آلاف الإعلانات',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppTheme.neutralGray500,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       );
@@ -255,24 +302,54 @@ class _RecentSearches extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('عمليات البحث الأخيرة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.neutralGray500)),
+              const Text(
+                'عمليات البحث الأخيرة',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.neutralGray500,
+                ),
+              ),
               GestureDetector(
                 onTap: onClearAll,
-                child: const Text('مسح الكل', style: TextStyle(fontSize: 13, color: AppTheme.primaryBlue, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'مسح الكل',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.primaryBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
         ),
-        ...recent.map((term) => ListTile(
-          leading: const Icon(Icons.history_rounded, color: AppTheme.neutralGray500, size: 20),
-          title: Text(term, style: const TextStyle(fontSize: 14, color: AppTheme.neutralGray900)),
-          trailing: GestureDetector(
-            onTap: () => onRemove(term),
-            child: const Icon(Icons.close_rounded, color: AppTheme.neutralGray500, size: 18),
+        ...recent.map(
+          (term) => ListTile(
+            leading: const Icon(
+              Icons.history_rounded,
+              color: AppTheme.neutralGray500,
+              size: 20,
+            ),
+            title: Text(
+              term,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.neutralGray900,
+              ),
+            ),
+            trailing: GestureDetector(
+              onTap: () => onRemove(term),
+              child: const Icon(
+                Icons.close_rounded,
+                color: AppTheme.neutralGray500,
+                size: 18,
+              ),
+            ),
+            onTap: () => onTap(term),
+            dense: true,
           ),
-          onTap: () => onTap(term),
-          dense: true,
-        )),
+        ),
       ],
     );
   }
@@ -294,7 +371,11 @@ class _SearchResultsList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text(
             '$total نتيجة',
-            style: const TextStyle(fontSize: 13, color: AppTheme.neutralGray500, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.neutralGray500,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         Expanded(
@@ -303,7 +384,13 @@ class _SearchResultsList extends StatelessWidget {
             itemCount: ads.length,
             itemBuilder: (context, i) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: AdCard(ad: ads[i], onTap: () => context.push(AppRoutes.adDetailPath(ads[i].id))),
+              child: AdCard(
+                ad: ads[i],
+                onTap: () => context.push(
+                  AppRoutes.adDetailPath(ads[i].id),
+                  extra: ads[i],
+                ),
+              ),
             ),
           ),
         ),
@@ -326,7 +413,10 @@ class _SearchLoadingList extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 12),
         child: Container(
           height: 100,
-          decoration: BoxDecoration(color: AppTheme.neutralGray100, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: AppTheme.neutralGray100,
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -344,16 +434,32 @@ class _EmptyResults extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 72, height: 72,
-            decoration: BoxDecoration(color: AppTheme.neutralGray100, shape: BoxShape.circle),
-            child: const Icon(Icons.search_off_rounded, size: 36, color: AppTheme.neutralGray500),
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppTheme.neutralGray100,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.search_off_rounded,
+              size: 36,
+              color: AppTheme.neutralGray500,
+            ),
           ),
           const SizedBox(height: 16),
-          Text('لا توجد نتائج لـ "$query"',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.neutralGray900)),
+          Text(
+            'لا توجد نتائج لـ "$query"',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.neutralGray900,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('جرّب كلمات مختلفة أو تصفح الأقسام',
-              style: TextStyle(fontSize: 13, color: AppTheme.neutralGray500)),
+          const Text(
+            'جرّب كلمات مختلفة أو تصفح الأقسام',
+            style: TextStyle(fontSize: 13, color: AppTheme.neutralGray500),
+          ),
         ],
       ),
     );
@@ -371,16 +477,29 @@ class _SearchError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.neutralGray500),
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: AppTheme.neutralGray500,
+          ),
           const SizedBox(height: 12),
-          const Text('تعذّر إجراء البحث',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.neutralGray900)),
+          const Text(
+            'تعذّر إجراء البحث',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.neutralGray900,
+            ),
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: onRetry,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue, foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('إعادة المحاولة'),
           ),

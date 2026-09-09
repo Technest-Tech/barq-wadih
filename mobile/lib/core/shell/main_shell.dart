@@ -80,10 +80,11 @@ class _MainShellState extends ConsumerState<MainShell> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
-        // Non-home tabs: back returns to the home tab.
-        // Home tab: AdFeedScreen's own PopScope owns the back behavior
-        // (clear category / show the exit-confirmation dialog), so we do
-        // nothing here to avoid a duplicate dialog.
+        // Root-navigator safety net only. Back inside the shell is owned by the
+        // page children — AdFeedScreen's PopScope on home, ShellBackToHome on
+        // the other tabs — because a PopScope here registers on the root
+        // Navigator, which Android's predictive back does not consult while a
+        // shell tab is the innermost route.
         if (activeIndex != 0) {
           context.go('/');
         }

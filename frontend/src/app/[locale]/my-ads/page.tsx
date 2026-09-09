@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header/Header';
 import Footer from '@/components/layout/Footer/Footer';
-import { fetchMyAds, deleteAd, markAdSold, type AdListItem } from '@/lib/api/ads';
-import { boostAd, refreshAd } from '@/lib/api/boosts';
+import { fetchMyAds, deleteAd, markAdSold, renewAd, type AdListItem } from '@/lib/api/ads';
+import { refreshAd } from '@/lib/api/boosts';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import styles from './page.module.css';
 
@@ -35,18 +35,9 @@ function daysUntil(dateStr: string | null): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function hoursUntil(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  const diff = new Date(dateStr).getTime() - Date.now();
-  const hours = Math.ceil(diff / (1000 * 60 * 60));
-  return hours > 0 ? hours : null;
-}
-
-function formatCountdown(dateStr: string | null): string {
-  const h = hoursUntil(dateStr);
-  if (!h) return '';
-  if (h > 24) return `${Math.ceil(h / 24)} يوم`;
-  return `${h} ساعة`;
+/** An ad is hidden — and therefore renewable — once it has expired. */
+function isHidden(ad: AdListItem): boolean {
+  return ad.status === 'expired';
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -133,22 +124,25 @@ export default function MyAdsPage() {
     setActionId(null);
   };
 
-  // ── Boost / Refresh ──────────────────────────────────────────────────────
-  const [boostTarget, setBoostTarget] = useState<number | null>(null);
-  const [boostLoading, setBoostLoading] = useState(false);
+  // ── Renew (ترقية) / Refresh ──────────────────────────────────────────────
+  const [renewTarget, setRenewTarget] = useState<number | null>(null);
+  const [renewLoading, setRenewLoading] = useState(false);
 
-  const handleBoost = async () => {
-    if (!boostTarget) return;
-    setBoostLoading(true);
+  const handleRenew = async () => {
+    if (!renewTarget) return;
+    setRenewLoading(true);
     try {
-      await boostAd(boostTarget);
+      const updated = await renewAd(renewTarget);
       setAds((prev) =>
         prev.map((a) =>
-          a.id === boostTarget
+          a.id === renewTarget
             ? {
                 ...a,
-                is_boosted: true,
-                boosted_until: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+                status: updated.status,
+                status_label: updated.status_label,
+                published_at: updated.published_at,
+                expires_at: updated.expires_at,
+                can_renew: updated.can_renew,
               }
             : a
         )
@@ -157,8 +151,8 @@ export default function MyAdsPage() {
       const msg = err instanceof Error ? err.message : 'حدث خطأ';
       alert(msg);
     } finally {
-      setBoostLoading(false);
-      setBoostTarget(null);
+      setRenewLoading(false);
+      setRenewTarget(null);
     }
   };
 
@@ -249,11 +243,7 @@ export default function MyAdsPage() {
               {filtered.map((ad) => {
                 const sc = STATUS_CONFIG[ad.status] ?? { label: ad.status, cls: 'pending' };
                 const busy = actionId === ad.id;
-                const daysLeft = daysUntil(
-                  ad.published_at
-                    ? ((ad as AdListItem & { expires_at?: string }).expires_at ?? null)
-                    : null
-                );
+                const daysLeft = daysUntil(ad.published_at ? (ad.expires_at ?? null) : null);
                 const isExpiringSoon =
                   daysLeft !== null && daysLeft <= 5 && daysLeft > 0 && ad.status === 'active';
 
@@ -298,33 +288,32 @@ export default function MyAdsPage() {
                           ⏰ ينتهي خلال {daysLeft} {daysLeft === 1 ? 'يوم' : 'أيام'}
                         </p>
                       )}
+                      {/* The ad still exists — it just left the feed. */}
+                      {isHidden(ad) && (
+                        <p className={styles.hiddenNotice}>
+                          🙈 تم إخفاء الإعلان بعد 3 أشهر — اضغط «ترقية» لإعادته للظهور
+                        </p>
+                      )}
                     </div>
                     <div className={styles.adActions}>
+                      {/* ترقية — greyed out while the ad is still visible, and
+                          only clickable once it has been hidden. */}
+                      {(ad.status === 'active' || isHidden(ad)) && (
+                        <button
+                          className={`${styles.actionBtn} ${styles.boostBtn}`}
+                          disabled={busy || !ad.can_renew}
+                          title={
+                            ad.can_renew
+                              ? 'أعد نشر الإعلان ليظهر من جديد'
+                              : 'الإعلان ظاهر حالياً — تتاح الترقية بعد إخفائه'
+                          }
+                          onClick={() => setRenewTarget(ad.id)}
+                        >
+                          🚀 ترقية
+                        </button>
+                      )}
                       {ad.status === 'active' && (
                         <>
-                          {/* Boost button — only if not currently boosted */}
-                          {!ad.is_boosted || !hoursUntil(ad.boosted_until) ? (
-                            <button
-                              className={`${styles.actionBtn} ${styles.boostBtn}`}
-                              disabled={busy}
-                              onClick={() => setBoostTarget(ad.id)}
-                            >
-                              🚀 ترقية
-                            </button>
-                          ) : (
-                            <div>
-                              <span
-                                className={styles.boostedBadge}
-                                style={{ position: 'static', fontSize: '.72rem' }}
-                              >
-                                ⚡ مميز
-                              </span>
-                              <p className={styles.boostCountdown}>
-                                باقي {formatCountdown(ad.boosted_until)}
-                              </p>
-                            </div>
-                          )}
-
                           {/* Refresh button */}
                           <button
                             className={`${styles.actionBtn} ${styles.refreshBtn}`}
@@ -448,26 +437,27 @@ export default function MyAdsPage() {
           </div>
         )}
 
-        {/* ── Boost confirmation modal ── */}
-        {boostTarget && (
-          <div className={styles.modalOverlay} onClick={() => setBoostTarget(null)}>
+        {/* ── Renew confirmation modal ── */}
+        {renewTarget && (
+          <div className={styles.modalOverlay} onClick={() => setRenewTarget(null)}>
             <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalIcon}>🚀</div>
               <h3>ترقية الإعلان</h3>
               <p>
-                سيظهر إعلانك في أعلى نتائج البحث لمدة <strong>72 ساعة</strong> مع شارة ⚡ مميز.
+                سيعود إعلانك للظهور في السوق لمدة <strong>3 أشهر</strong> جديدة، وسيتصدّر أحدث
+                الإعلانات.
                 <br />
                 مجاني خلال الفترة التجريبية!
               </p>
               <div className={styles.modalActions}>
                 <button
                   className={styles.modalConfirm}
-                  onClick={handleBoost}
-                  disabled={boostLoading}
+                  onClick={handleRenew}
+                  disabled={renewLoading}
                 >
-                  {boostLoading ? 'جارٍ الترقية...' : '⚡ ترقية الآن'}
+                  {renewLoading ? 'جارٍ الترقية...' : '🚀 ترقية الآن'}
                 </button>
-                <button className={styles.modalCancel} onClick={() => setBoostTarget(null)}>
+                <button className={styles.modalCancel} onClick={() => setRenewTarget(null)}>
                   إلغاء
                 </button>
               </div>

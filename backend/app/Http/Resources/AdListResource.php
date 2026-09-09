@@ -22,7 +22,7 @@ class AdListResource extends JsonResource
         $ad = $this->resource;
 
         /** @var AdImage|null $first */
-        $first = $ad->images->first();
+        $first = $ad->primaryImage;
         /** @var Category|null $category */
         $category = $ad->category;
         /** @var City|null $city */
@@ -33,43 +33,48 @@ class AdListResource extends JsonResource
         $user = $ad->user;
 
         return [
-            'id'           => $ad->id,
-            'user_id'      => $ad->user_id,
-            'title'        => $ad->title,
-            'price'        => $ad->price,
-            'is_negotiable'=> $ad->is_negotiable,
-            'is_free'      => $ad->is_free,
-            'status'       => $ad->status->value,
+            'id' => $ad->id,
+            'user_id' => $ad->user_id,
+            'title' => $ad->title,
+            'price' => $ad->price,
+            'is_negotiable' => $ad->is_negotiable,
+            'is_free' => $ad->is_free,
+            'status' => $ad->status->value,
             'status_label' => $ad->status->label(),
-            'primary_image'=> $first ? new AdImageResource($first) : null,
-            'category'     => $category ? [
-                'id'      => $category->id,
+            'primary_image' => $first ? new AdImageResource($first) : null,
+            'images_count' => (int) ($ad->images_count ?? ($first ? 1 : 0)),
+            'category' => $category ? [
+                'id' => $category->id,
                 'name_ar' => $category->name_ar,
-                'slug'    => $category->slug,
-                'icon'    => $category->icon,
+                'slug' => $category->slug,
+                'icon' => $category->icon,
             ] : null,
-            'city'         => $city ? [
-                'id'      => $city->id,
+            'city' => $city ? [
+                'id' => $city->id,
                 'name_ar' => $city->name_ar,
             ] : null,
-            'region'       => $region ? [
-                'id'      => $region->id,
+            'region' => $region ? [
+                'id' => $region->id,
                 'name_ar' => $region->name_ar,
             ] : null,
-            'user'         => $user ? [
-                'id'           => $user->id,
-                'name'         => $user->name,
-                'avatar'       => $user->avatar_url,
-                'is_verified'  => (bool) $user->is_verified,
-                'is_dealer'    => (bool) $user->is_dealer,
-                'avg_rating'   => $user->avg_rating,
+            'user' => $user ? [
+                'id' => $user->id,
+                'name' => $user->name,
+                'avatar' => $user->avatar_url,
+                'is_verified' => (bool) $user->is_verified,
+                'is_dealer' => (bool) $user->is_dealer,
+                'avg_rating' => $user->avg_rating,
                 'rating_count' => $user->rating_count,
             ] : null,
             'published_at' => $ad->published_at,
-            'created_at'   => $ad->created_at,
+            'created_at' => $ad->created_at,
+            // When the ad drops out of the feed (see Ad::VISIBLE_MONTHS).
+            'expires_at' => $ad->expires_at,
             // Owner-only: drives the "pay commission after sale" CTA in My Ads.
             'payment_status' => $request->user()?->id === $ad->user_id ? $ad->payment_status : null,
             'payment_amount' => $request->user()?->id === $ad->user_id ? $ad->payment_amount : null,
+            // Owner-only: enables the "ترقية" button once the ad is hidden.
+            'can_renew' => $request->user()?->can('renew', $ad) ?? false,
         ];
     }
 }

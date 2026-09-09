@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -33,8 +32,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  String _buildPhone() {
+  String? _buildPhone() {
     final digits = _phoneCtrl.text.trim();
+    if (digits.isEmpty) return null;
     final local = digits.startsWith('0') ? digits.substring(1) : digits;
     return '+966$local';
   }
@@ -241,7 +241,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      _FieldLabel('رقم الجوال', required: true),
+                      _FieldLabel('رقم الجوال (اختياري)', required: false),
                       Directionality(
                         textDirection: TextDirection.ltr,
                         child: TextFormField(
@@ -252,9 +252,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             LengthLimitingTextInputFormatter(10),
                           ],
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'رقم الجوال مطلوب';
-                            }
+                            if (v == null || v.trim().isEmpty) return null;
                             if (!RegExp(
                               r'^(05|5)[0-9]{8}$',
                             ).hasMatch(v.trim())) {
@@ -262,7 +260,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             }
                             return null;
                           },
-                          decoration: _phoneDec(),
+                          decoration: _phoneDec(hint: 'يمكنك إضافته لاحقًا'),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -273,8 +271,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         textDirection: TextDirection.ltr,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty)
+                          if (v == null || v.trim().isEmpty) {
                             return 'البريد الإلكتروني مطلوب';
+                          }
                           return v.contains('@') ? null : 'البريد غير صالح';
                         },
                         decoration: _dec(
@@ -381,12 +380,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                     recognizer: TapGestureRecognizer()
-                                      ..onTap = () => launchUrl(
-                                        Uri.parse(
-                                          'https://barqwadih.com/terms',
-                                        ),
-                                        mode: LaunchMode.externalApplication,
-                                      ),
+                                      ..onTap = () =>
+                                          context.push('/terms-of-service'),
                                   ),
                                   const TextSpan(text: ' و'),
                                   TextSpan(
@@ -396,12 +391,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                     recognizer: TapGestureRecognizer()
-                                      ..onTap = () => launchUrl(
-                                        Uri.parse(
-                                          'https://barqwadih.com/privacy',
-                                        ),
-                                        mode: LaunchMode.externalApplication,
-                                      ),
+                                      ..onTap = () =>
+                                          context.push('/privacy-policy'),
                                   ),
                                 ],
                               ),
@@ -535,9 +526,9 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-InputDecoration _phoneDec() {
+InputDecoration _phoneDec({String? hint}) {
   return InputDecoration(
-    hintText: '05XXXXXXXX',
+    hintText: hint ?? '05XXXXXXXX',
     hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
     filled: true,
     fillColor: Colors.white,

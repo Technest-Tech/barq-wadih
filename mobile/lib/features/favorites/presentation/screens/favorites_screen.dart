@@ -25,7 +25,11 @@ class FavoritesScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.favorite_border_rounded, size: 72, color: Colors.grey[300]),
+              Icon(
+                Icons.favorite_border_rounded,
+                size: 72,
+                color: Colors.grey[300],
+              ),
               const SizedBox(height: 16),
               Text(
                 'سجّل الدخول لعرض مفضلتك',
@@ -55,9 +59,11 @@ class FavoritesScreen extends ConsumerWidget {
             children: [
               Icon(Icons.error_outline, size: 56, color: Colors.grey[300]),
               const SizedBox(height: 12),
-              Text('خطأ في التحميل: $e',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red)),
+              Text(
+                'خطأ في التحميل: $e',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: () => ref.invalidate(favoritesListProvider),
@@ -77,7 +83,8 @@ class FavoritesScreen extends ConsumerWidget {
                 return AdCard(
                   ad: ad,
                   isFavorited: true,
-                  onTap: () => context.push(AppRoutes.adDetailPath(ad.id)),
+                  onTap: () =>
+                      context.push(AppRoutes.adDetailPath(ad.id), extra: ad),
                   onFavorite: () => _removeFavorite(ref, ad),
                 );
               },
@@ -119,7 +126,11 @@ class FavoritesScreen extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.favorite_border_rounded, size: 72, color: Colors.grey[300]),
+          Icon(
+            Icons.favorite_border_rounded,
+            size: 72,
+            color: Colors.grey[300],
+          ),
           const SizedBox(height: 16),
           Text(
             'لا توجد إعلانات في المفضلة',

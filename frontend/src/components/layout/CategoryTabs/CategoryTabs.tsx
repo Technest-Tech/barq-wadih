@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Car } from 'lucide-react';
+import { Car, TriangleAlert } from 'lucide-react';
 import { fetchCategories, type Category } from '@/lib/api/categories';
 import styles from './CategoryTabs.module.css';
 
@@ -63,6 +63,17 @@ export default function CategoryTabs() {
 
   return (
     <div className={styles.bar} dir="rtl">
+      <div
+        className={styles.realEstateNotice}
+        role="note"
+        aria-label="تنبيه مهم بشأن العروض العقارية"
+      >
+        <TriangleAlert className={styles.noticeIcon} size={21} aria-hidden="true" />
+        <p>
+          <strong>تنبيه مهم:</strong> لا نستقبل عروضًا عقارية حاليًا. ولا تتحمل منصة برق واضح
+          مسؤولية أي عرض عقاري يُنشر بالمخالفة لذلك.
+        </p>
+      </div>
       <div className={styles.track} ref={scrollRef}>
         {/* "All" tab — always first */}
         <Link

@@ -12,8 +12,14 @@ class SafetyCenterScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        title: const Text('مركز الأمان',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        title: const Text(
+          'مركز الأمان',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         elevation: 0,
         centerTitle: true,
       ),
@@ -65,7 +71,10 @@ class SafetyCenterScreen extends StatelessWidget {
           Text(
             'ابق آمناً في برق واضح',
             style: TextStyle(
-                color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           SizedBox(height: 8),
           Text(
@@ -101,21 +110,30 @@ class SafetyCenterScreen extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: color),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 10),
-        ...tips.map((tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildTipCard(tip.$1, tip.$2, tip.$3, color),
-            )),
+        ...tips.map(
+          (tip) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _buildTipCard(tip.$1, tip.$2, tip.$3, color),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildTipCard(
-      IconData icon, String title, String description, Color color) {
+    IconData icon,
+    String title,
+    String description,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -140,17 +158,23 @@ class SafetyCenterScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.neutralGray800)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.neutralGray800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(description,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.neutralGray600,
-                        height: 1.5)),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.neutralGray600,
+                    height: 1.5,
+                  ),
+                ),
               ],
             ),
           ),
@@ -165,29 +189,33 @@ class SafetyCenterScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.colorError.withValues(alpha: .06),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppTheme.colorError.withValues(alpha: .2)),
+        border: Border.all(color: AppTheme.colorError.withValues(alpha: .2)),
       ),
       child: Column(
         children: [
-          const Icon(Icons.report_problem_rounded,
-              color: AppTheme.colorError, size: 32),
+          const Icon(
+            Icons.report_problem_rounded,
+            color: AppTheme.colorError,
+            size: 32,
+          ),
           const SizedBox(height: 8),
           const Text(
             'تعرضت لعملية احتيال؟',
             style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.colorError),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.colorError,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
             'في حال التعرض للاحتيال، يُرجى التواصل مع الجهات الأمنية المختصة (الشرطة أو نظام أبشر).',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.neutralGray600,
-                height: 1.5),
+              fontSize: 12,
+              color: AppTheme.neutralGray600,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -198,27 +226,27 @@ class SafetyCenterScreen extends StatelessWidget {
     (
       Icons.photo_camera_rounded,
       'استخدم صوراً واضحة وحقيقية',
-      'التقط صوراً واضحة للمنتج من زوايا متعددة لتعزيز الثقة وزيادة فرص البيع.'
+      'التقط صوراً واضحة للمنتج من زوايا متعددة لتعزيز الثقة وزيادة فرص البيع.',
     ),
     (
       Icons.description_rounded,
       'كن دقيقاً في وصف المنتج',
-      'اذكر الحالة الفعلية للمنتج بصدق، بما في ذلك أي عيوب أو مشاكل موجودة.'
+      'اذكر الحالة الفعلية للمنتج بصدق، بما في ذلك أي عيوب أو مشاكل موجودة.',
     ),
     (
       Icons.location_on_rounded,
       'اختر مكان التسليم بعناية',
-      'التقِ بالمشتري في أماكن عامة ومضاءة جيداً، وتجنب التسليم في الأماكن المعزولة.'
+      'التقِ بالمشتري في أماكن عامة ومضاءة جيداً، وتجنب التسليم في الأماكن المعزولة.',
     ),
     (
       Icons.payments_rounded,
       'استلم المبلغ قبل التسليم',
-      'تأكد من استلام المبلغ كاملاً قبل تسليم المنتج، وتجنب قبول الشيكات.'
+      'تأكد من استلام المبلغ كاملاً قبل تسليم المنتج، وتجنب قبول الشيكات.',
     ),
     (
       Icons.verified_user_rounded,
       'تعامل مع المشترين الموثقين',
-      'فضّل التعامل مع المستخدمين الذين لديهم تقييمات جيدة وحسابات موثقة.'
+      'فضّل التعامل مع المستخدمين الذين لديهم تقييمات جيدة وحسابات موثقة.',
     ),
   ];
 
@@ -226,27 +254,27 @@ class SafetyCenterScreen extends StatelessWidget {
     (
       Icons.search_rounded,
       'ابحث عن البائع وتحقق منه',
-      'اطلع على تقييمات البائع وتاريخ حسابه قبل إتمام أي صفقة.'
+      'اطلع على تقييمات البائع وتاريخ حسابه قبل إتمام أي صفقة.',
     ),
     (
       Icons.visibility_rounded,
       'افحص المنتج قبل الشراء',
-      'تأكد من فحص المنتج شخصياً قبل دفع أي مبلغ، لا تدفع مقابل شيء لم تره.'
+      'تأكد من فحص المنتج شخصياً قبل دفع أي مبلغ، لا تدفع مقابل شيء لم تره.',
     ),
     (
       Icons.public_rounded,
       'التقِ في أماكن عامة',
-      'اختر دائماً مكاناً عاماً ومكشوفاً للقاء البائع، وأبلغ شخصاً تثق به بمكانك.'
+      'اختر دائماً مكاناً عاماً ومكشوفاً للقاء البائع، وأبلغ شخصاً تثق به بمكانك.',
     ),
     (
       Icons.link_off_rounded,
       'احذر من الروابط والطلبات المشبوهة',
-      'لا تنقر على روابط خارجية أو تُشارك بياناتك البنكية مع أي شخص.'
+      'لا تنقر على روابط خارجية أو تُشارك بياناتك البنكية مع أي شخص.',
     ),
     (
       Icons.shield_rounded,
       'استخدم خدمة الشراء الموثوق',
-      'للمنتجات ذات القيمة العالية، استخدم خدمة الشراء الموثوق للحماية الكاملة.'
+      'للمنتجات ذات القيمة العالية، استخدم خدمة الشراء الموثوق للحماية الكاملة.',
     ),
   ];
 }

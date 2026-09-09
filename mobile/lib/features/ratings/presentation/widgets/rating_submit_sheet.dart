@@ -22,10 +22,10 @@ class RatingSubmitSheet extends ConsumerStatefulWidget {
 class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
   int _stars = 0;
   final _commentCtrl = TextEditingController();
-  bool _pledge   = false;
-  bool _loading  = false;
-  String _error  = '';
-  bool _success  = false;
+  bool _pledge = false;
+  bool _loading = false;
+  String _error = '';
+  bool _success = false;
 
   static const int _maxComment = 500;
 
@@ -36,17 +36,30 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
   }
 
   Future<void> _submit() async {
-    if (_stars == 0) { setState(() => _error = 'اختر عدد النجوم'); return; }
-    if (!_pledge)    { setState(() => _error = 'يجب الموافقة على التعهد'); return; }
+    if (_stars == 0) {
+      setState(() => _error = 'اختر عدد النجوم');
+      return;
+    }
+    if (!_pledge) {
+      setState(() => _error = 'يجب الموافقة على التعهد');
+      return;
+    }
 
-    setState(() { _loading = true; _error = ''; });
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
 
     try {
-      await ref.read(ratingRepositoryProvider).submitRating(
-        adId:    widget.adId,
-        stars:   _stars,
-        comment: _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
-      );
+      await ref
+          .read(ratingRepositoryProvider)
+          .submitRating(
+            adId: widget.adId,
+            stars: _stars,
+            comment: _commentCtrl.text.trim().isEmpty
+                ? null
+                : _commentCtrl.text.trim(),
+          );
       setState(() => _success = true);
       await Future<void>.delayed(const Duration(milliseconds: 1200));
       if (mounted) Navigator.of(context).pop(true);
@@ -56,9 +69,10 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
         Navigator.of(context).pop();
         _showLoginPrompt(context);
       } else {
-        final msg = e.response?.data?['message'] as String?
-            ?? e.message
-            ?? 'حدث خطأ، يرجى المحاولة مجدداً';
+        final msg =
+            e.response?.data?['message'] as String? ??
+            e.message ??
+            'حدث خطأ، يرجى المحاولة مجدداً';
         setState(() => _error = msg);
       }
     } catch (e) {
@@ -76,9 +90,13 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
       builder: (dialogCtx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('تسجيل الدخول مطلوب',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'تسجيل الدخول مطلوب',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
           content: const Text(
             'يجب تسجيل الدخول أولاً لتتمكن من كتابة تقييم.',
             style: TextStyle(fontSize: 14),
@@ -86,21 +104,23 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: const Text('إلغاء',
-                  style: TextStyle(color: Colors.grey)),
+              child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0075C4),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () {
                 Navigator.of(dialogCtx).pop();
                 ctx.push('/login');
               },
-              child: const Text('تسجيل الدخول',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'تسجيل الدخول',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -112,7 +132,9 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
+        left: 24,
+        right: 24,
+        top: 24,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: _success ? _buildSuccess() : _buildForm(),
@@ -136,12 +158,14 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
           child: const Icon(Icons.check_rounded, color: Colors.white, size: 36),
         ),
         const SizedBox(height: 16),
-        const Text('شكراً لتقييمك!',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF10B981),
-            )),
+        const Text(
+          'شكراً لتقييمك!',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF10B981),
+          ),
+        ),
         const SizedBox(height: 24),
       ],
     );
@@ -155,7 +179,8 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
         // Handle bar
         Center(
           child: Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: const Color(0xFF475569),
               borderRadius: BorderRadius.circular(2),
@@ -167,7 +192,9 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
           'تقييم البائع',
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF0A1628),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0A1628),
           ),
         ),
         Text(
@@ -191,9 +218,13 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
                     child: Icon(
-                      star <= _stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                      star <= _stars
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
                       key: ValueKey<bool>(star <= _stars),
-                      color: star <= _stars ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
+                      color: star <= _stars
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFFCBD5E1),
                       size: 40,
                     ),
                   ),
@@ -204,17 +235,24 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
         ),
         const SizedBox(height: 8),
         Text(
-          _stars == 0 ? 'اختر تقييمك'
-              : _stars == 1 ? 'سيء جداً'
-              : _stars == 2 ? 'سيء'
-              : _stars == 3 ? 'مقبول'
-              : _stars == 4 ? 'جيد'
+          _stars == 0
+              ? 'اختر تقييمك'
+              : _stars == 1
+              ? 'سيء جداً'
+              : _stars == 2
+              ? 'سيء'
+              : _stars == 3
+              ? 'مقبول'
+              : _stars == 4
+              ? 'جيد'
               : 'ممتاز',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: _stars > 0 ? const Color(0xFFF59E0B) : const Color(0xFF94A3B8),
+            color: _stars > 0
+                ? const Color(0xFFF59E0B)
+                : const Color(0xFF94A3B8),
           ),
         ),
         const SizedBox(height: 20),
@@ -235,11 +273,17 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF6366F1),
+                width: 1.5,
+              ),
             ),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
-            counterStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+            counterStyle: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 11,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -254,7 +298,9 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
                 value: _pledge,
                 onChanged: (v) => setState(() => _pledge = v ?? false),
                 activeColor: const Color(0xFF6366F1),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
               Expanded(
                 child: Padding(
@@ -262,7 +308,11 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
                   child: Text(
                     'أتعهد بأن هذا التقييم صادق وعادل ويعكس تجربتي الحقيقية',
                     textDirection: TextDirection.rtl,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                      height: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -295,18 +345,26 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0A1628),
               disabledBackgroundColor: const Color(0xFFCBD5E1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               elevation: 0,
             ),
             child: _loading
                 ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text(
                     'إرسال التقييم',
                     style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
           ),

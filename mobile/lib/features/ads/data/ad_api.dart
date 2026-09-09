@@ -9,7 +9,14 @@ import '../domain/ad_model.dart';
 // ── Commission preview model ──────────────────────────────────────────────────
 
 class CommissionPreviewModel {
+  /// What the signed-in seller themselves would owe.
   final double commissionAmount;
+
+  /// Both published rates for the category. Vehicle categories charge
+  /// showrooms less than individuals, so the wizard lists the two side by
+  /// side. Null on responses from an older API that only returned the one.
+  final double? commissionIndividual;
+  final double? commissionDealer;
   final String? commissionRate; // null for flat-fee categories
   final double? minimumCommission;
   final String note;
@@ -17,19 +24,31 @@ class CommissionPreviewModel {
 
   const CommissionPreviewModel({
     required this.commissionAmount,
+    required this.commissionIndividual,
+    required this.commissionDealer,
     required this.commissionRate,
     required this.minimumCommission,
     required this.note,
     required this.isFlatFee,
   });
 
+  /// True only when the category actually prices the two seller types
+  /// differently — otherwise one line says it all.
+  bool get hasSeparateSellerRates =>
+      commissionIndividual != null &&
+      commissionDealer != null &&
+      commissionIndividual != commissionDealer;
+
   factory CommissionPreviewModel.fromJson(Map<String, dynamic> json) {
+    double? asDouble(String key) =>
+        json[key] != null ? (json[key] as num).toDouble() : null;
+
     return CommissionPreviewModel(
       commissionAmount: (json['commission_amount'] as num).toDouble(),
+      commissionIndividual: asDouble('commission_individual'),
+      commissionDealer: asDouble('commission_dealer'),
       commissionRate: json['commission_rate'] as String?,
-      minimumCommission: json['minimum_commission'] != null
-          ? (json['minimum_commission'] as num).toDouble()
-          : null,
+      minimumCommission: asDouble('minimum_commission'),
       note: json['note'] as String? ?? '',
       isFlatFee: json['is_flat_fee'] as bool? ?? false,
     );
@@ -140,6 +159,40 @@ class AdRepository {
 
   const AdRepository(this._dio);
 
+  static final _adUploadOptions = Options(
+    contentType: 'multipart/form-data',
+    sendTimeout: Duration(seconds: 60),
+    // The API creates and stores resized variants before returning the ad.
+    receiveTimeout: Duration(seconds: 90),
+  );
+
+  ApiException _adUploadException(
+    DioException error, {
+    required String fallback,
+  }) {
+    final responseData = error.response?.data;
+    final body = responseData is Map<String, dynamic> ? responseData : null;
+
+    final String message;
+    if (error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.connectionTimeout) {
+      message =
+          'استغرق رفع الصور وقتاً أطول من المتوقع. تحقق من اتصال الإنترنت ثم أعد المحاولة.';
+    } else if (error.type == DioExceptionType.connectionError) {
+      message =
+          'تعذّر الاتصال بالخادم أثناء رفع الصور. تحقق من الإنترنت ثم أعد المحاولة.';
+    } else {
+      message = body?['message'] as String? ?? fallback;
+    }
+
+    return ApiException(
+      message: message,
+      statusCode: error.response?.statusCode,
+      errors: body?['errors'] as Map<String, dynamic>?,
+    );
+  }
+
   /// GET /ads — paginated ad feed
   Future<({List<AdListModel> ads, bool hasMore, int total})> getAds(
     AdsFilter filter,
@@ -204,22 +257,24 @@ class AdRepository {
   }
 
   /// POST /ads — create new ad (multipart)
-  Future<AdDetailModel> createAd(FormData formData) async {
+  Future<AdDetailModel> createAd(
+    FormData formData, {
+    ProgressCallback? onSendProgress,
+  }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/ads',
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        options: _adUploadOptions,
+        onSendProgress: onSendProgress,
       );
       final wrapper = response.data!['data'] as Map<String, dynamic>;
       final data = (wrapper['ad'] as Map<String, dynamic>?) ?? wrapper;
       return AdDetailModel.fromJson(data);
     } on DioException catch (e) {
-      throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ?? 'فشل في نشر الإعلان',
-        statusCode: e.response?.statusCode,
-        errors: e.response?.data?['errors'] as Map<String, dynamic>?,
+      throw _adUploadException(
+        e,
+        fallback: 'فشل في نشر الإعلان. حاول مرة أخرى.',
       );
     }
   }
@@ -341,21 +396,32 @@ class AdRepository {
   }
 
   /// PATCH /ads/{id} — update existing ad (multipart)
-  Future<AdDetailModel> updateAd(int id, FormData formData) async {
+  ///
+  /// Sent as POST with Laravel's `_method` override rather than a real PATCH:
+  /// PHP only parses a `multipart/form-data` body on POST, so a genuine PATCH
+  /// arrives with $_POST and $_FILES both empty. Every rule on UpdateAdRequest
+  /// is `sometimes`, so that empty body validated cleanly and the API answered
+  /// "تم تحديث الإعلان بنجاح" having written nothing at all. The web client
+  /// already spoofs the method the same way (see lib/api/client.ts).
+  Future<AdDetailModel> updateAd(
+    int id,
+    FormData formData, {
+    ProgressCallback? onSendProgress,
+  }) async {
     try {
-      final response = await _dio.patch<Map<String, dynamic>>(
+      formData.fields.add(const MapEntry('_method', 'PATCH'));
+      final response = await _dio.post<Map<String, dynamic>>(
         '/ads/$id',
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        options: _adUploadOptions,
+        onSendProgress: onSendProgress,
       );
       final data = response.data!['data'] as Map<String, dynamic>;
       return AdDetailModel.fromJson(data);
     } on DioException catch (e) {
-      throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ?? 'فشل في تحديث الإعلان',
-        statusCode: e.response?.statusCode,
-        errors: e.response?.data?['errors'] as Map<String, dynamic>?,
+      throw _adUploadException(
+        e,
+        fallback: 'فشل في تحديث الإعلان. حاول مرة أخرى.',
       );
     }
   }
@@ -402,12 +468,14 @@ class AdRepository {
     }
   }
 
-  /// POST /ads/{id}/boost — Premium boost
-  Future<AdDetailModel> boostAd(int id) async {
+  /// POST /ads/{id}/renew — bring a hidden ad back for another 3 months.
+  /// Only allowed once the ad has been hidden; the backend rejects it while
+  /// the ad is still visible.
+  Future<AdListModel> renewAd(int id) async {
     try {
-      final response = await _dio.post<Map<String, dynamic>>('/ads/$id/boost');
+      final response = await _dio.post<Map<String, dynamic>>('/ads/$id/renew');
       final data = response.data!['data'] as Map<String, dynamic>;
-      return AdDetailModel.fromJson(data);
+      return AdListModel.fromJson(data);
     } on DioException catch (e) {
       throw ApiException(
         message:
@@ -429,21 +497,6 @@ class AdRepository {
       throw ApiException(
         message:
             e.response?.data?['message'] as String? ?? 'فشل في تحديث الإعلان',
-        statusCode: e.response?.statusCode,
-      );
-    }
-  }
-
-  /// GET /boost-config — Boost pricing & rules
-  Future<Map<String, dynamic>> getBoostConfig() async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>('/boost-config');
-      return response.data!['data'] as Map<String, dynamic>;
-    } on DioException catch (e) {
-      throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ??
-            'فشل في تحميل إعدادات الترقية',
         statusCode: e.response?.statusCode,
       );
     }
@@ -487,6 +540,8 @@ class AdsFeedNotifier
     extends AsyncNotifier<({List<AdListModel> ads, bool hasMore, int total})> {
   AdsFilter _filter = const AdsFilter();
   int _requestId = 0;
+  bool _loadingMore = false;
+  bool _refreshing = false;
 
   @override
   Future<({List<AdListModel> ads, bool hasMore, int total})> build() {
@@ -510,22 +565,78 @@ class AdsFeedNotifier
 
   Future<void> loadMore() async {
     final current = state.value;
-    if (current == null || !current.hasMore) return;
-    _filter = _filter.copyWith(page: _filter.page + 1);
-    final more = await ref.read(adRepositoryProvider).getAds(_filter);
+    if (current == null || !current.hasMore || _loadingMore || _refreshing) {
+      return;
+    }
+
+    // Scroll callbacks fire far faster than the request completes. Without this
+    // guard several pages were requested at once and each response appended to
+    // the list it captured *before* the others landed, so the last one to
+    // resolve silently dropped the pages in between.
+    _loadingMore = true;
+    final id = _requestId;
+    final next = _filter.copyWith(page: _filter.page + 1);
+    try {
+      final more = await ref.read(adRepositoryProvider).getAds(next);
+      // A filter change or refresh while this page was in flight replaced the
+      // feed — appending these ads would mix results from the old filter.
+      if (id != _requestId) return;
+      final latest = state.value;
+      if (latest == null) return;
+      _filter = next;
+      state = AsyncData((
+        ads: [...latest.ads, ...more.ads],
+        hasMore: more.hasMore,
+        total: more.total,
+      ));
+    } catch (_) {
+      // Keep the feed and the page cursor as they are; the next scroll retries
+      // this page instead of skipping past it.
+    } finally {
+      _loadingMore = false;
+    }
+  }
+
+  /// Remove a blocked seller's content from the visible feed synchronously.
+  /// The backend applies the same filter to refreshes and later pages.
+  void hideSeller(int sellerId) {
+    final current = state.value;
+    if (current == null) return;
+
+    final filtered = current.ads
+        .where((ad) => ad.seller?.id != sellerId)
+        .toList(growable: false);
+    final removed = current.ads.length - filtered.length;
+    if (removed == 0) return;
+
     state = AsyncData((
-      ads: [...current.ads, ...more.ads],
-      hasMore: more.hasMore,
-      total: more.total,
+      ads: filtered,
+      hasMore: current.hasMore,
+      total: current.total >= removed ? current.total - removed : 0,
     ));
   }
 
   Future<void> refresh() async {
-    _filter = _filter.copyWith(page: 1);
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(adRepositoryProvider).getAds(_filter),
-    );
+    if (_refreshing) return;
+    _refreshing = true;
+    final id = ++_requestId;
+    final firstPage = _filter.copyWith(page: 1);
+    // Keep both the list and its page cursor until the replacement succeeds.
+    // A failed refresh can then continue paging the existing results safely.
+    final previous = state.value;
+    if (previous == null) state = const AsyncLoading();
+    try {
+      final result = await ref.read(adRepositoryProvider).getAds(firstPage);
+      if (id != _requestId) return;
+      _filter = firstPage;
+      state = AsyncData(result);
+    } catch (error, stack) {
+      if (id != _requestId) return;
+      if (previous == null) state = AsyncError(error, stack);
+      rethrow;
+    } finally {
+      _refreshing = false;
+    }
   }
 }
 
@@ -555,6 +666,20 @@ class MyAdsNotifier extends AsyncNotifier<List<AdListModel>> {
   void removeLocally(int id) {
     final current = state.value ?? [];
     state = AsyncData(current.where((a) => a.id != id).toList());
+  }
+
+  /// Swap in a server-returned ad (e.g. the mark-sold response), keeping the
+  /// owner-only fields — payment_amount / payment_status — that updateStatus's
+  /// hand-built JSON drops.
+  void replaceLocally(AdListModel ad) {
+    final current = state.value;
+    // Untouched provider (e.g. mark-sold from the ad detail screen before My
+    // Ads was ever opened) — leave it to load fresh rather than seeding it.
+    if (current == null) return;
+    state = AsyncData([
+      for (final a in current)
+        if (a.id == ad.id) ad else a,
+    ]);
   }
 
   void updateStatus(int id, String newStatus, String newLabel) {

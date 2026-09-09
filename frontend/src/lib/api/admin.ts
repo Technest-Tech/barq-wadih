@@ -174,6 +174,14 @@ export interface AdminAd {
   moderation_note: string | null;
   commission_amount: number;
   commission_status: string | null;
+  payment_status: string | null;
+  payment_amount: number;
+  payment_provider: string | null;
+  payment_reference: string | null;
+  payment_proof_url: string | null;
+  payment_proof_uploaded_at: string | null;
+  payment_review_note: string | null;
+  paid_at: string | null;
   contact_phone: string | null;
   contact_whatsapp: string | null;
   views_count: number;
@@ -189,9 +197,12 @@ export interface AdminAd {
   images: { id: number; url: string; sort_order: number }[];
   field_values?: { field_key: string; label_ar: string; value: string }[];
   reports?: AdminAdReport[];
+  pledge_accepted?: boolean;
   published_at: string | null;
   expires_at: string | null;
+  sale_declared_at?: string | null;
   created_at: string;
+  updated_at?: string | null;
   deleted_at: string | null;
 }
 
@@ -235,6 +246,7 @@ export interface AdminReport {
   admin_action_label: string | null;
   admin_note: string | null;
   resolved_at: string | null;
+  conversation_id: string | null;
   reporter: { id: number; name: string; avatar_url: string | null } | null;
   ad: {
     id: number;
@@ -246,6 +258,15 @@ export interface AdminReport {
     category: { id: number; name_ar: string } | null;
     user: { id: number; name: string; avatar_url: string | null } | null;
     created_at: string;
+  } | null;
+  reported_user: {
+    id: number;
+    name: string;
+    avatar_url: string | null;
+    phone?: string | null;
+    email?: string | null;
+    is_active?: boolean;
+    is_verified?: boolean;
   } | null;
   admin: { id: number; name: string } | null;
   created_at: string;

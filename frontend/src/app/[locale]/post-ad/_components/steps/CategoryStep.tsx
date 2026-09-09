@@ -5,11 +5,13 @@ import pm from '@/styles/premium.module.css';
 import styles from '../../post-ad.module.css';
 import { fetchCategories, type Category, type CategoryChild } from '@/lib/api/categories';
 import { usePostAdWizard } from '@/store/postAdWizard.store';
+import { useAuthStore } from '@/store/auth.store';
 import { DealerFeeBadge } from '../shared/DealerFeeBadge';
 import { WizardFooter } from '../WizardFooter';
 
 export function CategoryStep() {
   const w = usePostAdWizard();
+  const isDealer = useAuthStore((state) => state.user?.is_dealer === true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -35,9 +37,10 @@ export function CategoryStep() {
   // Per-category flat commission owed after the sale (publishing itself is free).
   const feeFor = (c: CategoryChild | Category): number | null => {
     if ((c as CategoryChild).is_free) return 0;
-    const v = (c as unknown as Record<string, number | string | null | undefined>)[
-      'deferred_commission_individual'
-    ];
+    const commissionKey = isDealer
+      ? 'deferred_commission_dealer'
+      : 'deferred_commission_individual';
+    const v = (c as unknown as Record<string, number | string | null | undefined>)[commissionKey];
     return v === null || v === undefined ? null : Number(v);
   };
 

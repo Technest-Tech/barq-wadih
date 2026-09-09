@@ -10,6 +10,7 @@ import '../../../../core/constants/bank_account.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/ad_api.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 /// Bank-transfer payment for the publish fee.
 ///
@@ -67,6 +68,9 @@ class _BankTransferScreenState extends ConsumerState<BankTransferScreen> {
       await ref
           .read(adRepositoryProvider)
           .uploadPaymentProof(widget.adId, _proof!.path);
+      // So My Ads and "سداد العمولات" show the commission as under review
+      // instead of still owed.
+      await ref.read(myAdsProvider.notifier).refresh();
       if (!mounted) return;
       context.go('/ads/${widget.adId}');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,7 +138,7 @@ class _BankTransferScreenState extends ConsumerState<BankTransferScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'النشر مجاني، وتُستحق عمولة البيع الثابتة بعد إتمام البيع. بوابات الدفع الإلكتروني قيد التجهيز، لذا يتم سدادها حالياً عبر التحويل البنكي ثم إرفاق صورة الإيصال لمراجعتها.',
+                  'النشر مجاني، وتُستحق عمولة البيع الثابتة بعد إتمام البيع فقط. تُسدَّد بتحويل بنكي مع إرفاق صورة الإيصال لمراجعتها من الإدارة.',
                   textDirection: TextDirection.rtl,
                   style: TextStyle(
                     fontSize: 13,
@@ -153,7 +157,7 @@ class _BankTransferScreenState extends ConsumerState<BankTransferScreen> {
                         color: AppTheme.neutralGray700,
                       ),
                     ),
-                    Text(
+                    RiyalText(
                       '${widget.fee.toStringAsFixed(0)} ر.س',
                       style: const TextStyle(
                         fontSize: 20,

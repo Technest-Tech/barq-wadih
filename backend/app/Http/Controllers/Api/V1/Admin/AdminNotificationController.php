@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\CampaignStatus;
-use App\Enums\CampaignTargetType;
 use App\Http\Controllers\Api\V1\BaseController;
+use App\Jobs\SendCampaignJob;
 use App\Models\Notification;
 use App\Models\NotificationCampaign;
-use App\Models\User;
+use App\Services\CampaignSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminNotificationController extends BaseController
 {
+    public function __construct(private readonly CampaignSender $sender) {}
+
     /**
      * GET /admin/notifications/campaigns
      */
@@ -66,43 +68,59 @@ class AdminNotificationController extends BaseController
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title_ar'           => ['required', 'string', 'max:255'],
-            'title_en'           => ['nullable', 'string', 'max:255'],
-            'body_ar'            => ['required', 'string', 'max:1000'],
-            'body_en'            => ['nullable', 'string', 'max:1000'],
-            'target_type'        => ['required', 'in:all,city,category,specific_users'],
-            'target_city_id'     => ['nullable', 'integer', 'exists:cities,id'],
-            'target_category_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'target_user_ids'    => ['nullable', 'array'],
-            'target_user_ids.*'  => ['integer', 'exists:users,id'],
-            'data'               => ['nullable', 'array'],
-            'scheduled_at'       => ['nullable', 'date', 'after:now'],
-        ]);
+        $validated = $this->validateComposition($request);
 
         $status = isset($validated['scheduled_at'])
             ? CampaignStatus::Scheduled
             : CampaignStatus::Draft;
 
-        $campaign = NotificationCampaign::create([
-            'admin_id'           => $request->user()->id,
-            'title_ar'           => $validated['title_ar'],
-            'title_en'           => $validated['title_en'] ?? null,
-            'body_ar'            => $validated['body_ar'],
-            'body_en'            => $validated['body_en'] ?? null,
-            'target_type'        => $validated['target_type'],
-            'target_city_id'     => $validated['target_city_id'] ?? null,
-            'target_category_id' => $validated['target_category_id'] ?? null,
-            'target_user_ids'    => $validated['target_user_ids'] ?? null,
-            'data'               => $validated['data'] ?? null,
-            'status'             => $status->value,
-            'scheduled_at'       => $validated['scheduled_at'] ?? null,
-        ]);
+        $campaign = $this->createCampaign($request, $validated, $status);
 
         return $this->successResponse([
             'id'     => $campaign->id,
             'status' => $campaign->status->value,
         ], 'تم إنشاء الحملة بنجاح', 201);
+    }
+
+    /**
+     * POST /admin/notifications/send
+     *
+     * Compose and deliver in one step — the path the dashboard's message
+     * composer and the per-user "send message" button both use. Passing
+     * `scheduled_at` stores it for the scheduler instead of sending now.
+     */
+    public function sendNow(Request $request): JsonResponse
+    {
+        $validated = $this->validateComposition($request);
+
+        if (isset($validated['scheduled_at'])) {
+            $campaign = $this->createCampaign($request, $validated, CampaignStatus::Scheduled);
+
+            return $this->successResponse([
+                'id'               => $campaign->id,
+                'status'           => $campaign->status->value,
+                'recipients_count' => $this->sender->estimateAudience($campaign),
+            ], 'تم جدولة الرسالة', 201);
+        }
+
+        // Keep it a draft until we know it has an audience, so a mistargeted
+        // message does not leave a phantom "sent" row behind.
+        $campaign = $this->createCampaign($request, $validated, CampaignStatus::Draft);
+        $count    = $this->sender->estimateAudience($campaign);
+
+        if ($count === 0) {
+            $campaign->delete();
+
+            return $this->errorResponse('لا يوجد مستخدمون مطابقون لهذه الفئة', 422);
+        }
+
+        SendCampaignJob::dispatch($campaign->id)->onQueue('notifications');
+
+        return $this->successResponse([
+            'id'               => $campaign->id,
+            'status'           => $campaign->status->value,
+            'recipients_count' => $count,
+        ], "جارٍ الإرسال إلى {$count} مستخدم", 201);
     }
 
     /**
@@ -182,6 +200,9 @@ class AdminNotificationController extends BaseController
 
     /**
      * POST /admin/notifications/campaigns/{campaign}/send
+     *
+     * Queues delivery. A broadcast writes one row per user and multicasts FCM,
+     * so it must not run inside the admin's request.
      */
     public function send(NotificationCampaign $campaign): JsonResponse
     {
@@ -189,47 +210,18 @@ class AdminNotificationController extends BaseController
             return $this->errorResponse('تم إرسال هذه الحملة بالفعل', 422);
         }
 
-        $recipientIds = $this->resolveRecipients($campaign);
-        $count        = count($recipientIds);
+        $count = $this->sender->estimateAudience($campaign);
 
-        // Create notification records for each recipient
-        $notifications = [];
-        $now = now();
-        foreach ($recipientIds as $userId) {
-            $notifications[] = [
-                'user_id'    => $userId,
-                'type'       => 'campaign',
-                'title_ar'   => $campaign->title_ar,
-                'title_en'   => $campaign->title_en,
-                'body_ar'    => $campaign->body_ar,
-                'body_en'    => $campaign->body_en,
-                'data'       => json_encode(array_merge($campaign->data ?? [], [
-                    'campaign_id' => $campaign->id,
-                ])),
-                'channel'    => 'push',
-                'is_read'    => false,
-                'sent_at'    => $now,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
+        if ($count === 0) {
+            return $this->errorResponse('لا يوجد مستخدمون مطابقون لهذه الفئة', 422);
         }
 
-        // Batch insert (500 per chunk)
-        foreach (array_chunk($notifications, 500) as $chunk) {
-            Notification::insert($chunk);
-        }
-
-        $campaign->update([
-            'status'           => CampaignStatus::Sent->value,
-            'sent_at'          => $now,
-            'recipients_count' => $count,
-            'delivered_count'  => $count, // TODO: Real FCM delivery tracking (Sprint 10)
-        ]);
+        SendCampaignJob::dispatch($campaign->id)->onQueue('notifications');
 
         return $this->successResponse([
             'id'               => $campaign->id,
             'recipients_count' => $count,
-        ], "تم إرسال الحملة إلى {$count} مستخدم");
+        ], "جارٍ الإرسال إلى {$count} مستخدم");
     }
 
     /**
@@ -275,24 +267,45 @@ class AdminNotificationController extends BaseController
     // ── Private helpers ────────────────────────────────────────────────────
 
     /**
-     * Resolve target user IDs based on campaign target type.
+     * Validation shared by `store` (draft) and `sendNow` (immediate).
      *
-     * @return int[]
+     * @return array<string, mixed>
      */
-    private function resolveRecipients(NotificationCampaign $campaign): array
+    private function validateComposition(Request $request): array
     {
-        return match ($campaign->target_type) {
-            CampaignTargetType::All => User::where('is_active', true)->pluck('id')->toArray(),
+        return $request->validate([
+            'title_ar'           => ['required', 'string', 'max:255'],
+            'title_en'           => ['nullable', 'string', 'max:255'],
+            'body_ar'            => ['required', 'string', 'max:1000'],
+            'body_en'            => ['nullable', 'string', 'max:1000'],
+            'target_type'        => ['required', 'in:all,city,category,specific_users'],
+            'target_city_id'     => ['nullable', 'integer', 'exists:cities,id', 'required_if:target_type,city'],
+            'target_category_id' => ['nullable', 'integer', 'exists:categories,id', 'required_if:target_type,category'],
+            'target_user_ids'    => ['nullable', 'array', 'required_if:target_type,specific_users'],
+            'target_user_ids.*'  => ['integer', 'exists:users,id'],
+            'data'               => ['nullable', 'array'],
+            'scheduled_at'       => ['nullable', 'date', 'after:now'],
+        ]);
+    }
 
-            CampaignTargetType::City => User::where('is_active', true)
-                ->whereHas('ads', fn ($q) => $q->where('city_id', $campaign->target_city_id))
-                ->pluck('id')->toArray(),
-
-            CampaignTargetType::Category => User::where('is_active', true)
-                ->whereHas('categoryFollows', fn ($q) => $q->where('category_id', $campaign->target_category_id))
-                ->pluck('id')->toArray(),
-
-            CampaignTargetType::SpecificUsers => $campaign->target_user_ids ?? [],
-        };
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function createCampaign(Request $request, array $validated, CampaignStatus $status): NotificationCampaign
+    {
+        return NotificationCampaign::create([
+            'admin_id'           => $request->user()->id,
+            'title_ar'           => $validated['title_ar'],
+            'title_en'           => $validated['title_en'] ?? null,
+            'body_ar'            => $validated['body_ar'],
+            'body_en'            => $validated['body_en'] ?? null,
+            'target_type'        => $validated['target_type'],
+            'target_city_id'     => $validated['target_city_id'] ?? null,
+            'target_category_id' => $validated['target_category_id'] ?? null,
+            'target_user_ids'    => $validated['target_user_ids'] ?? null,
+            'data'               => $validated['data'] ?? null,
+            'status'             => $status->value,
+            'scheduled_at'       => $validated['scheduled_at'] ?? null,
+        ]);
     }
 }

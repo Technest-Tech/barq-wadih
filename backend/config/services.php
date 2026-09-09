@@ -45,4 +45,11 @@ return [
         ],
     ],
 
+    'snapchat' => [
+        'app_id' => env('SNAPCHAT_APP_ID'),
+        'capi_token' => env('SNAPCHAT_CAPI_TOKEN'),
+        'endpoint' => env('SNAPCHAT_CAPI_ENDPOINT', 'https://tr.snapchat.com/v3'),
+        'event_source_url' => env('SNAPCHAT_EVENT_SOURCE_URL', 'https://barqwadih.com/app'),
+    ],
+
 ];

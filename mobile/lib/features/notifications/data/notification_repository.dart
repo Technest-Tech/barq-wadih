@@ -37,6 +37,29 @@ class NotificationRepository {
     await _dio.post<void>('/notifications/read-all');
   }
 
+  /// Mark the unread notifications about one subject as read.
+  ///
+  /// Opening a conversation or an ad clears the notifications that pointed at
+  /// it — the client knows the subject, never the notification row ids, so the
+  /// backend resolves the filter. Returns the number of rows cleared.
+  Future<int> markReadFor({
+    String? type,
+    String? conversationId,
+    int? adId,
+  }) async {
+    if (type == null && conversationId == null && adId == null) return 0;
+
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/notifications/read-by',
+      data: {
+        if (type != null) 'type': type,
+        if (conversationId != null) 'conversation_id': conversationId,
+        if (adId != null) 'ad_id': adId,
+      },
+    );
+    return (res.data?['data']?['updated'] as num?)?.toInt() ?? 0;
+  }
+
   /// Get unread count.
   Future<int> fetchUnreadCount() async {
     final res = await _dio.get<Map<String, dynamic>>(

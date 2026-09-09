@@ -11,6 +11,9 @@ export interface ConversationSummary {
   participantIds: string[];
   participantNames?: Record<string, string>;
   participantAvatars?: Record<string, string | null>;
+  /** Mobile-app spelling of the two maps above; either may be present. */
+  peerNames?: Record<string, string>;
+  peerAvatars?: Record<string, string | null>;
   lastMessage: string | null;
   lastMessageAt: { _seconds: number; _nanoseconds: number } | null;
   lastMessageSenderId: string | null;

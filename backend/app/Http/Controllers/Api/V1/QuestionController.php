@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\QuestionResource;
 use App\Models\Ad;
 use App\Models\AdQuestion;
+use App\Rules\AcceptableContent;
 use App\Traits\ApiResponses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,13 +34,13 @@ class QuestionController extends Controller
     public function store(Request $request, Ad $ad): JsonResponse
     {
         $data = $request->validate([
-            'body' => 'required|string|max:1000',
+            'body' => ['required', 'string', 'max:1000', new AcceptableContent],
         ]);
 
         $question = AdQuestion::create([
-            'ad_id'   => $ad->id,
+            'ad_id' => $ad->id,
             'user_id' => $request->user()->id,
-            'body'    => $data['body'],
+            'body' => $data['body'],
         ]);
 
         $question->load(['user', 'replies']);
@@ -57,14 +58,14 @@ class QuestionController extends Controller
         }
 
         $data = $request->validate([
-            'body' => 'required|string|max:1000',
+            'body' => ['required', 'string', 'max:1000', new AcceptableContent],
         ]);
 
         $reply = AdQuestion::create([
-            'ad_id'     => $question->ad_id,
-            'user_id'   => $request->user()->id,
+            'ad_id' => $question->ad_id,
+            'user_id' => $request->user()->id,
             'parent_id' => $question->id,
-            'body'      => $data['body'],
+            'body' => $data['body'],
         ]);
 
         $reply->load('user');

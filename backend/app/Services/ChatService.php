@@ -121,6 +121,9 @@ class ChatService
 
     /**
      * Sends a real FCM push notification for a new chat message.
+     *
+     * The ad is named in the body: a seller running several listings otherwise
+     * has no way to tell which one a "رسالة جديدة من فلان" is about.
      */
     public function notifyNewMessage(
         string $conversationId,
@@ -128,17 +131,49 @@ class ChatService
         string $messagePreview,
         User $sender
     ): void {
+        $adId    = self::adIdFromConversationId($conversationId);
+        $adTitle = $adId !== null ? Ad::whereKey($adId)->value('title') : null;
+
+        $preview = mb_substr($messagePreview, 0, 80);
+
+        $data = [
+            'type'            => 'chat',
+            'conversation_id' => $conversationId,
+            'sender_id'       => $sender->id,
+            'sender_name'     => $sender->name,
+        ];
+
+        if ($adId !== null) {
+            $data['ad_id'] = $adId;
+        }
+
+        if (filled($adTitle)) {
+            $data['ad_title'] = $adTitle;
+        }
+
         app(PushService::class)->sendToUser(
             $receiverId,
             'new_message',
             "رسالة جديدة من {$sender->name}",
-            mb_substr($messagePreview, 0, 80),
-            [
-                'type'            => 'chat',
-                'conversation_id' => $conversationId,
-                'sender_id'       => $sender->id,
-                'sender_name'     => $sender->name,
-            ],
+            filled($adTitle)
+                ? "بخصوص إعلان: {$adTitle}\n{$preview}"
+                : $preview,
+            $data,
         );
+    }
+
+    // ── Read the ad back out of a conversation id ─────────────────────────────
+
+    /**
+     * Inverse of [conversationId]: pulls the ad id out of "ad{id}_u{a}_u{b}".
+     * Returns null for any id that does not follow that shape.
+     */
+    public static function adIdFromConversationId(string $conversationId): ?int
+    {
+        if (preg_match('/^ad(\d+)_u\d+_u\d+$/', $conversationId, $matches) !== 1) {
+            return null;
+        }
+
+        return (int) $matches[1];
     }
 }

@@ -50,6 +50,10 @@ export interface AdListItem {
   boosted_until: string | null;
   published_at: string | null;
   created_at: string;
+  /** When the ad drops out of the feed (3 months after publish/renew). */
+  expires_at?: string | null;
+  /** Owner-only: true once the ad is hidden and can be brought back. */
+  can_renew?: boolean;
   // Owner-only: present in My Ads to drive the after-sale commission CTA.
   payment_status?:
     | 'not_required'
@@ -84,6 +88,7 @@ export interface AdSeller {
 }
 
 export interface Ad extends AdListItem {
+  is_vehicle_category: boolean;
   description: string;
   moderation_status: string;
   images: AdImage[];
@@ -196,6 +201,15 @@ export async function deleteAd(id: number): Promise<void> {
  */
 export async function markAdSold(id: number): Promise<AdListItem> {
   const res = await apiClient.post<AdListItem>(ENDPOINTS.AD_MARK_SOLD(id), {});
+  return res.data!;
+}
+
+/**
+ * Renew a hidden (expired) ad — brings it back into the feed for another
+ * visibility window. Only allowed once the ad is actually hidden.
+ */
+export async function renewAd(id: number): Promise<AdListItem> {
+  const res = await apiClient.post<AdListItem>(ENDPOINTS.AD_RENEW(id), {});
   return res.data!;
 }
 

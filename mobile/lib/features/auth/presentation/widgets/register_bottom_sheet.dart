@@ -49,8 +49,9 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
     super.dispose();
   }
 
-  String _buildPhone() {
+  String? _buildPhone() {
     final digits = _phoneCtrl.text.trim();
+    if (digits.isEmpty) return null;
     final local = digits.startsWith('0') ? digits.substring(1) : digits;
     return '+966$local';
   }
@@ -191,7 +192,7 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
                 const SizedBox(height: 14),
 
                 // Phone
-                _FieldLabel('رقم الجوال', required: true),
+                _FieldLabel('رقم الجوال (اختياري)', required: false),
                 Directionality(
                   textDirection: TextDirection.ltr,
                   child: TextFormField(
@@ -203,15 +204,13 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
                       LengthLimitingTextInputFormatter(10),
                     ],
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'رقم الجوال مطلوب';
-                      }
+                      if (v == null || v.trim().isEmpty) return null;
                       if (!RegExp(r'^(05|5)[0-9]{8}$').hasMatch(v.trim())) {
                         return 'أدخل رقم جوال سعودي صحيح (مثال: 0512345678)';
                       }
                       return null;
                     },
-                    decoration: _phoneDec(),
+                    decoration: _phoneDec(hint: 'يمكنك إضافته لاحقًا'),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -224,8 +223,9 @@ class _RegisterBottomSheetState extends ConsumerState<_RegisterBottomSheet> {
                   keyboardType: TextInputType.emailAddress,
                   style: _kInputTextStyle,
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty)
+                    if (v == null || v.trim().isEmpty) {
                       return 'البريد الإلكتروني مطلوب';
+                    }
                     return v.contains('@') ? null : 'البريد غير صالح';
                   },
                   decoration: _dec(
@@ -404,9 +404,9 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-InputDecoration _phoneDec() {
+InputDecoration _phoneDec({String? hint}) {
   return InputDecoration(
-    hintText: '05XXXXXXXX',
+    hintText: hint ?? '05XXXXXXXX',
     hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
     filled: true,
     fillColor: Colors.white,

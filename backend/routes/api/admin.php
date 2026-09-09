@@ -103,6 +103,7 @@ Route::prefix('v1/admin')
         Route::get('analytics/zero-results',  [AdminAnalyticsController::class, 'zeroResults'])->name('analytics.zero-results');
 
         // ── Sprint 17: Notification Campaigns ────────────────────────────
+        Route::post('notifications/send',                          [AdminNotificationController::class, 'sendNow'])->name('notifications.send-now');
         Route::get('notifications/stats',                        [AdminNotificationController::class, 'stats'])->name('notifications.stats');
         Route::get('notifications/campaigns',                    [AdminNotificationController::class, 'index'])->name('notifications.campaigns.index');
         Route::post('notifications/campaigns',                   [AdminNotificationController::class, 'store'])->name('notifications.campaigns.store');

@@ -16,7 +16,9 @@ class FavoriteRepository {
   }
 
   Future<bool> checkStatus(int adId) async {
-    final res = await _dio.get<Map<String, dynamic>>('/ads/$adId/favorite-status');
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/ads/$adId/favorite-status',
+    );
     return res.data?['data']?['is_favorited'] as bool? ?? false;
   }
 

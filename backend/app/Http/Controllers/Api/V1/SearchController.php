@@ -142,7 +142,9 @@ class SearchController extends BaseController
             });
 
             // Eager-load Eloquent relations on the matching IDs
-            $builder->query(fn ($q) => $q->with(['images', 'category', 'city', 'region', 'user']));
+            $builder->query(fn ($q) => $q
+                ->with(['primaryImage', 'category', 'city', 'region', 'user'])
+                ->withCount('images'));
 
             return $builder->paginate(20);
         } catch (\Throwable $e) {
@@ -178,7 +180,9 @@ class SearchController extends BaseController
         bool $isFree,
         string $sort,
     ) {
-        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])->feed();
+        $query = Ad::with(['primaryImage', 'category', 'city', 'region', 'user'])
+            ->withCount('images')
+            ->feed();
 
         $tokens = $this->searchTokens($q);
 
@@ -340,7 +344,8 @@ class SearchController extends BaseController
         $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
         $limit = min((int) $request->input('limit', 3), 10);
 
-        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
+        $query = Ad::with(['primaryImage', 'category', 'city', 'region', 'user'])
+            ->withCount('images')
             ->active()
             ->orderByDesc('views_count')
             ->orderByDesc('published_at');

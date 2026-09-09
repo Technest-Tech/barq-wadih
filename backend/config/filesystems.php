@@ -56,6 +56,10 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'http' => [
+                'connect_timeout' => (float) env('OBJECT_STORAGE_CONNECT_TIMEOUT', 10),
+                'timeout' => (float) env('OBJECT_STORAGE_REQUEST_TIMEOUT', 30),
+            ],
             'throw' => false,
             'report' => false,
         ],
@@ -70,6 +74,10 @@ return [
             'url'                     => env('DO_SPACES_URL'),
             'use_path_style_endpoint' => false,
             'visibility'              => 'public',
+            'http'                    => [
+                'connect_timeout' => (float) env('OBJECT_STORAGE_CONNECT_TIMEOUT', 10),
+                'timeout' => (float) env('OBJECT_STORAGE_REQUEST_TIMEOUT', 30),
+            ],
             'throw'                   => false,
             'report'                  => false,
         ],

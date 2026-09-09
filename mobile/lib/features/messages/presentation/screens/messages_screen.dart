@@ -6,11 +6,12 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../safety/data/user_safety_repository.dart';
 import '../../data/chat_providers.dart';
 import '../../domain/chat_models.dart';
 
 const _kHeaderBlue = Color(0xFF1B4FE4);
-const _kBgLight    = Color(0xFFF5F7FB);
+const _kBgLight = Color(0xFFF5F7FB);
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -41,11 +42,16 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.chat_bubble_outline_rounded,
-                  size: 64, color: Colors.grey[300]),
+              Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 64,
+                color: Colors.grey[300],
+              ),
               const SizedBox(height: 16),
-              Text('سجّل الدخول لعرض رسائلك',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+              Text(
+                'سجّل الدخول لعرض رسائلك',
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => context.push(AppRoutes.login),
@@ -58,12 +64,17 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     }
 
     final myId = user.id.toString();
+    final blockedIds = ref.watch(blockedUserIdsProvider).asData?.value ?? {};
 
     // Ensure Firebase is signed in before starting the Firestore stream.
     // Without auth, the security rule (request.auth != null) rejects every read.
-    final firebaseAuth = ref.watch(firebaseChatAuthProvider);
+    final firebaseAuth = ref.watch(firebaseChatAuthProvider(myId));
     if (firebaseAuth.isLoading) {
-      return Scaffold(backgroundColor: _kBgLight, appBar: _buildAppBar(), body: _buildSkeleton());
+      return Scaffold(
+        backgroundColor: _kBgLight,
+        appBar: _buildAppBar(),
+        body: _buildSkeleton(),
+      );
     }
     if (firebaseAuth.hasError) {
       return Scaffold(
@@ -75,16 +86,25 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.cloud_off_rounded, size: 56, color: Colors.grey[400]),
+                Icon(
+                  Icons.cloud_off_rounded,
+                  size: 56,
+                  color: Colors.grey[400],
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'تعذّر الاتصال بخدمة الرسائل',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
-                  onPressed: () => ref.invalidate(firebaseChatAuthProvider),
+                  onPressed: () =>
+                      ref.invalidate(firebaseChatAuthProvider(myId)),
                   icon: const Icon(Icons.refresh),
                   label: const Text('إعادة المحاولة'),
                 ),
@@ -112,14 +132,19 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               error: (e, _) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text('خطأ في تحميل الرسائل: $e',
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center),
+                  child: Text(
+                    'خطأ في تحميل الرسائل: $e',
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
               data: (conversations) {
-                final filtered = _filter(conversations);
-                if (conversations.isEmpty) return _buildEmptyState();
+                final visible = conversations
+                    .where((c) => !blockedIds.contains(c.otherId(myId)))
+                    .toList();
+                final filtered = _filter(visible);
+                if (visible.isEmpty) return _buildEmptyState();
                 if (filtered.isEmpty) return _buildNoMatchState();
                 return ListView.separated(
                   itemCount: filtered.length,
@@ -192,8 +217,10 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
             prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
             border: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 13,
+            ),
           ),
         ),
       ),
@@ -205,8 +232,11 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.chat_bubble_outline_rounded,
-              size: 72, color: Colors.grey[300]),
+          Icon(
+            Icons.chat_bubble_outline_rounded,
+            size: 72,
+            color: Colors.grey[300],
+          ),
           const SizedBox(height: 16),
           Text(
             'لا توجد محادثات بعد',
@@ -231,13 +261,15 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off_rounded,
-              size: 56, color: Colors.grey[300]),
+          Icon(Icons.search_off_rounded, size: 56, color: Colors.grey[300]),
           const SizedBox(height: 12),
           Text(
             'لا توجد نتائج لبحثك',
             style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
         ],
       ),
@@ -263,12 +295,14 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread      = conv.myUnreadCount(myId);
-    final isMe        = conv.lastMessageSenderId == myId;
-    final lastTime    = conv.lastMessageAt != null ? _relTime(conv.lastMessageAt!) : '';
+    final unread = conv.myUnreadCount(myId);
+    final isMe = conv.lastMessageSenderId == myId;
+    final lastTime = conv.lastMessageAt != null
+        ? _relTime(conv.lastMessageAt!)
+        : '';
     final displayName = conv.otherName(myId);
-    final avatarUrl   = conv.otherAvatar(myId);
-    final initial     = displayName.trim().isEmpty
+    final avatarUrl = conv.otherAvatar(myId);
+    final initial = displayName.trim().isEmpty
         ? '?'
         : displayName.trim().substring(0, 1).toUpperCase();
 
@@ -290,7 +324,8 @@ class _ConversationTile extends StatelessWidget {
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _avatarFallback(initial),
+                          errorBuilder: (_, __, ___) =>
+                              _avatarFallback(initial),
                         )
                       : _avatarFallback(initial),
                 ),
@@ -336,7 +371,9 @@ class _ConversationTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           color: unread > 0 ? _kHeaderBlue : Colors.grey[500],
-                          fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: unread > 0
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                       ),
                     ],
@@ -373,7 +410,9 @@ class _ConversationTile extends StatelessWidget {
                         Container(
                           margin: const EdgeInsets.only(right: 6),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: _kHeaderBlue,
                             borderRadius: BorderRadius.circular(99),

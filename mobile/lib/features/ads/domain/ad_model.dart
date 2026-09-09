@@ -142,6 +142,9 @@ class AdListModel {
   final DateTime? expiresAt;
   final bool? canRefresh;
   final DateTime? nextRefreshAt;
+
+  /// Owner-only: true once the ad is hidden and can be brought back.
+  final bool canRenew;
   // Owner-only: flat commission owed after sale + its payment status.
   final double? paymentAmount;
   final String? paymentStatus;
@@ -168,6 +171,7 @@ class AdListModel {
     this.expiresAt,
     this.canRefresh,
     this.nextRefreshAt,
+    this.canRenew = false,
     this.paymentAmount,
     this.paymentStatus,
   });
@@ -239,6 +243,7 @@ class AdListModel {
       nextRefreshAt: json['next_refresh_at'] != null
           ? DateTime.tryParse(json['next_refresh_at'] as String)
           : null,
+      canRenew: json['can_renew'] as bool? ?? false,
       paymentAmount: json['payment_amount'] != null
           ? double.tryParse(json['payment_amount'].toString())
           : null,
@@ -259,6 +264,7 @@ class AdListModel {
 // ── Full ad detail ────────────────────────────────────────────────────────────
 
 class AdDetailModel extends AdListModel {
+  final bool isVehicleCategory;
   final String description;
   final List<AdImageModel> images;
   final List<AdFieldValueModel> fieldValues;
@@ -304,6 +310,8 @@ class AdDetailModel extends AdListModel {
     super.expiresAt,
     super.canRefresh,
     super.nextRefreshAt,
+    super.canRenew,
+    this.isVehicleCategory = false,
     required this.description,
     required this.images,
     required this.fieldValues,
@@ -342,6 +350,8 @@ class AdDetailModel extends AdListModel {
       expiresAt: base.expiresAt,
       canRefresh: base.canRefresh,
       nextRefreshAt: base.nextRefreshAt,
+      canRenew: base.canRenew,
+      isVehicleCategory: json['is_vehicle_category'] as bool? ?? false,
       description: json['description'] as String? ?? '',
       images: (json['images'] as List<dynamic>? ?? [])
           .map((e) => AdImageModel.fromJson(e as Map<String, dynamic>))

@@ -1,5 +1,30 @@
 // Chat domain models — maps to Firestore document structure.
 
+/// Flattens the web (`participantNames`) and mobile (`peerNames`) spellings of
+/// the same map into one lookup. Later sources win on key collisions.
+Map<String, String> mergeStringMap(dynamic first, dynamic second) {
+  final out = <String, String>{};
+  for (final source in [first, second]) {
+    if (source is Map) {
+      source.forEach((k, v) {
+        if (v != null) out[k.toString()] = v.toString();
+      });
+    }
+  }
+  return out;
+}
+
+/// Same as [mergeStringMap] but keeps explicit nulls (missing avatars).
+Map<String, String?> mergeNullableStringMap(dynamic first, dynamic second) {
+  final out = <String, String?>{};
+  for (final source in [first, second]) {
+    if (source is Map) {
+      source.forEach((k, v) => out[k.toString()] = v?.toString());
+    }
+  }
+  return out;
+}
+
 class ConversationModel {
   final String id;
   final List<String> participantIds;
@@ -33,22 +58,17 @@ class ConversationModel {
 
   int myUnreadCount(String myId) => unreadCount[myId] ?? 0;
 
+  String otherId(String myId) =>
+      participantIds.firstWhere((id) => id != myId, orElse: () => '');
+
   /// Returns the display name for the other participant.
   String otherName(String myId) {
-    final otherId = participantIds.firstWhere(
-      (id) => id != myId,
-      orElse: () => '',
-    );
-    return peerNames[otherId] ?? adTitle;
+    return peerNames[otherId(myId)] ?? adTitle;
   }
 
   /// Returns the avatar URL for the other participant (falls back to ad image).
   String? otherAvatar(String myId) {
-    final otherId = participantIds.firstWhere(
-      (id) => id != myId,
-      orElse: () => '',
-    );
-    return peerAvatars[otherId] ?? adImage;
+    return peerAvatars[otherId(myId)] ?? adImage;
   }
 
   factory ConversationModel.fromFirestore(
@@ -81,15 +101,13 @@ class ConversationModel {
         ),
       ),
       createdAt: toDateTime(data['createdAt']) ?? DateTime.now(),
-      peerNames: Map<String, String>.from(
-        (data['peerNames'] as Map<dynamic, dynamic>? ?? {}).map(
-          (k, v) => MapEntry(k.toString(), v.toString()),
-        ),
-      ),
-      peerAvatars: Map<String, String?>.from(
-        (data['peerAvatars'] as Map<dynamic, dynamic>? ?? {}).map(
-          (k, v) => MapEntry(k.toString(), v?.toString()),
-        ),
+      // Threads created by the web client carry `participantNames`/
+      // `participantAvatars` instead of `peerNames`/`peerAvatars`. Merge both
+      // so either schema resolves the peer's name and avatar.
+      peerNames: mergeStringMap(data['participantNames'], data['peerNames']),
+      peerAvatars: mergeNullableStringMap(
+        data['participantAvatars'],
+        data['peerAvatars'],
       ),
     );
   }

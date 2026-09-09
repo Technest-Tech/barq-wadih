@@ -3,14 +3,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../shared/widgets/share_account_sheet.dart';
 import '../../../ads/data/ad_api.dart';
 import '../../../ratings/presentation/screens/ratings_list_screen.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/auth_user.dart';
 import '../providers/auth_provider.dart';
+
+// ── Account sharing ────────────────────────────────────────────────────────────
+
+/// Canonical public link for an account. Prefers the URL the API hands back;
+/// falls back to the id route for accounts created before @handles existed.
+String _profileUrlFor(AuthUser user) {
+  final fromApi = user.profileUrl;
+  if (fromApi != null && fromApi.isNotEmpty) return fromApi;
+
+  final handle = user.username;
+  if (handle != null && handle.isNotEmpty) {
+    return AppConstants.profileWebUrl(handle);
+  }
+
+  return '${AppConstants.webBaseUrl}/users/${user.id}';
+}
+
+Future<void> _shareAccount(BuildContext context, AuthUser user) {
+  return showShareAccountSheet(
+    context,
+    account: ShareAccountData(
+      name: user.name,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      profileUrl: _profileUrlFor(user),
+    ),
+  );
+}
 
 // ── Profile Screen ─────────────────────────────────────────────────────────────
 
@@ -22,6 +53,8 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _deletingAccount = false;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +95,89 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Future<bool> _confirmAccountDeletion(BuildContext context) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('حذف الحساب نهائيًا'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'سيتم حذف ملفك وإعلاناتك وبيانات تسجيل الدخول فورًا. لا يمكن التراجع عن هذه العملية. قد نحتفظ فقط بالسجلات المالية أو سجلات البلاغات التي يفرض النظام الاحتفاظ بها.',
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'للتأكيد اكتب كلمة «حذف»:',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'حذف',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: controller.text.trim() == 'حذف'
+                    ? () => Navigator.pop(dialogContext, true)
+                    : null,
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('حذف الحساب'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    controller.dispose();
+    return result == true;
+  }
+
+  Future<void> _deleteAccount() async {
+    if (!await _confirmAccountDeletion(context) || !mounted) return;
+
+    setState(() => _deletingAccount = true);
+    try {
+      await ref.read(authProvider.notifier).deleteAccount();
+      if (mounted) context.go('/');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر حذف الحساب. حاول مرة أخرى.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _deletingAccount = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -99,6 +215,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(LucideIcons.qrCode),
+                  tooltip: 'مشاركة الحساب',
+                  onPressed: () => _shareAccount(context, user),
+                ),
+                IconButton(
                   icon: const Icon(Icons.edit_rounded),
                   tooltip: 'تعديل الملف الشخصي',
                   onPressed: () => context.push('/profile/edit'),
@@ -127,6 +248,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                      if (user.username != null) _HandleRow(user: user),
                       if (user.phone != null)
                         Text(
                           user.phone!,
@@ -240,8 +362,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         }
                       },
                     ),
+                    const SizedBox(height: 10),
+                    _DeleteAccountButton(
+                      loading: _deletingAccount,
+                      onTap: _deletingAccount ? null : _deleteAccount,
+                    ),
                     const SizedBox(height: 32),
                   ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Handle Row ────────────────────────────────────────────────────────────────
+
+/// "@ahmd_aamr" with the QR button beside it — tapping either opens the share
+/// sheet, the same affordance the reference apps put next to the handle.
+class _HandleRow extends StatelessWidget {
+  final AuthUser user;
+  const _HandleRow({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _shareAccount(context, user),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.qrCode, size: 15, color: Colors.white70),
+            const SizedBox(width: 6),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                '@${user.username}',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -596,6 +761,36 @@ class _LogoutButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DeleteAccountButton extends StatelessWidget {
+  final bool loading;
+  final VoidCallback? onTap;
+
+  const _DeleteAccountButton({required this.loading, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        foregroundColor: Colors.red.shade800,
+        side: BorderSide(color: Colors.red.shade300),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      icon: loading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.delete_forever_outlined),
+      label: Text(
+        loading ? 'جاري حذف الحساب...' : 'حذف الحساب والبيانات نهائيًا',
       ),
     );
   }

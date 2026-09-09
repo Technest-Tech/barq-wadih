@@ -449,6 +449,18 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
 
               <div className={styles.desktopDescWrapper}>{ad.description}</div>
 
+              {ad.is_vehicle_category && ad.user?.is_dealer && (
+                <div className={styles.dealerCommissionNotice} role="note">
+                  <span className={styles.dealerCommissionIcon} aria-hidden="true">
+                    ٣٥
+                  </span>
+                  <p>
+                    <strong>توضيح للمعرض:</strong> عمولة السيارات والمركبات ٣٥ ريالًا بعد إتمام
+                    البيع، وتكون في الذمة.
+                  </p>
+                </div>
+              )}
+
               <div
                 className={styles.desktopDescWrapper}
                 style={{ fontWeight: 600, marginBottom: 0 }}

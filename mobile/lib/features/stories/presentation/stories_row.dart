@@ -31,10 +31,8 @@ class _StoriesRowState extends ConsumerState<StoriesRow> {
         opaque: false,
         barrierColor: Colors.black,
         transitionDuration: const Duration(milliseconds: 280),
-        pageBuilder: (_, __, ___) => StoryViewer(
-          stories: stories,
-          initialIndex: index,
-        ),
+        pageBuilder: (_, __, ___) =>
+            StoryViewer(stories: stories, initialIndex: index),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -89,7 +87,8 @@ class _StoriesRowState extends ConsumerState<StoriesRow> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 52, height: 52,
+                width: 52,
+                height: 52,
                 decoration: const BoxDecoration(
                   color: AppTheme.neutralGray200,
                   shape: BoxShape.circle,
@@ -97,7 +96,8 @@ class _StoriesRowState extends ConsumerState<StoriesRow> {
               ),
               const SizedBox(height: 5),
               Container(
-                width: 40, height: 8,
+                width: 40,
+                height: 8,
                 decoration: BoxDecoration(
                   color: AppTheme.neutralGray200,
                   borderRadius: BorderRadius.circular(4),
@@ -136,7 +136,10 @@ class _AddStoryBubble extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppTheme.neutralGray100,
-                    border: Border.all(color: AppTheme.neutralGray200, width: 1.5),
+                    border: Border.all(
+                      color: AppTheme.neutralGray200,
+                      width: 1.5,
+                    ),
                   ),
                   child: const Icon(
                     Icons.person_rounded,
@@ -249,7 +252,9 @@ class _StoryBubble extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: seen ? FontWeight.w400 : FontWeight.w700,
-                  color: seen ? AppTheme.neutralGray500 : AppTheme.neutralGray900,
+                  color: seen
+                      ? AppTheme.neutralGray500
+                      : AppTheme.neutralGray900,
                 ),
               ),
             ),
@@ -299,10 +304,7 @@ class _EmojiAvatar extends StatelessWidget {
       height: 52,
       color: AppTheme.neutralGray100,
       alignment: Alignment.center,
-      child: Text(
-        emoji ?? '📦',
-        style: const TextStyle(fontSize: 20),
-      ),
+      child: Text(emoji ?? '📦', style: const TextStyle(fontSize: 20)),
     );
   }
 }

@@ -5,6 +5,7 @@ import {
   fetchCampaigns, fetchNotificationStats, createCampaign, sendCampaign, deleteCampaign,
   type CampaignItem, type NotificationStats, type PaginatedCampaigns, type CampaignCreateData,
 } from '@/lib/api/admin-notifications';
+import MessageComposer from '@/components/admin/MessageComposer/MessageComposer';
 import styles from './notifications.module.css';
 
 const STATUS_TABS = [
@@ -30,7 +31,14 @@ export default function AdminNotificationsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const showToast = (msg: string, type: 'success' | 'error') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // Form state
   const [form, setForm] = useState<CampaignCreateData>({
@@ -66,8 +74,11 @@ export default function AdminNotificationsPage() {
     if (!confirm('هل تريد إرسال هذه الحملة الآن؟')) return;
     try {
       await sendCampaign(id);
+      showToast('تم بدء الإرسال — قد يستغرق دقائق حتى تكتمل', 'success');
       await loadData();
-    } catch { alert('فشل إرسال الحملة'); }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'فشل إرسال الحملة', 'error');
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -81,9 +92,25 @@ export default function AdminNotificationsPage() {
   return (
     <div className={styles.page}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f1f5f9', margin: 0 }}>🔔 حملات الإشعارات</h1>
-        <button className={styles.createBtn} onClick={() => setShowModal(true)}>+ حملة جديدة</button>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f1f5f9', margin: 0 }}>🔔 الرسائل والإشعارات</h1>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button className={styles.createBtn} onClick={() => setShowComposer(true)}>✉️ إرسال رسالة</button>
+          <button className={styles.cancelBtn} onClick={() => setShowModal(true)}>+ حفظ كمسودة</button>
+        </div>
       </div>
+
+      {toast && (
+        <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastOk : styles.toastErr}`}>
+          {toast.msg}
+        </div>
+      )}
+
+      <MessageComposer
+        open={showComposer}
+        onClose={() => setShowComposer(false)}
+        onSent={(msg) => { showToast(msg, 'success'); loadData(); }}
+        onError={(msg) => showToast(msg, 'error')}
+      />
 
       {/* Summary */}
       {stats && (

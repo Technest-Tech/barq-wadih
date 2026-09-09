@@ -61,10 +61,7 @@ class AppTextField extends StatelessWidget {
           onChanged: onChanged,
           validator: validator,
           readOnly: readOnly,
-          style: const TextStyle(
-            fontSize: 15,
-            color: AppTheme.neutralGray900,
-          ),
+          style: const TextStyle(fontSize: 15, color: AppTheme.neutralGray900),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(
@@ -76,8 +73,10 @@ class AppTextField extends StatelessWidget {
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: Colors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppTheme.neutralGray200),
@@ -88,8 +87,10 @@ class AppTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryBlue,
+                width: 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -97,8 +98,7 @@ class AppTextField extends StatelessWidget {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: Colors.redAccent, width: 1.5),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
             ),
           ),
         ),

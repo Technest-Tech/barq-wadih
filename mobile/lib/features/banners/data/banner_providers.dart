@@ -12,7 +12,7 @@ final bannerRepositoryProvider = Provider<BannerRepository>((ref) {
 
 // ── Banners by position ───────────────────────────────────────────────────────
 
-final bannersProvider =
-    FutureProvider.autoDispose.family<List<BannerModel>, String>((ref, position) {
-  return ref.watch(bannerRepositoryProvider).fetchBanners(position);
-});
+final bannersProvider = FutureProvider.autoDispose
+    .family<List<BannerModel>, String>((ref, position) {
+      return ref.watch(bannerRepositoryProvider).fetchBanners(position);
+    });

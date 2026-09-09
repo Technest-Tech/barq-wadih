@@ -321,7 +321,7 @@ export default function AdminPaymentProofsPage() {
                   </div>
 
                   <div className={styles.adRow}>
-                    <Link href={`/ar/admin/ads/${p.id}`}>
+                    <Link href={`/admin/ads/${p.id}`}>
                       #{p.id} — {p.title}
                     </Link>
                     {p.category?.name_ar && (

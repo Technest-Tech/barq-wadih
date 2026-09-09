@@ -12,12 +12,15 @@ use App\Models\Ad;
 use App\Models\AdFieldValue;
 use App\Models\AdImage;
 use App\Models\Category;
-use App\Models\CommissionPayment;
 use App\Models\CategoryField;
+use App\Models\City;
+use App\Models\CommissionPayment;
 use App\Models\Region;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AdService
 {
@@ -29,52 +32,60 @@ class AdService
      * Create a new ad with images and field values.
      *
      * @param  array<string, mixed>  $data
-     * @param  UploadedFile[]        $images
+     * @param  UploadedFile[]  $images
      */
     public function create(User $user, array $data, array $images): Ad
     {
         return DB::transaction(function () use ($user, $data, $images) {
             // Resolve region from city
-            $cityId   = (int) $data['city_id'];
-            $regionId = \App\Models\City::find($cityId)?->region_id;
+            $cityId = (int) $data['city_id'];
+            $regionId = City::find($cityId)?->region_id;
 
-            $sellerType = $data['seller_type'] ?? 'individual';
+            // Account status is the source of truth. Never let a client select
+            // the lower dealer commission for a non-dealer account.
+            $sellerType = $user->is_dealer ? 'dealer' : 'individual';
             $categoryId = (int) $data['category_id'];
 
             // "عند الاتصال" — price is hidden and not stored.
             $priceHidden = filter_var($data['price_hidden'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $price       = $priceHidden ? null : ($data['price'] ?? null);
-            $commission  = $this->calculateCommission($categoryId, (float) ($price ?? 0), false, $sellerType);
+            $negotiable = filter_var($data['is_negotiable'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $price = $priceHidden ? null : ($data['price'] ?? null);
+            // "على السوم" at 0 means "no asking price — make me an offer".
+            // Storing that as null puts it on the same path as a negotiable ad
+            // published with the price left blank: it renders as على السوم
+            // instead of "0 ر.س", and sorts with the other price-less ads.
+            $price = $this->normalizeNegotiablePrice($price, $negotiable);
+            $commission = $this->calculateCommission($categoryId, (float) ($price ?? 0), false, $sellerType);
 
             /** @var Ad $ad */
             $ad = $user->ads()->create([
-                'seller_type'         => $sellerType,
-                'category_id'         => $data['category_id'],
-                'city_id'             => $cityId,
-                'region_id'           => $regionId,
-                'district_id'         => $data['district_id'] ?? null,
-                'district_name_free'  => $data['district_name_free'] ?? null,
-                'latitude'            => $data['latitude'] ?? null,
-                'longitude'           => $data['longitude'] ?? null,
-                'title'               => $data['title'],
-                'description'         => $data['description'],
-                'price'               => $price,
-                'price_hidden'        => $priceHidden,
-                'is_negotiable'       => $data['is_negotiable'] ?? false,
-                'is_free'             => false,
-                'contact_phone'       => $data['contact_phone'] ?? null,
-                'contact_whatsapp'    => $data['contact_whatsapp'] ?? null,
+                'seller_type' => $sellerType,
+                'category_id' => $data['category_id'],
+                'city_id' => $cityId,
+                'region_id' => $regionId,
+                'district_id' => $data['district_id'] ?? null,
+                'district_name_free' => $data['district_name_free'] ?? null,
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
+                'title' => $data['title'],
+                'description' => $data['description'],
+                'price' => $price,
+                'price_hidden' => $priceHidden,
+                'is_negotiable' => $negotiable,
+                'is_free' => false,
+                'contact_phone' => $data['contact_phone'] ?? null,
+                'contact_whatsapp' => $data['contact_whatsapp'] ?? null,
                 'show_phone_publicly' => $data['show_phone_publicly'] ?? true,
-                'pledge_accepted'     => true,
+                'pledge_accepted' => true,
                 // Publishing is free for every category. The flat commission is
                 // only owed AFTER the sale — see markAsSold().
-                'commission_amount'   => $commission,
-                'commission_status'   => CommissionStatus::Pending,
-                'status'              => AdStatus::Active,
-                'moderation_status'   => ModerationStatus::Approved,
-                'payment_status'      => PaymentStatus::NotRequired->value,
-                'published_at'        => now(),
-                'expires_at'          => now()->addDays(30),
+                'commission_amount' => $commission,
+                'commission_status' => CommissionStatus::Pending,
+                'status' => AdStatus::Active,
+                'moderation_status' => ModerationStatus::Approved,
+                'payment_status' => PaymentStatus::NotRequired->value,
+                'published_at' => now(),
+                'expires_at' => Ad::nextExpiry(),
             ]);
 
             // Save dynamic field values
@@ -102,11 +113,11 @@ class AdService
         }
 
         $ad->update([
-            'payment_status'    => PaymentStatus::Paid->value,
+            'payment_status' => PaymentStatus::Paid->value,
             'payment_reference' => $payload['provider_reference'] ?? $payload['reference'] ?? $ad->payment_reference,
-            'paid_at'           => now(),
-            'status'            => AdStatus::Active,
-            'published_at'      => $ad->published_at ?? now(),
+            'paid_at' => now(),
+            'status' => AdStatus::Active,
+            'published_at' => $ad->published_at ?? now(),
         ]);
 
         return $ad->fresh(['images', 'fieldValues.field', 'category', 'city', 'region', 'district']);
@@ -124,10 +135,10 @@ class AdService
         }
 
         $ad->update([
-            'payment_status'     => PaymentStatus::Paid->value,
-            'payment_reference'  => $payload['provider_reference'] ?? $payload['reference'] ?? $ad->payment_reference,
-            'paid_at'            => now(),
-            'commission_status'  => CommissionStatus::Paid,
+            'payment_status' => PaymentStatus::Paid->value,
+            'payment_reference' => $payload['provider_reference'] ?? $payload['reference'] ?? $ad->payment_reference,
+            'paid_at' => now(),
+            'commission_status' => CommissionStatus::Paid,
         ]);
 
         // Record the settled commission in the financial ledger so it shows in
@@ -136,15 +147,15 @@ class AdService
         CommissionPayment::updateOrCreate(
             ['ad_id' => $ad->id],
             [
-                'user_id'                => $ad->user_id,
-                'sale_price'             => (float) ($ad->price ?? 0),
-                'commission_rate'        => 0,
-                'commission_amount'      => (float) ($ad->payment_amount ?? $ad->commission_amount ?? 0),
-                'is_flat_fee'            => true,
-                'payment_status'         => CommissionStatus::Paid->value,
-                'payment_method'         => PaymentMethod::BankTransfer->value,
+                'user_id' => $ad->user_id,
+                'sale_price' => (float) ($ad->price ?? 0),
+                'commission_rate' => 0,
+                'commission_amount' => (float) ($ad->payment_amount ?? $ad->commission_amount ?? 0),
+                'is_flat_fee' => true,
+                'payment_status' => CommissionStatus::Paid->value,
+                'payment_method' => PaymentMethod::BankTransfer->value,
                 'gateway_transaction_id' => $payload['provider_reference'] ?? $payload['reference'] ?? null,
-                'paid_at'                => now(),
+                'paid_at' => now(),
             ],
         );
 
@@ -166,25 +177,48 @@ class AdService
      * Update an existing ad.
      *
      * @param  array<string, mixed>  $data
-     * @param  UploadedFile[]        $newImages
-     * @param  int[]                 $removeImageIds
+     * @param  UploadedFile[]  $newImages
+     * @param  int[]  $removeImageIds
      */
     public function update(Ad $ad, array $data, array $newImages = [], array $removeImageIds = []): Ad
     {
         return DB::transaction(function () use ($ad, $data, $newImages, $removeImageIds) {
             $fillable = array_intersect_key($data, array_flip([
                 'title', 'description', 'price',
-                'is_negotiable',
+                'is_negotiable', 'price_hidden', 'is_free',
+                'category_id',
                 'city_id', 'district_id', 'district_name_free',
                 'latitude', 'longitude',
                 'contact_phone', 'contact_whatsapp', 'show_phone_publicly',
             ]));
 
-            if (isset($fillable['city_id'])) {
-                $fillable['region_id'] = \App\Models\City::find($fillable['city_id'])?->region_id;
+            // Same "على السوم" rule as create. is_negotiable may be absent from
+            // an edit that only touches the price, so fall back to the stored
+            // flag rather than treating the ad as fixed-price.
+            if (array_key_exists('price', $fillable)) {
+                $negotiable = array_key_exists('is_negotiable', $fillable)
+                    ? filter_var($fillable['is_negotiable'], FILTER_VALIDATE_BOOLEAN)
+                    : (bool) $ad->is_negotiable;
+                $fillable['price'] = $this->normalizeNegotiablePrice($fillable['price'], $negotiable);
             }
 
+            if (isset($fillable['city_id'])) {
+                $fillable['region_id'] = City::find($fillable['city_id'])?->region_id;
+            }
+
+            // Dynamic field values belong to the category that defined them, so
+            // a category switch has to drop them rather than leave the ad
+            // carrying specs from a category it is no longer in. The new
+            // category's required fields arrive with this same request —
+            // UpdateAdRequest enforces that.
+            $categoryChanged = isset($fillable['category_id'])
+                && (int) $fillable['category_id'] !== (int) $ad->category_id;
+
             $ad->update($fillable);
+
+            if ($categoryChanged) {
+                $ad->fieldValues()->delete();
+            }
 
             // Sync dynamic fields (partial — only keys provided)
             if (! empty($data['fields'])) {
@@ -197,14 +231,31 @@ class AdService
                 $image = $ad->images()->find($imageId);
                 if ($image) {
                     $this->imageService->delete($image->image_url);
+                    if ($image->thumbnail_url
+                        && $image->thumbnail_url !== $image->image_url) {
+                        $this->imageService->delete($image->thumbnail_url);
+                    }
                     $image->delete();
                 }
             }
 
             // Add new images
+            $createdIds = [];
             if (! empty($newImages)) {
-                $this->processImages($ad, $newImages);
+                $createdIds = $this->processImages($ad, $newImages);
             }
+
+            // Apply the seller's arrangement. Uploads are already stored, so a
+            // photo added in this same edit can be placed anywhere — including
+            // first, as the new cover.
+            if (isset($data['image_order'])) {
+                $this->applyImageOrder($ad, (array) $data['image_order'], $createdIds);
+            }
+
+            // Removals leave gaps (delete sort_order 0 and nothing is the cover
+            // any more), so close them up: positions stay 0..n-1 and the first
+            // image is always the primary one.
+            $this->resequenceImages($ad);
 
             return $ad->fresh(['images', 'fieldValues.field', 'category', 'city', 'region']);
         });
@@ -218,6 +269,27 @@ class AdService
         $ad->delete();
     }
 
+    // ── Renew ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Bring a hidden (expired) ad back into the feed for another visibility
+     * window. Moderation is untouched — the ad was already approved before it
+     * was hidden, so it does not queue for review again.
+     */
+    public function renew(Ad $ad): Ad
+    {
+        $ad->update([
+            'status' => AdStatus::Active,
+            'published_at' => now(),
+            'expires_at' => Ad::nextExpiry(),
+            // Clear the "about to expire" flag so the reminder fires again
+            // near the end of the new window.
+            'expiry_notified_at' => null,
+        ]);
+
+        return $ad->fresh(['primaryImage', 'category', 'city', 'region', 'user']);
+    }
+
     // ── Mark Sold ─────────────────────────────────────────────────────────────
 
     public function markAsSold(Ad $ad): void
@@ -229,7 +301,7 @@ class AdService
             $ad->category_id,
             (float) ($ad->price ?? 0),
             (bool) $ad->is_free,
-            $ad->seller_type ?? 'individual',
+            $ad->user?->is_dealer ? 'dealer' : 'individual',
         );
         $owesCommission = $commission > 0
             && $ad->payment_status !== PaymentStatus::Paid->value;
@@ -238,11 +310,11 @@ class AdService
         // The sold ad will be removed from the index asynchronously via the queue.
         Ad::withoutSyncingToSearch(function () use ($ad, $commission, $owesCommission) {
             $ad->update([
-                'status'           => AdStatus::Sold,
+                'status' => AdStatus::Sold,
                 'sale_declared_at' => now(),
                 'commission_amount' => $commission,
-                'payment_amount'   => $owesCommission ? $commission : $ad->payment_amount,
-                'payment_status'   => $owesCommission
+                'payment_amount' => $owesCommission ? $commission : $ad->payment_amount,
+                'payment_status' => $owesCommission
                     ? PaymentStatus::Pending->value
                     : $ad->payment_status,
             ]);
@@ -254,7 +326,7 @@ class AdService
                 $ad->unsearchable();
             } catch (\Throwable) {
                 // Search index removal is non-critical; log but don't fail.
-                \Illuminate\Support\Facades\Log::warning('unsearchable failed for ad', ['id' => $ad->id]);
+                Log::warning('unsearchable failed for ad', ['id' => $ad->id]);
             }
         })->afterResponse();
 
@@ -270,10 +342,25 @@ class AdService
     /**
      * Flat commission owed AFTER the sale completes. There is no percentage and
      * no price dependency — each category has a fixed SAR amount (VAT-inclusive):
-     * cars 99, phones & other sections 10, free categories (e.g. jobs) 0.
+     * cars 99 for individuals / 35 for dealers, phones & other sections 10,
+     * free categories (e.g. jobs) 0.
      *
      * The $price argument is kept for signature compatibility but unused.
      */
+    /**
+     * A "على السوم" ad priced at 0 carries no asking price, so it is stored as
+     * null — the state every price-less ad already uses for display, search
+     * and sorting. A fixed price of 0 is left alone for validation to reject.
+     */
+    private function normalizeNegotiablePrice(mixed $price, bool $negotiable): mixed
+    {
+        if (! $negotiable || $price === null) {
+            return $price;
+        }
+
+        return (float) $price === 0.0 ? null : $price;
+    }
+
     public function calculateCommission(int $categoryId, float $price = 0, bool $isFree = false, string $sellerType = 'individual'): float
     {
         $cat = Category::find($categoryId);
@@ -281,7 +368,10 @@ class AdService
             return 0.0;
         }
 
-        $fixed = (float) ($cat->deferred_commission_individual ?? 0);
+        $commissionColumn = $sellerType === 'dealer'
+            ? 'deferred_commission_dealer'
+            : 'deferred_commission_individual';
+        $fixed = (float) ($cat->{$commissionColumn} ?? 0);
 
         // Paid category without an explicit amount falls back to the standard flat fee.
         return $fixed > 0 ? $fixed : self::DEFAULT_COMMISSION;
@@ -305,26 +395,91 @@ class AdService
      *
      * @param  UploadedFile[]  $files
      */
-    private function processImages(Ad $ad, array $files): void
+    /**
+     * Arrange the gallery. Each token is either an existing image id or
+     * "new:<i>" naming the i-th file uploaded with this request. Anything the
+     * client left out keeps its relative position behind the listed images.
+     *
+     * @param  array<int, mixed>  $order
+     * @param  array<int, int>  $createdIds  ids of this request's uploads, in upload order
+     */
+    private function applyImageOrder(Ad $ad, array $order, array $createdIds = []): void
+    {
+        $resolved = [];
+        foreach ($order as $token) {
+            $token = (string) $token;
+            $id = str_starts_with($token, 'new:')
+                ? ($createdIds[(int) substr($token, 4)] ?? null)
+                : (int) $token;
+
+            if ($id !== null && ! in_array($id, $resolved, true)) {
+                $resolved[] = $id;
+            }
+        }
+
+        if ($resolved === []) {
+            return;
+        }
+
+        $position = 0;
+        foreach ($resolved as $imageId) {
+            $image = $ad->images()->find($imageId);
+            if ($image) {
+                $image->update(['sort_order' => $position++]);
+            }
+        }
+
+        // Push anything unmentioned behind the explicitly ordered images.
+        $rest = $ad->images()
+            ->whereNotIn('id', $resolved)
+            ->orderBy('sort_order')
+            ->get();
+        foreach ($rest as $image) {
+            $image->update(['sort_order' => $position++]);
+        }
+    }
+
+    /** Renumber an ad's images to a gapless 0..n-1 in their current order. */
+    private function resequenceImages(Ad $ad): void
+    {
+        /** @var Collection<int, AdImage> $images */
+        $images = $ad->images()->orderBy('sort_order')->orderBy('id')->get();
+
+        $position = 0;
+        foreach ($images as $image) {
+            if ((int) $image->sort_order !== $position) {
+                $image->update(['sort_order' => $position]);
+            }
+            $position++;
+        }
+    }
+
+    /**
+     * @return array<int, int> ids of the created images, in upload order
+     */
+    private function processImages(Ad $ad, array $files): array
     {
         $currentMax = (int) ($ad->images()->max('sort_order') ?? -1);
+        $createdIds = [];
 
-        foreach ($files as $index => $file) {
+        foreach (array_values($files) as $index => $file) {
             // Generate resized WebP variants (thumbnail + detail image) instead
             // of serving the multi-MB camera original. This is the single biggest
             // factor in how fast ad images appear for clients.
             $variants = $this->imageService->storeVariants($file->getRealPath(), "ads/{$ad->id}");
 
-            AdImage::create([
-                'ad_id'         => $ad->id,
-                'image_url'     => $variants['image_url'],
+            $createdIds[] = AdImage::create([
+                'ad_id' => $ad->id,
+                'image_url' => $variants['image_url'],
                 'thumbnail_url' => $variants['thumbnail_url'],
-                'sort_order'    => $currentMax + 1 + $index,
-                'file_size'     => $variants['file_size'],
-                'width'         => $variants['width'],
-                'height'        => $variants['height'],
-            ]);
+                'sort_order' => $currentMax + 1 + $index,
+                'file_size' => $variants['file_size'],
+                'width' => $variants['width'],
+                'height' => $variants['height'],
+            ])->id;
         }
+
+        return $createdIds;
     }
 
     /**
@@ -350,7 +505,7 @@ class AdService
 
             AdFieldValue::updateOrCreate(
                 ['ad_id' => $ad->id, 'category_field_id' => $fieldId],
-                ['value' => is_array($value) ? json_encode($value) : (string) $value]
+                ['value' => is_array($value) ? json_encode($value) : (string) $value],
             );
         }
     }

@@ -3,16 +3,17 @@
 // Horizontal ad card — always light mode.
 // Image on the end (left in RTL), details on start (right in RTL).
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../domain/ad_model.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/services/image_cache_manager.dart';
+import '../../../../core/widgets/app_cached_image.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 class AdCard extends StatefulWidget {
   final AdListModel ad;
@@ -42,9 +43,22 @@ class _AdCardState extends State<AdCard> {
     final ad = widget.ad;
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+      },
       onTapUp: (_) {
         setState(() => _isPressed = false);
+        final image = ad.primaryImage;
+        if (image != null) {
+          // Fetch the original only after a tap wins, never during scrolling.
+          unawaited(
+            precacheAppImage(
+              context,
+              image.imageUrl,
+              memCacheWidth: 1280,
+            ).catchError((_) {}),
+          );
+        }
         HapticFeedback.selectionClick();
         widget.onTap();
       },
@@ -66,7 +80,7 @@ class _AdCardState extends State<AdCard> {
           ),
           padding: widget.isGrid
               ? const EdgeInsets.all(8)
-              : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: widget.isGrid
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,7 +98,7 @@ class _AdCardState extends State<AdCard> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: _buildTextSection(ad)),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     SizedBox(
                       width: 110,
                       height: 90,
@@ -119,7 +133,7 @@ class _AdCardState extends State<AdCard> {
         Row(
           children: [
             Flexible(
-              child: Text(
+              child: RiyalText(
                 ad.priceDisplay,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -207,20 +221,15 @@ class _AdCardState extends State<AdCard> {
           Hero(
             tag: 'ad-image-${ad.id}',
             child: ad.primaryImage != null
-                ? CachedNetworkImage(
-                    imageUrl: AppConstants.normalizeImageUrl(
-                      ad.primaryImage!.thumbnailUrl,
-                    ),
-                    cacheManager: AppImageCacheManager.instance,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 360,
-                    placeholder: (_, __) => Shimmer.fromColors(
-                      baseColor: AppTheme.neutralGray200,
-                      highlightColor: const Color(0xFFF5F5F5),
-                      child: Container(color: Colors.white),
-                    ),
-                    errorWidget: (_, __, ___) =>
-                        _ImagePlaceholder(icon: ad.category?.icon),
+                ? AppCachedImage(
+                    // Use the thumbnail alone unless its request fails.
+                    imageUrl: ad.primaryImage!.imageUrl,
+                    lowResolutionUrl: ad.primaryImage!.thumbnailUrl,
+                    preferPreview: true,
+                    // Preserve the complete photo, including its top and bottom.
+                    fit: BoxFit.contain,
+                    memCacheWidth: widget.isGrid ? 640 : 400,
+                    errorWidget: _ImagePlaceholder(icon: ad.category?.icon),
                   )
                 : _ImagePlaceholder(icon: ad.category?.icon),
           ),
@@ -408,13 +417,15 @@ class _ImagePlaceholder extends StatelessWidget {
       color: AppTheme.neutralGray100,
       child: Center(
         child: _isUrl
-            ? CachedNetworkImage(
-                imageUrl: AppConstants.normalizeImageUrl(icon!),
+            ? SizedBox(
                 width: 36,
                 height: 36,
-                fit: BoxFit.contain,
-                errorWidget: (_, __, ___) =>
-                    const Text('📦', style: TextStyle(fontSize: 28)),
+                child: AppCachedImage(
+                  imageUrl: icon!,
+                  fit: BoxFit.contain,
+                  memCacheWidth: 120,
+                  errorWidget: const Text('📦', style: TextStyle(fontSize: 28)),
+                ),
               )
             : Text(icon ?? '📦', style: const TextStyle(fontSize: 32)),
       ),

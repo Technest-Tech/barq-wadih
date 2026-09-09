@@ -18,7 +18,7 @@ class ApiClient {
   ApiClient._internal() {
     dio = Dio(
       BaseOptions(
-          baseUrl: _resolveBaseUrl(),
+        baseUrl: _resolveBaseUrl(),
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {
@@ -33,11 +33,14 @@ class ApiClient {
       LocaleInterceptor(),
       AuthInterceptor(),
       ErrorInterceptor(),
-      if (kDebugMode) LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (msg) => debugPrint('[API] $msg'),
-      ),
+      if (kDebugMode)
+        LogInterceptor(
+          requestHeader: false,
+          requestBody: false,
+          responseHeader: false,
+          responseBody: false,
+          logPrint: (msg) => debugPrint('[API] $msg'),
+        ),
     ]);
   }
 
@@ -73,16 +76,16 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) => dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+  }) => dio.post<T>(
+    path,
+    data: data,
+    queryParameters: queryParameters,
+    options: options,
+  );
 
-  Future<Response<T>> put<T>(
-    String path, {
-    dynamic data,
-    Options? options,
-  }) => dio.put<T>(path, data: data, options: options);
+  Future<Response<T>> put<T>(String path, {dynamic data, Options? options}) =>
+      dio.put<T>(path, data: data, options: options);
 
-  Future<Response<T>> delete<T>(
-    String path, {
-    Options? options,
-  }) => dio.delete<T>(path, options: options);
+  Future<Response<T>> delete<T>(String path, {Options? options}) =>
+      dio.delete<T>(path, options: options);
 }

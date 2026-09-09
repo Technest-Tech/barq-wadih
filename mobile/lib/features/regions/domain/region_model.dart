@@ -19,11 +19,11 @@ class RegionModel {
 
   factory RegionModel.fromJson(Map<String, dynamic> json) {
     return RegionModel(
-      id:          json['id'] as int,
-      nameAr:      json['name_ar'] as String,
-      nameEn:      json['name_en'] as String,
-      slug:        json['slug'] as String,
-      sortOrder:   json['sort_order'] as int? ?? 0,
+      id: json['id'] as int,
+      nameAr: json['name_ar'] as String,
+      nameEn: json['name_en'] as String,
+      slug: json['slug'] as String,
+      sortOrder: json['sort_order'] as int? ?? 0,
       citiesCount: json['cities_count'] as int? ?? 0,
     );
   }
@@ -54,13 +54,13 @@ class CityModel {
 
   factory CityModel.fromJson(Map<String, dynamic> json) {
     return CityModel(
-      id:             json['id'] as int,
-      nameAr:         json['name_ar'] as String,
-      nameEn:         json['name_en'] as String,
-      slug:           json['slug'] as String,
-      latitude:       (json['latitude'] as num?)?.toDouble(),
-      longitude:      (json['longitude'] as num?)?.toDouble(),
-      adsCount:       json['ads_count'] as int? ?? 0,
+      id: json['id'] as int,
+      nameAr: json['name_ar'] as String,
+      nameEn: json['name_en'] as String,
+      slug: json['slug'] as String,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      adsCount: json['ads_count'] as int? ?? 0,
       districtsCount: json['districts_count'] as int? ?? 0,
       region: json['region'] != null
           ? RegionModel.fromJson(json['region'] as Map<String, dynamic>)
@@ -82,7 +82,7 @@ class DistrictModel {
 
   factory DistrictModel.fromJson(Map<String, dynamic> json) {
     return DistrictModel(
-      id:     json['id'] as int,
+      id: json['id'] as int,
       nameAr: json['name_ar'] as String,
       nameEn: json['name_en'] as String? ?? '',
     );

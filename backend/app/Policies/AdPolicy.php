@@ -53,4 +53,15 @@ class AdPolicy
         return $user->id === $ad->user_id
             && $ad->status === AdStatus::Active;
     }
+
+    /**
+     * Owner can renew an ad only once it has been hidden — while it is still
+     * visible there is nothing to bring back, which is what greys out the
+     * "ترقية" button in My Ads.
+     */
+    public function renew(User $user, Ad $ad): bool
+    {
+        return $user->id === $ad->user_id
+            && $ad->status === AdStatus::Expired;
+    }
 }

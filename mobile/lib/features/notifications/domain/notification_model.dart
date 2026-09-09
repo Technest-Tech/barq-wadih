@@ -55,6 +55,8 @@ class NotificationModel {
         return '⭐';
       case 'sale_fee':
         return '💰';
+      case 'campaign':
+        return '📣';
       default:
         return '🔔';
     }

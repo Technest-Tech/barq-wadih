@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../ads/data/ad_api.dart';
 import '../../../ads/domain/ad_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 /// "سداد العمولات" — publishing is free; a flat commission is owed only after a
 /// sale. This screen shows the company bank details (QR + account) and lists
@@ -125,47 +126,138 @@ class _HowItWorksCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.primaryBlue.withValues(alpha: .07),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: .2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: AppTheme.primaryBlue,
-            size: 22,
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [AppTheme.primaryBlue, AppTheme.primaryBlueLight],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppTheme.accentGoldLight.withValues(alpha: .55),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withValues(alpha: .2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+        ],
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'النشر مجاني',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
-                    color: AppTheme.primaryBlue,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGoldLight,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.campaign_rounded,
+                    color: AppTheme.primaryBlueDark,
+                    size: 25,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'تُستحق عمولة ثابتة (شاملة الضريبة) بعد إتمام البيع فقط. بوابات الدفع قيد التجهيز، لذا تُسدّد العمولة عبر تحويل بنكي إلى الحساب التالي ثم إرفاق صورة الإيصال لمراجعتها.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.6,
-                    color: AppTheme.primaryBlue.withValues(alpha: .8),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'النشر مجاني بالكامل',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          height: 1.2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentGoldLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'العمولة بعد إتمام البيع فقط',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.primaryBlueDark,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  textDirection: TextDirection.rtl,
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 15),
+            Text.rich(
+              TextSpan(
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 1.65,
+                  color: Colors.white.withValues(alpha: .92),
+                ),
+                children: const [
+                  TextSpan(text: 'لا تدفع أي رسوم عند نشر إعلانك. '),
+                  TextSpan(
+                    text: 'العمولة ثابتة وشاملة الضريبة، ',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  TextSpan(text: 'ولا تُستحق إلا بعد اكتمال البيع فعليًا.'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: .18)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.receipt_long_rounded,
+                    size: 19,
+                    color: AppTheme.accentGoldLight,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      'حوّل العمولة للحساب بالأسفل، ثم أرفق صورة الإيصال للمراجعة.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.45,
+                        color: Colors.white.withValues(alpha: .95),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -207,11 +299,38 @@ class _BankAccountCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'امسح رمز QR من تطبيق البنك للتحويل المباشر',
-            textAlign: TextAlign.center,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(fontSize: 12, color: AppTheme.neutralGray500),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppTheme.accentGold.withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                color: AppTheme.accentGold.withValues(alpha: .24),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.qr_code_scanner_rounded,
+                  size: 18,
+                  color: AppTheme.primaryBlue,
+                ),
+                SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    'امسح رمز QR من تطبيق البنك للتحويل المباشر',
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           const Divider(height: 1, color: AppTheme.neutralGray200),
@@ -267,7 +386,8 @@ class _DetailRow extends StatelessWidget {
                   textDirection: TextDirection.rtl,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: AppTheme.neutralGray500,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryBlueLight,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -372,7 +492,7 @@ class _DueTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: Text(
+                child: RiyalText(
                   'العمولة: ${amount.toStringAsFixed(0)} ر.س',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

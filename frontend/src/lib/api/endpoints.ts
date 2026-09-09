@@ -29,6 +29,8 @@ const ENDPOINTS = {
   MY_ADS: '/v1/ads/mine',
   /** Call as: AD_MARK_SOLD(42) → '/v1/ads/42/sold' */
   AD_MARK_SOLD: (id: number) => `/v1/ads/${id}/sold`,
+  /** Bring a hidden ad back — POST /v1/ads/{id}/renew */
+  AD_RENEW: (id: number) => `/v1/ads/${id}/renew`,
   /** Call as: AD_UPDATE(42) → '/v1/ads/42' */
   AD_UPDATE: (id: number) => `/v1/ads/${id}`,
   /** Call as: AD_DELETE(42) → '/v1/ads/42' */
@@ -129,6 +131,8 @@ const ENDPOINTS = {
   NOTIFICATION_READ: (id: number) => `/v1/notifications/${id}/read`,
   /** Mark all as read — POST /v1/notifications/read-all */
   NOTIFICATIONS_READ_ALL: '/v1/notifications/read-all',
+  /** Mark one subject's notifications read — POST /v1/notifications/read-by */
+  NOTIFICATIONS_READ_BY: '/v1/notifications/read-by',
   /** Unread count — GET /v1/notifications/unread-count */
   NOTIFICATIONS_UNREAD: '/v1/notifications/unread-count',
 
@@ -215,6 +219,7 @@ const ENDPOINTS = {
   ADMIN_ANALYTICS_ZERO_RESULTS: '/v1/admin/analytics/zero-results',
 
   // ── Sprint 17: Admin Notification Campaigns ───────────────────────────
+  ADMIN_NOTIFICATION_SEND: '/v1/admin/notifications/send',
   ADMIN_NOTIFICATION_STATS: '/v1/admin/notifications/stats',
   ADMIN_NOTIFICATION_CAMPAIGNS: '/v1/admin/notifications/campaigns',
   ADMIN_NOTIFICATION_CAMPAIGN_DETAIL: (id: number) => `/v1/admin/notifications/campaigns/${id}`,

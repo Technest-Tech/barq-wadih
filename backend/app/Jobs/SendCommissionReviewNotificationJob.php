@@ -45,9 +45,10 @@ class SendCommissionReviewNotificationJob implements ShouldQueue
                 'تم اعتماد تحويل العمولة ✅',
                 "تم تأكيد سداد عمولة البيع لإعلانك: {$ad->title}",
                 [
-                    'type'   => 'commission_approved',
-                    'ad_id'  => (string) $ad->id,
-                    'status' => 'approved',
+                    'type'     => 'commission_approved',
+                    'ad_id'    => (string) $ad->id,
+                    'ad_title' => $ad->title,
+                    'status'   => 'approved',
                 ],
             );
 
@@ -56,19 +57,23 @@ class SendCommissionReviewNotificationJob implements ShouldQueue
 
         $reason = trim((string) $this->reason);
 
+        // Always name the ad. A seller with several listings under review
+        // otherwise gets a bare rejection reason and no way to tell which
+        // receipt it refers to.
         $pushService->sendToUser(
             $ad->user_id,
             'commission_rejected',
             'تم رفض إيصال التحويل ⚠️',
             $reason !== ''
-                ? "سبب الرفض: {$reason} — يمكنك إرفاق إيصال جديد."
+                ? "تم رفض إيصال التحويل لإعلانك: {$ad->title} — سبب الرفض: {$reason}. يمكنك إرفاق إيصال جديد."
                 : "تم رفض إيصال التحويل لإعلانك: {$ad->title} — يمكنك إرفاق إيصال جديد.",
             [
-                'type'   => 'commission_rejected',
-                'ad_id'  => (string) $ad->id,
-                'status' => 'rejected',
-                'reason' => $reason,
-                'amount' => (string) $amount,
+                'type'     => 'commission_rejected',
+                'ad_id'    => (string) $ad->id,
+                'ad_title' => $ad->title,
+                'status'   => 'rejected',
+                'reason'   => $reason,
+                'amount'   => (string) $amount,
             ],
         );
     }

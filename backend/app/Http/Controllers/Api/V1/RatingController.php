@@ -75,16 +75,18 @@ class RatingController extends Controller
 
         $rating->load('rater', 'ad');
 
-        // Sprint 10: Notify the seller about the new rating
+        // Sprint 10: Notify the seller about the new rating. Name the ad — a
+        // seller with several listings cannot tell which one was rated.
         app(PushService::class)->sendToUser(
             $ad->user_id,
             'new_rating',
             'تقييم جديد',
-            "قيّمك {$request->user()->name} بـ {$data['stars']} نجوم",
+            "قيّمك {$request->user()->name} بـ {$data['stars']} نجوم على إعلان: {$ad->title}",
             [
-                'type'   => 'rating',
-                'ad_id'  => $ad->id,
-                'rating' => $data['stars'],
+                'type'     => 'rating',
+                'ad_id'    => $ad->id,
+                'ad_title' => $ad->title,
+                'rating'   => $data['stars'],
             ],
         );
 

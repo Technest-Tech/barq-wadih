@@ -13,6 +13,9 @@ final dioProvider = Provider<Dio>((ref) {
     BaseOptions(
       baseUrl: '${AppConstants.apiBaseUrl}/${AppConstants.apiVersion}',
       connectTimeout: const Duration(seconds: 30),
+      // Multipart requests can otherwise remain in the sending phase forever
+      // when a mobile connection stalls halfway through an image upload.
+      sendTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
         'Accept': 'application/json',
@@ -38,10 +41,14 @@ final dioProvider = Provider<Dio>((ref) {
   );
 
   if (const bool.fromEnvironment('dart.vm.product') == false) {
-    dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-    ));
+    dio.interceptors.add(
+      LogInterceptor(
+        requestHeader: false,
+        requestBody: false,
+        responseHeader: false,
+        responseBody: false,
+      ),
+    );
   }
 
   return dio;
@@ -54,11 +61,7 @@ class ApiResponse<T> {
   final String? message;
   final T? data;
 
-  const ApiResponse({
-    required this.success,
-    this.message,
-    this.data,
-  });
+  const ApiResponse({required this.success, this.message, this.data});
 
   factory ApiResponse.fromJson(
     Map<String, dynamic> json,

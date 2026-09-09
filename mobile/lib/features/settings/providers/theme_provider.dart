@@ -34,4 +34,6 @@ class ThemeNotifier extends Notifier<ThemeMode> {
   }
 }
 
-final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.new);
+final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(
+  ThemeNotifier.new,
+);

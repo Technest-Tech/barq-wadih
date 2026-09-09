@@ -32,6 +32,7 @@ function notifIcon(type: string): string {
     case 'new_rating':           return '⭐';
     case 'commission_approved':  return '✅';
     case 'commission_rejected':  return '⚠️';
+    case 'campaign':             return '📣';
     default:                     return '🔔';
   }
 }
@@ -87,13 +88,19 @@ export default function NotificationDropdown({ locale }: NotificationDropdownPro
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Load latest 8 when dropdown opens
+  // Load latest 8 when dropdown opens, and clear the unread state — opening
+  // the bell is the user reading them. Only the badge drops; `items` keeps the
+  // highlight it loaded with so the user can still see which ones were new.
   useEffect(() => {
-    if (open && !loaded) {
-      fetchNotifications(1)
-        .then((res) => { setItems(res.data.slice(0, 8)); setLoaded(true); })
-        .catch(() => {});
-    }
+    if (!open || loaded) return;
+    fetchNotifications(1)
+      .then((res) => {
+        setItems(res.data.slice(0, 8));
+        setLoaded(true);
+        if (!res.data.some((n) => !n.is_read)) return;
+        return markAllNotificationsRead().then(() => setUnread(0));
+      })
+      .catch(() => {});
   }, [open, loaded]);
 
   async function handleMarkAll() {

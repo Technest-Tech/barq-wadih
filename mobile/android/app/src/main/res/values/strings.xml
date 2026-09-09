@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher name shown under the app icon. Arabic for all devices
+         (Arabic-first brand). -->
+    <string name="app_name">برق واضح</string>
+</resources>

@@ -23,7 +23,7 @@ class AuthController extends BaseController
     public function register(RegisterRequest $request): JsonResponse
     {
         $result = $this->authService->register(
-            RegisterData::fromRequest($request->validated())
+            RegisterData::fromRequest($request->validated()),
         );
 
         $user = $result['user']->load(['region', 'city']);
@@ -31,10 +31,10 @@ class AuthController extends BaseController
         return $this->successResponse(
             data: [
                 'token' => $result['token'],
-                'user'  => (new UserResource($user))->resolve(),
+                'user' => (new UserResource($user))->resolve(),
             ],
             message: 'تم إنشاء الحساب بنجاح.',
-            code: 201
+            code: 201,
         );
     }
 
@@ -44,13 +44,13 @@ class AuthController extends BaseController
     {
         try {
             $result = $this->authService->loginWithPassword(
-                email:    $request->validated('email'),
-                password: $request->validated('password')
+                email: $request->validated('email'),
+                password: $request->validated('password'),
             );
         } catch (ValidationException $e) {
             return $this->errorResponse(
                 message: $e->errors()['email'][0],
-                code: 401
+                code: 401,
             );
         }
 
@@ -59,9 +59,9 @@ class AuthController extends BaseController
         return $this->successResponse(
             data: [
                 'token' => $result['token'],
-                'user'  => (new UserResource($user))->resolve(),
+                'user' => (new UserResource($user))->resolve(),
             ],
-            message: 'تم تسجيل الدخول بنجاح.'
+            message: 'تم تسجيل الدخول بنجاح.',
         );
     }
 
@@ -72,27 +72,27 @@ class AuthController extends BaseController
         try {
             $result = $this->authService->loginWithFirebaseToken(
                 idToken: $request->validated('firebase_id_token'),
-                name:    $request->validated('name'),
-                locale:  $request->validated('locale') ?? 'ar',
+                name: $request->validated('name'),
+                locale: $request->validated('locale') ?? 'ar',
             );
         } catch (ValidationException $e) {
             return $this->errorResponse(
                 message: collect($e->errors())->flatten()->first(),
-                code: 401
+                code: 401,
             );
         }
 
         $isNew = $result['user']->wasRecentlyCreated;
-        $user  = $result['user']->load(['region', 'city']);
+        $user = $result['user']->load(['region', 'city']);
 
         return $this->successResponse(
             data: [
-                'token'  => $result['token'],
-                'user'   => (new UserResource($user))->resolve(),
+                'token' => $result['token'],
+                'user' => (new UserResource($user))->resolve(),
                 'is_new' => $isNew,
             ],
             message: $isNew ? 'تم إنشاء الحساب بنجاح.' : 'تم تسجيل الدخول بنجاح.',
-            code: $isNew ? 201 : 200
+            code: $isNew ? 201 : 200,
         );
     }
 
@@ -114,6 +114,21 @@ class AuthController extends BaseController
         return $this->successResponse(message: 'تم تسجيل الخروج من جميع الأجهزة.');
     }
 
+    // ── DELETE /api/v1/auth/account ─────────────────────────────────────────
+
+    public function deleteAccount(Request $request): JsonResponse
+    {
+        $request->validate([
+            'confirmation' => ['required', 'string', 'in:DELETE'],
+        ], [
+            'confirmation.in' => 'يجب تأكيد حذف الحساب.',
+        ]);
+
+        $this->authService->deleteAccount($request->user());
+
+        return $this->successResponse(message: 'تم حذف حسابك وبياناتك المرتبطة بنجاح.');
+    }
+
     // ── GET /api/v1/auth/me ───────────────────────────────────────────────────
 
     public function me(Request $request): JsonResponse
@@ -121,7 +136,7 @@ class AuthController extends BaseController
         $user = $request->user()->load(['region', 'city']);
 
         return $this->successResponse(
-            data: (new UserResource($user))->resolve()
+            data: (new UserResource($user))->resolve(),
         );
     }
 
@@ -131,12 +146,12 @@ class AuthController extends BaseController
     {
         $user = $this->authService->updateProfile(
             user: $request->user(),
-            data: UpdateProfileData::fromRequest($request->validated())
+            data: UpdateProfileData::fromRequest($request->validated()),
         );
 
         return $this->successResponse(
             data: (new UserResource($user))->resolve(),
-            message: 'تم تحديث الملف الشخصي.'
+            message: 'تم تحديث الملف الشخصي.',
         );
     }
 
@@ -150,12 +165,12 @@ class AuthController extends BaseController
 
         $user = $this->authService->uploadAvatar(
             user: $request->user(),
-            file: $request->file('avatar')
+            file: $request->file('avatar'),
         );
 
         return $this->successResponse(
             data: ['avatar_url' => $user->avatar_url],
-            message: 'تم تحديث الصورة الشخصية.'
+            message: 'تم تحديث الصورة الشخصية.',
         );
     }
 
@@ -169,12 +184,12 @@ class AuthController extends BaseController
 
         $user = $this->authService->uploadCoverImage(
             user: $request->user(),
-            file: $request->file('cover')
+            file: $request->file('cover'),
         );
 
         return $this->successResponse(
             data: ['cover_image_url' => $user->cover_image_url],
-            message: 'تم تحديث صورة الغلاف.'
+            message: 'تم تحديث صورة الغلاف.',
         );
     }
 }

@@ -26,7 +26,10 @@ Future<List<CityModel>?> showRegionCityPicker(
     isScrollControlled: true,
     useRootNavigator: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _CityMultiSelectSheet(isMultiSelect: isMultiSelect, initialSelection: initialSelection),
+    builder: (_) => _CityMultiSelectSheet(
+      isMultiSelect: isMultiSelect,
+      initialSelection: initialSelection,
+    ),
   );
 }
 
@@ -41,7 +44,8 @@ class _CityMultiSelectSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_CityMultiSelectSheet> createState() => _CityMultiSelectSheetState();
+  ConsumerState<_CityMultiSelectSheet> createState() =>
+      _CityMultiSelectSheetState();
 }
 
 class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
@@ -68,7 +72,9 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
       Navigator.pop(context, <CityModel>[]);
       return;
     }
-    final selected = allCities.where((c) => _selectedCityIds.contains(c.id)).toList();
+    final selected = allCities
+        .where((c) => _selectedCityIds.contains(c.id))
+        .toList();
     Navigator.pop(context, selected);
   }
 
@@ -102,23 +108,37 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
 
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Align(
                         alignment: Alignment.centerRight,
-                        child: (widget.isMultiSelect && _selectedCityIds.isNotEmpty)
-                          ? TextButton(
-                              onPressed: () => setState(() => _selectedCityIds.clear()),
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text('إلغاء الكل', style: TextStyle(fontSize: 14, color: AppTheme.primaryBlue, fontWeight: FontWeight.w600)),
-                            )
-                          : const SizedBox.shrink(),
+                        child:
+                            (widget.isMultiSelect &&
+                                _selectedCityIds.isNotEmpty)
+                            ? TextButton(
+                                onPressed: () =>
+                                    setState(() => _selectedCityIds.clear()),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'إلغاء الكل',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.primaryBlue,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ),
                     Expanded(
@@ -142,7 +162,11 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                           style: IconButton.styleFrom(
                             backgroundColor: AppTheme.neutralGray100,
                           ),
-                          icon: const Icon(Icons.close_rounded, size: 20, color: AppTheme.neutralGray700),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            size: 20,
+                            color: AppTheme.neutralGray700,
+                          ),
                         ),
                       ),
                     ),
@@ -157,12 +181,19 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                   textDirection: TextDirection.rtl,
                   child: TextField(
                     controller: _searchCtrl,
-                    onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                    onChanged: (val) =>
+                        setState(() => _searchQuery = val.trim().toLowerCase()),
                     style: const TextStyle(color: AppTheme.neutralGray900),
                     decoration: InputDecoration(
                       hintText: 'ابحث عن مدينة...',
-                      hintStyle: const TextStyle(color: AppTheme.neutralGray500, fontSize: 14),
-                      prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.neutralGray400),
+                      hintStyle: const TextStyle(
+                        color: AppTheme.neutralGray500,
+                        fontSize: 14,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppTheme.neutralGray400,
+                      ),
                       filled: true,
                       fillColor: AppTheme.neutralGray50,
                       isDense: true,
@@ -181,14 +212,25 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
               // List
               Expanded(
                 child: citiesAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue)),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
                   error: (e, _) => Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline_rounded, size: 48, color: Colors.redAccent),
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          size: 48,
+                          color: Colors.redAccent,
+                        ),
                         const SizedBox(height: 16),
-                        Text('فشل في تحميل المدن', style: theme.textTheme.titleMedium),
+                        Text(
+                          'فشل في تحميل المدن',
+                          style: theme.textTheme.titleMedium,
+                        ),
                         TextButton(
                           onPressed: () => ref.refresh(allCitiesProvider),
                           child: const Text('إعادة المحاولة'),
@@ -200,7 +242,7 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                     final filtered = cities.where((c) {
                       if (_searchQuery.isEmpty) return true;
                       return c.nameAr.toLowerCase().contains(_searchQuery) ||
-                             c.nameEn.toLowerCase().contains(_searchQuery);
+                          c.nameEn.toLowerCase().contains(_searchQuery);
                     }).toList();
 
                     if (filtered.isEmpty) {
@@ -219,7 +261,10 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                         controller: scrollController,
                         padding: const EdgeInsets.symmetric(vertical: 0),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: AppTheme.neutralGray100),
+                        separatorBuilder: (_, __) => const Divider(
+                          height: 1,
+                          color: AppTheme.neutralGray100,
+                        ),
                         itemBuilder: (_, i) {
                           final city = filtered[i];
                           final isSelected = _selectedCityIds.contains(city.id);
@@ -236,29 +281,46 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                                 } else {
                                   _selectedCityIds.clear();
                                   _selectedCityIds.add(city.id);
-                                  _onConfirm(cities); // Auto confirm on single select
+                                  _onConfirm(
+                                    cities,
+                                  ); // Auto confirm on single select
                                 }
                               });
                             },
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
                               child: Row(
                                 children: [
                                   Container(
                                     width: 22,
                                     height: 22,
                                     decoration: BoxDecoration(
-                                      shape: widget.isMultiSelect ? BoxShape.rectangle : BoxShape.circle,
-                                      borderRadius: widget.isMultiSelect ? BorderRadius.circular(6) : null,
-                                      color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
+                                      shape: widget.isMultiSelect
+                                          ? BoxShape.rectangle
+                                          : BoxShape.circle,
+                                      borderRadius: widget.isMultiSelect
+                                          ? BorderRadius.circular(6)
+                                          : null,
+                                      color: isSelected
+                                          ? AppTheme.primaryBlue
+                                          : Colors.transparent,
                                       border: Border.all(
-                                        color: isSelected ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+                                        color: isSelected
+                                            ? AppTheme.primaryBlue
+                                            : AppTheme.neutralGray200,
                                         width: 1.5,
                                       ),
                                     ),
                                     child: isSelected
-                                      ? const Icon(Icons.check, size: 14, color: Colors.white)
-                                      : null,
+                                        ? const Icon(
+                                            Icons.check,
+                                            size: 14,
+                                            color: Colors.white,
+                                          )
+                                        : null,
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
@@ -266,7 +328,9 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                                       city.nameAr,
                                       style: TextStyle(
                                         fontSize: 15,
-                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                         color: AppTheme.neutralGray900,
                                       ),
                                     ),
@@ -289,7 +353,9 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                     padding: const EdgeInsets.all(20),
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(top: BorderSide(color: AppTheme.neutralGray100)),
+                      border: Border(
+                        top: BorderSide(color: AppTheme.neutralGray100),
+                      ),
                     ),
                     child: SafeArea(
                       top: false,
@@ -302,13 +368,18 @@ class _CityMultiSelectSheetState extends ConsumerState<_CityMultiSelectSheet> {
                             backgroundColor: AppTheme.primaryBlue,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                           child: Text(
                             _selectedCityIds.isEmpty
                                 ? 'تأكيد'
                                 : 'تأكيد (${_selectedCityIds.length})',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),

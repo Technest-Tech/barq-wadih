@@ -133,6 +133,7 @@ class AdsDemoSeeder extends Seeder
     {
         if (app()->isProduction()) {
             $this->command->warn('AdsDemoSeeder skipped in production!');
+
             return;
         }
 
@@ -144,6 +145,7 @@ class AdsDemoSeeder extends Seeder
 
         if ($cityRows->isEmpty()) {
             $this->command->error('No cities found — run CitySeeder first.');
+
             return;
         }
 
@@ -169,23 +171,23 @@ class AdsDemoSeeder extends Seeder
             $seller = $sellers[$i % count($sellers)];
 
             $ad = Ad::create(array_merge([
-                'user_id'           => $seller->id,
-                'category_id'       => $categoryIds[$slug],
-                'city_id'           => $city->id,
-                'region_id'         => $city->region_id,
-                'status'            => 'active',
+                'user_id' => $seller->id,
+                'category_id' => $categoryIds[$slug],
+                'city_id' => $city->id,
+                'region_id' => $city->region_id,
+                'status' => 'active',
                 'moderation_status' => 'approved',
-                'is_negotiable'     => true,
-                'is_free'           => false,
-                'pledge_accepted'   => true,
-                'contact_phone'     => $seller->phone,
-                'contact_whatsapp'  => $seller->phone,
-                'published_at'      => now()->subMinutes(rand(5, 60 * 24 * 7)),
-                'expires_at'        => now()->addDays(30),
-                'views_count'       => rand(20, 1500),
-                'favorites_count'   => rand(0, 80),
-                'chats_count'       => rand(0, 30),
-                'is_boosted'        => rand(1, 10) === 1,
+                'is_negotiable' => true,
+                'is_free' => false,
+                'pledge_accepted' => true,
+                'contact_phone' => $seller->phone,
+                'contact_whatsapp' => $seller->phone,
+                'published_at' => now()->subMinutes(rand(5, 60 * 24 * 7)),
+                'expires_at' => Ad::nextExpiry(),
+                'views_count' => rand(20, 1500),
+                'favorites_count' => rand(0, 80),
+                'chats_count' => rand(0, 30),
+                'is_boosted' => rand(1, 10) === 1,
             ], $adData));
 
             if ($ad->is_boosted) {
@@ -202,12 +204,12 @@ class AdsDemoSeeder extends Seeder
 
             foreach ($picks as $idx => $url) {
                 AdImage::create([
-                    'ad_id'         => $ad->id,
-                    'image_url'     => $url,
+                    'ad_id' => $ad->id,
+                    'image_url' => $url,
                     'thumbnail_url' => $url,
-                    'sort_order'    => $idx,
-                    'width'         => 1200,
-                    'height'        => 800,
+                    'sort_order' => $idx,
+                    'width' => 1200,
+                    'height' => 800,
                 ]);
             }
 
@@ -233,16 +235,17 @@ class AdsDemoSeeder extends Seeder
             $users[] = User::firstOrCreate(
                 ['email' => $d['email']],
                 [
-                    'name'        => $d['name'],
-                    'password'    => Hash::make('password'),
-                    'role'        => 'user',
-                    'is_active'   => true,
+                    'name' => $d['name'],
+                    'password' => Hash::make('password'),
+                    'role' => 'user',
+                    'is_active' => true,
                     'is_verified' => true,
-                    'phone'       => $d['phone'],
-                    'locale'      => 'ar',
-                ]
+                    'phone' => $d['phone'],
+                    'locale' => 'ar',
+                ],
             );
         }
+
         return $users;
     }
 
@@ -254,202 +257,202 @@ class AdsDemoSeeder extends Seeder
         return [
             // ── Cars for Sale ────────────────────────────────────────────────
             ['_slug' => 'cars-for-sale', 'title' => 'تويوتا كامري 2021 GLE - حالة ممتازة',
-             'description' => "سيارة تويوتا كامري موديل 2021، فئة GLE، لون أبيض لؤلؤ.\n- المسير: 45,000 كم فقط\n- فل كامل: شاشة، كاميرا خلفية، حساسات، كروز كنترول\n- صيانة دورية بالوكالة\n- مالك أول، بدون حوادث\nالسعر قابل للتفاوض، الجادون فقط.", 'price' => 89000],
+                'description' => "سيارة تويوتا كامري موديل 2021، فئة GLE، لون أبيض لؤلؤ.\n- المسير: 45,000 كم فقط\n- فل كامل: شاشة، كاميرا خلفية، حساسات، كروز كنترول\n- صيانة دورية بالوكالة\n- مالك أول، بدون حوادث\nالسعر قابل للتفاوض، الجادون فقط.", 'price' => 89000],
 
             ['_slug' => 'cars-for-sale', 'title' => 'نيسان التيما SR 2019 - نظيف جداً',
-             'description' => "نيسان التيما SR موديل 2019، مسيرة 80,000 كم.\n- فحص شامل من المركز السعودي\n- بدون حوادث، صبغ الوكالة\n- جنوط رياضية، نظام صوت محسّن", 'price' => 45000, 'is_negotiable' => false],
+                'description' => "نيسان التيما SR موديل 2019، مسيرة 80,000 كم.\n- فحص شامل من المركز السعودي\n- بدون حوادث، صبغ الوكالة\n- جنوط رياضية، نظام صوت محسّن", 'price' => 45000, 'is_negotiable' => false],
 
             ['_slug' => 'cars-for-sale', 'title' => 'هيونداي توسان 2022 - تحت الضمان',
-             'description' => "تاكسون 2022، 30,000 كم، تحت ضمان الوكالة حتى 2025. لون أسود، دفع رباعي.", 'price' => 110000],
+                'description' => 'تاكسون 2022، 30,000 كم، تحت ضمان الوكالة حتى 2025. لون أسود، دفع رباعي.', 'price' => 110000],
 
             ['_slug' => 'cars-for-sale', 'title' => 'لكزس ES 350 موديل 2020',
-             'description' => "لكزس ES350 فل كامل، فتحة سقف، مقاعد جلد مهواة، شاشة 12 بوصة. المسير 60,000 كم.", 'price' => 165000],
+                'description' => 'لكزس ES350 فل كامل، فتحة سقف، مقاعد جلد مهواة، شاشة 12 بوصة. المسير 60,000 كم.', 'price' => 165000],
 
             ['_slug' => 'cars-for-sale', 'title' => 'فورد F-150 2018 - دبل',
-             'description' => "فورد F-150 موديل 2018 دبل، 4WD، رفرف، حماية، حالة الجير ممتازة.", 'price' => 78000],
+                'description' => 'فورد F-150 موديل 2018 دبل، 4WD، رفرف، حماية، حالة الجير ممتازة.', 'price' => 78000],
 
             ['_slug' => 'cars-for-sale', 'title' => 'مرسيدس C200 2017 AMG kit',
-             'description' => "مرسيدس C200 AMG kit، فتحة، مقاعد رياضية، صيانة دورية لدى الوكالة.", 'price' => 95000],
+                'description' => 'مرسيدس C200 AMG kit، فتحة، مقاعد رياضية، صيانة دورية لدى الوكالة.', 'price' => 95000],
 
             ['_slug' => 'cars-for-sale', 'title' => 'كيا سيراتو 2023 - شبه جديدة',
-             'description' => "كيا سيراتو 2023، 8,000 كم فقط، تحت الضمان والصيانة المجانية.", 'price' => 72000],
+                'description' => 'كيا سيراتو 2023، 8,000 كم فقط، تحت الضمان والصيانة المجانية.', 'price' => 72000],
 
             // ── Cars for Rent ───────────────────────────────────────────────
             ['_slug' => 'cars-for-rent', 'title' => 'هيونداي النترا 2023 للإيجار اليومي',
-             'description' => "إيجار يومي/شهري، السعر يشمل التأمين الشامل و2500 كم شهرياً. التوصيل مجاني داخل الرياض.", 'price' => 110],
+                'description' => 'إيجار يومي/شهري، السعر يشمل التأمين الشامل و2500 كم شهرياً. التوصيل مجاني داخل الرياض.', 'price' => 110],
 
             ['_slug' => 'cars-for-rent', 'title' => 'تويوتا يارس 2022 إيجار شهري',
-             'description' => "إيجار شهري، اقتصادية في البنزين، تشمل التأمين والصيانة. مطلوب رخصة سارية.", 'price' => 1800, 'is_negotiable' => false],
+                'description' => 'إيجار شهري، اقتصادية في البنزين، تشمل التأمين والصيانة. مطلوب رخصة سارية.', 'price' => 1800, 'is_negotiable' => false],
 
             ['_slug' => 'cars-for-rent', 'title' => 'GMC Yukon 2022 للإيجار - مناسبات',
-             'description' => "إيجار يوكون لمناسبات الزفاف والرحلات العائلية. السعر يومي شامل سائق إن طلبت.", 'price' => 850],
+                'description' => 'إيجار يوكون لمناسبات الزفاف والرحلات العائلية. السعر يومي شامل سائق إن طلبت.', 'price' => 850],
 
             // ── Spare Parts ─────────────────────────────────────────────────
             ['_slug' => 'spare-parts', 'title' => 'بريك بادز أمامية أصلية - تويوتا',
-             'description' => "بريك بادز أمامية أصلية تويوتا (تنطبق على كامري/كورولا 2018-2022). جديدة بالعلبة.", 'price' => 280, 'is_negotiable' => false],
+                'description' => 'بريك بادز أمامية أصلية تويوتا (تنطبق على كامري/كورولا 2018-2022). جديدة بالعلبة.', 'price' => 280, 'is_negotiable' => false],
 
             ['_slug' => 'spare-parts', 'title' => 'بطارية فارتا 90 أمبير',
-             'description' => "بطارية فارتا 90 أمبير، استخدام شهرين فقط، الضمان قائم. مع كرت الضمان.", 'price' => 320],
+                'description' => 'بطارية فارتا 90 أمبير، استخدام شهرين فقط، الضمان قائم. مع كرت الضمان.', 'price' => 320],
 
             // ── Phones & Tablets ────────────────────────────────────────────
             ['_slug' => 'phones-tablets', 'title' => 'آيفون 15 برو ماكس 256 جيجا - تيتانيوم أسود',
-             'description' => "آيفون 15 Pro Max 256GB، شبه جديد، استخدام أسبوعين. مع الكرتون والملحقات الأصلية.\nالضمان ساري حتى 2026.", 'price' => 5200],
+                'description' => "آيفون 15 Pro Max 256GB، شبه جديد، استخدام أسبوعين. مع الكرتون والملحقات الأصلية.\nالضمان ساري حتى 2026.", 'price' => 5200],
 
             ['_slug' => 'phones-tablets', 'title' => 'سامسونج جالكسي S24 Ultra - 512',
-             'description' => "S24 Ultra 512GB، رمادي، شبه جديد، الضمان من اكسترا ساري سنة. مع قلم S Pen والملحقات.", 'price' => 4800],
+                'description' => 'S24 Ultra 512GB، رمادي، شبه جديد، الضمان من اكسترا ساري سنة. مع قلم S Pen والملحقات.', 'price' => 4800],
 
             ['_slug' => 'phones-tablets', 'title' => 'آيباد برو 12.9 إنش M2 - 256',
-             'description' => "iPad Pro 12.9 جيل M2، 256GB، WiFi+Cellular، مع Magic Keyboard وApple Pencil 2.", 'price' => 4500],
+                'description' => 'iPad Pro 12.9 جيل M2، 256GB، WiFi+Cellular، مع Magic Keyboard وApple Pencil 2.', 'price' => 4500],
 
             ['_slug' => 'phones-tablets', 'title' => 'آيفون 13 - 128 جيجا - أزرق',
-             'description' => "آيفون 13 ، 128 جيجا، البطارية 92%. مستخدم بحالة ممتازة، لا توجد خدوش.", 'price' => 1850],
+                'description' => 'آيفون 13 ، 128 جيجا، البطارية 92%. مستخدم بحالة ممتازة، لا توجد خدوش.', 'price' => 1850],
 
             // ── Computers ───────────────────────────────────────────────────
             ['_slug' => 'computers', 'title' => 'ماك بوك برو M3 14 إنش - 2024',
-             'description' => "MacBook Pro 14 M3 Pro، 16GB RAM، 512GB SSD. استخدام خفيف جداً، شاشة ممتازة بدون خدوش.", 'price' => 7800, 'is_negotiable' => false],
+                'description' => 'MacBook Pro 14 M3 Pro، 16GB RAM، 512GB SSD. استخدام خفيف جداً، شاشة ممتازة بدون خدوش.', 'price' => 7800, 'is_negotiable' => false],
 
             ['_slug' => 'computers', 'title' => 'لابتوب ASUS ROG Strix G16 - RTX 4070',
-             'description' => "ASUS ROG Strix G16، Intel i9 13th، 32GB RAM، RTX 4070، 1TB SSD. مناسب للألعاب والمونتاج.", 'price' => 6500],
+                'description' => 'ASUS ROG Strix G16، Intel i9 13th، 32GB RAM، RTX 4070، 1TB SSD. مناسب للألعاب والمونتاج.', 'price' => 6500],
 
             ['_slug' => 'computers', 'title' => 'كمبيوتر مكتبي Gaming PC - RTX 3080',
-             'description' => "تجميعة Gaming: Ryzen 7 5800X + RTX 3080 + 32GB RAM + 1TB NVMe + كيس RGB. السعر شامل الشاشة.", 'price' => 8900],
+                'description' => 'تجميعة Gaming: Ryzen 7 5800X + RTX 3080 + 32GB RAM + 1TB NVMe + كيس RGB. السعر شامل الشاشة.', 'price' => 8900],
 
             // ── Home Appliances ─────────────────────────────────────────────
             ['_slug' => 'home-appliances', 'title' => 'ثلاجة LG ساميسايد 24 قدم',
-             'description' => "ثلاجة LG side-by-side، 24 قدم، Inverter، سبيلت، ضمان 5 سنوات على المحرك.", 'price' => 3500],
+                'description' => 'ثلاجة LG side-by-side، 24 قدم، Inverter، سبيلت، ضمان 5 سنوات على المحرك.', 'price' => 3500],
 
             ['_slug' => 'home-appliances', 'title' => 'غسالة سامسونج 12 كجم',
-             'description' => "غسالة Samsung WW12 ، 12 كجم، فتحة أمامية، AddWash، استخدام شهر فقط.", 'price' => 2400],
+                'description' => 'غسالة Samsung WW12 ، 12 كجم، فتحة أمامية، AddWash، استخدام شهر فقط.', 'price' => 2400],
 
             // ── Cameras ─────────────────────────────────────────────────────
             ['_slug' => 'cameras', 'title' => 'كاميرا Canon EOS R6 + عدسة 24-105',
-             'description' => "Canon EOS R6 mirrorless مع عدسة RF 24-105 f/4. عدد اللقطات أقل من 8000. البطاريتين والشاحن.", 'price' => 9500],
+                'description' => 'Canon EOS R6 mirrorless مع عدسة RF 24-105 f/4. عدد اللقطات أقل من 8000. البطاريتين والشاحن.', 'price' => 9500],
 
             ['_slug' => 'cameras', 'title' => 'Sony A7 III - بدن فقط',
-             'description' => "Sony A7 III بدن فقط، Shutter count حوالي 12k. حالة ممتازة، مع البطارية والشاحن.", 'price' => 5800],
+                'description' => 'Sony A7 III بدن فقط، Shutter count حوالي 12k. حالة ممتازة، مع البطارية والشاحن.', 'price' => 5800],
 
             // ── Furniture ───────────────────────────────────────────────────
             ['_slug' => 'bedrooms', 'title' => 'غرفة نوم تركية كاملة - خشب طبيعي',
-             'description' => "غرفة نوم كاملة (سرير كينج + خزانة 6 درفات + تسريحة + كومودينو 2). خشب طبيعي تركي.", 'price' => 8500],
+                'description' => 'غرفة نوم كاملة (سرير كينج + خزانة 6 درفات + تسريحة + كومودينو 2). خشب طبيعي تركي.', 'price' => 8500],
 
             ['_slug' => 'bedrooms', 'title' => 'سرير أطفال + دولاب صغير',
-             'description' => "سرير أطفال خشبي مع مرتبة + دولاب صغير. الاستخدام سنة واحدة فقط، حالة ممتازة.", 'price' => 1200],
+                'description' => 'سرير أطفال خشبي مع مرتبة + دولاب صغير. الاستخدام سنة واحدة فقط، حالة ممتازة.', 'price' => 1200],
 
             ['_slug' => 'living-rooms', 'title' => 'كنب إيكيا KIVIK - 3 قطع رمادي',
-             'description' => "كنب إيكيا KIVIK، 3 قطع، لون رمادي. اشتريته الشهر الماضي وقررت تغيير الديكور. السعر يقبل التفاوض.", 'price' => 2200],
+                'description' => 'كنب إيكيا KIVIK، 3 قطع، لون رمادي. اشتريته الشهر الماضي وقررت تغيير الديكور. السعر يقبل التفاوض.', 'price' => 2200],
 
             ['_slug' => 'living-rooms', 'title' => 'مجلس عربي مودرن - 8 جلسات',
-             'description' => "مجلس عربي مودرن، 8 جلسات + ميدالية + 4 طاولات. لون بيج وبني، حالة ممتازة.", 'price' => 4500],
+                'description' => 'مجلس عربي مودرن، 8 جلسات + ميدالية + 4 طاولات. لون بيج وبني، حالة ممتازة.', 'price' => 4500],
 
             ['_slug' => 'kitchens', 'title' => 'مطبخ ألمنيوم كامل - 6 متر',
-             'description' => "مطبخ ألمنيوم 6 متر طولي، أبيض/خشبي، يشمل فرن وشفاط بيلت إن.", 'price' => 7200],
+                'description' => 'مطبخ ألمنيوم 6 متر طولي، أبيض/خشبي، يشمل فرن وشفاط بيلت إن.', 'price' => 7200],
 
             ['_slug' => 'office-furniture', 'title' => 'مكتب تنفيذي خشب + كرسي جلد',
-             'description' => "مكتب تنفيذي 1.8م، خشب طبيعي، مع كرسي تنفيذي جلدي وكرسيين زائرين.", 'price' => 2900],
+                'description' => 'مكتب تنفيذي 1.8م، خشب طبيعي، مع كرسي تنفيذي جلدي وكرسيين زائرين.', 'price' => 2900],
 
             // ── Jobs ────────────────────────────────────────────────────────
             ['_slug' => 'private-jobs', 'title' => 'مطلوب محاسب خبرة 3 سنوات - شركة تجارية',
-             'description' => "شركة تجارية بالرياض تبحث عن محاسب خبرة لا تقل عن 3 سنوات.\n- إجادة برامج المحاسبة (SAP، Oracle)\n- بكالوريوس محاسبة\n- اللغة الإنجليزية جيدة\nالراتب حسب الخبرة + بدل مواصلات + تأمين طبي.",
-             'price' => null, 'is_free' => true],
+                'description' => "شركة تجارية بالرياض تبحث عن محاسب خبرة لا تقل عن 3 سنوات.\n- إجادة برامج المحاسبة (SAP، Oracle)\n- بكالوريوس محاسبة\n- اللغة الإنجليزية جيدة\nالراتب حسب الخبرة + بدل مواصلات + تأمين طبي.",
+                'price' => null, 'is_free' => true],
 
             ['_slug' => 'private-jobs', 'title' => 'مطلوب مطور ويب Laravel - دوام كامل',
-             'description' => "شركة ناشئة تبحث عن مطور Laravel/Vue، خبرة 2+ سنوات.\nمزايا: عمل عن بعد جزئي، أسهم في الشركة، تأمين طبي شامل.",
-             'price' => null, 'is_free' => true],
+                'description' => "شركة ناشئة تبحث عن مطور Laravel/Vue، خبرة 2+ سنوات.\nمزايا: عمل عن بعد جزئي، أسهم في الشركة، تأمين طبي شامل.",
+                'price' => null, 'is_free' => true],
 
             ['_slug' => 'freelance', 'title' => 'مصمم جرافيك حر - تصاميم سوشيال ميديا',
-             'description' => "مصمم جرافيك مستقل، 6 سنوات خبرة. تصاميم Instagram, TikTok, Snap. الباقات تبدأ من 600 ريال شهرياً.",
-             'price' => 600, 'is_free' => false],
+                'description' => 'مصمم جرافيك مستقل، 6 سنوات خبرة. تصاميم Instagram, TikTok, Snap. الباقات تبدأ من 600 ريال شهرياً.',
+                'price' => 600, 'is_free' => false],
 
             // ── Services ────────────────────────────────────────────────────
             ['_slug' => 'home-services', 'title' => 'خدمة تنظيف منازل احترافية',
-             'description' => "فريق متخصص في تنظيف المنازل والشقق والفلل. نستخدم أفضل المنظفات الآمنة. متاحون طوال الأسبوع.\nالأسعار تبدأ من 350 ريال للشقة.",
-             'price' => 350, 'is_negotiable' => false],
+                'description' => "فريق متخصص في تنظيف المنازل والشقق والفلل. نستخدم أفضل المنظفات الآمنة. متاحون طوال الأسبوع.\nالأسعار تبدأ من 350 ريال للشقة.",
+                'price' => 350, 'is_negotiable' => false],
 
             ['_slug' => 'home-services', 'title' => 'فني تكييف مركزي - تركيب وصيانة',
-             'description' => "فني تكييف خبرة 8 سنوات، تركيب سبليت ومركزي وصيانة دورية. كشف مجاني.",
-             'price' => 200],
+                'description' => 'فني تكييف خبرة 8 سنوات، تركيب سبليت ومركزي وصيانة دورية. كشف مجاني.',
+                'price' => 200],
 
             ['_slug' => 'education', 'title' => 'دروس خصوصية رياضيات وفيزياء',
-             'description' => "معلم معتمد بخبرة 10 سنوات. أدرّس رياضيات وفيزياء للمرحلة المتوسطة والثانوية والجامعية. حضوري أو أونلاين.",
-             'price' => 150, 'is_negotiable' => false],
+                'description' => 'معلم معتمد بخبرة 10 سنوات. أدرّس رياضيات وفيزياء للمرحلة المتوسطة والثانوية والجامعية. حضوري أو أونلاين.',
+                'price' => 150, 'is_negotiable' => false],
 
             ['_slug' => 'education', 'title' => 'مدرس لغة إنجليزية - IELTS / TOEFL',
-             'description' => "تأسيس وتدريب على اختبارات IELTS و TOEFL. مدرس حاصل على شهادة CELTA. حصص فردية أو مجموعات صغيرة.",
-             'price' => 180],
+                'description' => 'تأسيس وتدريب على اختبارات IELTS و TOEFL. مدرس حاصل على شهادة CELTA. حصص فردية أو مجموعات صغيرة.',
+                'price' => 180],
 
             ['_slug' => 'moving-shipping', 'title' => 'نقل عفش مع الفك والتركيب',
-             'description' => "شركة نقل عفش داخل الرياض وخارجها. سيارات مغلقة، فك وتركيب بأيدي خبرة، تغليف مجاني.",
-             'price' => 800],
+                'description' => 'شركة نقل عفش داخل الرياض وخارجها. سيارات مغلقة، فك وتركيب بأيدي خبرة، تغليف مجاني.',
+                'price' => 800],
 
             // ── Fashion ─────────────────────────────────────────────────────
             ['_slug' => 'mens-clothing', 'title' => 'ثياب رجالية ماركة - جديدة بالعلب',
-             'description' => "مجموعة ثياب رجالية من ماركات Zara و H&M مقاس L، جديدة لم تستخدم. 5 قطع.",
-             'price' => 600],
+                'description' => 'مجموعة ثياب رجالية من ماركات Zara و H&M مقاس L، جديدة لم تستخدم. 5 قطع.',
+                'price' => 600],
 
             ['_slug' => 'mens-clothing', 'title' => 'بدلة رجالية رسمية كحلية - مقاس 50',
-             'description' => "بدلة رجالية كحلية مقاس 50، مستخدمة مرة واحدة في زفاف. مع القميص الأبيض والكرفتة.",
-             'price' => 850],
+                'description' => 'بدلة رجالية كحلية مقاس 50، مستخدمة مرة واحدة في زفاف. مع القميص الأبيض والكرفتة.',
+                'price' => 850],
 
             ['_slug' => 'womens-clothing', 'title' => 'فستان سهرة - مقاس M',
-             'description' => "فستان سهرة طويل لون نبيتي، مقاس M، استخدام مرة واحدة. السعر الأصلي 1800.",
-             'price' => 750],
+                'description' => 'فستان سهرة طويل لون نبيتي، مقاس M، استخدام مرة واحدة. السعر الأصلي 1800.',
+                'price' => 750],
 
             ['_slug' => 'accessories', 'title' => 'ساعة Casio G-Shock أصلية',
-             'description' => "ساعة Casio G-Shock GA-2100 أصلية مع الكرتون والضمان. حالة ممتازة.",
-             'price' => 480],
+                'description' => 'ساعة Casio G-Shock GA-2100 أصلية مع الكرتون والضمان. حالة ممتازة.',
+                'price' => 480],
 
             // ── Sports ──────────────────────────────────────────────────────
             ['_slug' => 'sports-leisure', 'title' => 'دراجة جبلية Trek - استخدام خفيف',
-             'description' => "دراجة Trek 27.5 إنش، 21 سرعة، استخدام 3 شهور فقط. مع الإكسسوارات (لمبات، حامل، خوذة).",
-             'price' => 1800],
+                'description' => 'دراجة Trek 27.5 إنش، 21 سرعة، استخدام 3 شهور فقط. مع الإكسسوارات (لمبات، حامل، خوذة).',
+                'price' => 1800],
 
             ['_slug' => 'sports-leisure', 'title' => 'جهاز جري NordicTrack - منزلي',
-             'description' => "جهاز جري NordicTrack T6.5 ، استخدام أقل من سنة، طي سهل، شاشة ملونة.",
-             'price' => 2400],
+                'description' => 'جهاز جري NordicTrack T6.5 ، استخدام أقل من سنة، طي سهل، شاشة ملونة.',
+                'price' => 2400],
 
             ['_slug' => 'sports-leisure', 'title' => 'كرة قدم رسمية Adidas + شراب',
-             'description' => "كرة قدم Adidas مقاس 5، رسمية، مع شراب وحماية ركب. جديدة.",
-             'price' => 220, 'is_negotiable' => false],
+                'description' => 'كرة قدم Adidas مقاس 5، رسمية، مع شراب وحماية ركب. جديدة.',
+                'price' => 220, 'is_negotiable' => false],
 
             // ── Books ───────────────────────────────────────────────────────
             ['_slug' => 'books-magazines', 'title' => 'مجموعة كتب تطوير ذات - 12 كتاب',
-             'description' => "مجموعة كتب تطوير ذات مترجمة (ستيفن كوفي، ديل كارنيجي، سيمون سينك..). 12 كتاب بحالة ممتازة.",
-             'price' => 380],
+                'description' => 'مجموعة كتب تطوير ذات مترجمة (ستيفن كوفي، ديل كارنيجي، سيمون سينك..). 12 كتاب بحالة ممتازة.',
+                'price' => 380],
 
             ['_slug' => 'books-magazines', 'title' => 'موسوعة الفقه الإسلامي - الكويتية',
-             'description' => "الموسوعة الفقهية الكويتية، طبعة جديدة، 45 مجلد. مغلفة بالكرتون الأصلي.",
-             'price' => 1500],
+                'description' => 'الموسوعة الفقهية الكويتية، طبعة جديدة، 45 مجلد. مغلفة بالكرتون الأصلي.',
+                'price' => 1500],
 
             // ── Toys ────────────────────────────────────────────────────────
             ['_slug' => 'toys-kids', 'title' => 'سيارة أطفال كهربائية - مرسيدس',
-             'description' => "سيارة أطفال كهربائية موديل مرسيدس، تتحمل حتى 35 كجم، ريموت كنترول للوالدين.",
-             'price' => 950],
+                'description' => 'سيارة أطفال كهربائية موديل مرسيدس، تتحمل حتى 35 كجم، ريموت كنترول للوالدين.',
+                'price' => 950],
 
             ['_slug' => 'toys-kids', 'title' => 'مجموعة ليجو ستار وورز',
-             'description' => "Lego Star Wars Millennium Falcon، 1351 قطعة، جديدة بالعلبة لم تفتح.",
-             'price' => 1100, 'is_negotiable' => false],
+                'description' => 'Lego Star Wars Millennium Falcon، 1351 قطعة، جديدة بالعلبة لم تفتح.',
+                'price' => 1100, 'is_negotiable' => false],
 
             // ── Animals ─────────────────────────────────────────────────────
             ['_slug' => 'animals', 'title' => 'فرس عربي أصيل - 4 سنوات',
-             'description' => "فرس عربي أصيل مسجل في جمعية المربين، عمر 4 سنوات. مدرب على الركوب، مع الشهادات.",
-             'price' => 65000],
+                'description' => 'فرس عربي أصيل مسجل في جمعية المربين، عمر 4 سنوات. مدرب على الركوب، مع الشهادات.',
+                'price' => 65000],
 
             ['_slug' => 'animals', 'title' => 'صقر حر مدرب',
-             'description' => "صقر حر مدرب على القنص، عمر سنتين، مع الجاذي والكاب والمرسلات.",
-             'price' => 12000],
+                'description' => 'صقر حر مدرب على القنص، عمر سنتين، مع الجاذي والكاب والمرسلات.',
+                'price' => 12000],
 
             ['_slug' => 'animals', 'title' => 'طيور حسون أوربية - أصلية',
-             'description' => "طيور حسون أوربية، ذكور وإناث، أصلية. السعر للطير الواحد. متاحة الآن.",
-             'price' => 850],
+                'description' => 'طيور حسون أوربية، ذكور وإناث، أصلية. السعر للطير الواحد. متاحة الآن.',
+                'price' => 850],
 
             // ── Personal items ──────────────────────────────────────────────
             ['_slug' => 'personal-items', 'title' => 'حقيبة سفر سامسونايت كبيرة',
-             'description' => "حقيبة سفر Samsonite مقاس 28 إنش، استخدام مرتين فقط، عجلات سبيكة سليمة.",
-             'price' => 480],
+                'description' => 'حقيبة سفر Samsonite مقاس 28 إنش، استخدام مرتين فقط، عجلات سبيكة سليمة.',
+                'price' => 480],
 
             ['_slug' => 'personal-items', 'title' => 'نظارات شمسية Ray-Ban أصلية',
-             'description' => "نظارات Ray-Ban Aviator أصلية، مع الكرتون والشهادة. اشتريت من فرع الرياض جاليري.",
-             'price' => 650],
+                'description' => 'نظارات Ray-Ban Aviator أصلية، مع الكرتون والشهادة. اشتريت من فرع الرياض جاليري.',
+                'price' => 650],
         ];
     }
 }

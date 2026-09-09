@@ -125,7 +125,11 @@ abstract class AppTheme {
           side: const BorderSide(color: primaryBlue, width: 1.5),
           minimumSize: const Size(double.infinity, 52),
           shape: const StadiumBorder(),
-          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: GoogleFonts.tajawal().fontFamily),
+          textStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            fontFamily: GoogleFonts.tajawal().fontFamily,
+          ),
         ),
       ),
 
@@ -148,16 +152,17 @@ abstract class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: colorError),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
 
       cardTheme: CardThemeData(
         elevation: 0,
         color: neutralWhite,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: EdgeInsets.zero,
       ),
 
@@ -235,7 +240,11 @@ abstract class AppTheme {
           minimumSize: const Size(double.infinity, 52),
           shape: const StadiumBorder(),
           elevation: 0,
-          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: GoogleFonts.tajawal().fontFamily),
+          textStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            fontFamily: GoogleFonts.tajawal().fontFamily,
+          ),
         ),
       ),
 
@@ -254,16 +263,17 @@ abstract class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: primaryBlueLight, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
 
       cardTheme: CardThemeData(
         elevation: 0,
         color: darkCard,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
 
       bottomSheetTheme: const BottomSheetThemeData(

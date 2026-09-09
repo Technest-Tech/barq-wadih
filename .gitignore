@@ -87,6 +87,8 @@ mobile/android/app/debug/
 mobile/android/app/profile/
 mobile/android/app/release/
 mobile/android/key.properties
+mobile/android/tracking.properties
+mobile/ios/Flutter/Tracking.xcconfig
 mobile/*.iml
 mobile/doc/api/
 
@@ -108,3 +110,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 backend/storage/firebase-service-account.json
+
+# Build/release output and review media — regenerable, and 790MB+ that would
+# bloat every clone and every server `git pull`. The audit notes are kept.
+artifacts/releases/
+artifacts/marketing-test/
+artifacts/*.mp4

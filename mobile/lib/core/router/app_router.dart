@@ -7,6 +7,7 @@ import '../widgets/exit_confirm_dialog.dart';
 
 import '../../features/ads/presentation/screens/ad_feed_screen.dart';
 import '../../features/ads/presentation/screens/ad_detail_screen.dart';
+import '../../features/ads/domain/ad_model.dart';
 import '../../features/ads/presentation/screens/post_ad_screen.dart';
 import '../../features/ads/presentation/screens/bank_transfer_screen.dart';
 import '../../features/ads/presentation/screens/my_ads_screen.dart';
@@ -29,10 +30,12 @@ import '../../features/settings/presentation/screens/privacy_policy_screen.dart'
 import '../../features/settings/presentation/screens/safety_center_screen.dart';
 import '../../features/settings/presentation/screens/trusted_purchase_screen.dart';
 import '../../features/settings/presentation/screens/terms_of_service_screen.dart';
+import '../../features/settings/presentation/screens/fees_pricing_screen.dart';
 import '../../features/settings/presentation/screens/how_to_buy_screen.dart';
 import '../../features/settings/presentation/screens/how_to_sell_screen.dart';
 import '../../features/settings/presentation/screens/about_screen.dart';
 import '../shell/main_shell.dart';
+import '../shell/shell_back_to_home.dart';
 
 // ── Route paths ───────────────────────────────────────────────────────────────
 
@@ -59,6 +62,7 @@ abstract class AppRoutes {
   static const safetyCenter = '/safety-center';
   static const trustedPurchase = '/trusted-purchase';
   static const termsOfService = '/terms-of-service';
+  static const fees = '/fees';
   static const howToBuy = '/how-to-buy';
   static const howToSell = '/how-to-sell';
   static const about = '/about';
@@ -100,8 +104,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthPg = loc == AppRoutes.login || loc == AppRoutes.register;
 
       if (isLoading) return null;
-      if (!isAuthed && _protectedPaths.any((p) => loc.startsWith(p)))
+      if (!isAuthed && _protectedPaths.any((p) => loc.startsWith(p))) {
         return AppRoutes.login;
+      }
       if (isAuthed && isAuthPg) return AppRoutes.home;
       return null;
     },
@@ -122,42 +127,44 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.categories,
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
-              child: const CategoriesScreen(),
+              child: const ShellBackToHome(child: CategoriesScreen()),
             ),
           ),
           GoRoute(
             path: AppRoutes.myAds,
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
-              child: const MyAdsScreen(),
+              child: const ShellBackToHome(child: MyAdsScreen()),
             ),
           ),
           GoRoute(
             path: AppRoutes.favorites,
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
-              child: const FavoritesScreen(),
+              child: const ShellBackToHome(child: FavoritesScreen()),
             ),
           ),
           GoRoute(
             path: AppRoutes.notifications,
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
-              child: const NotificationsScreen(),
+              child: const ShellBackToHome(child: NotificationsScreen()),
             ),
           ),
           GoRoute(
             path: AppRoutes.messages,
             pageBuilder: (context, state) => _noTransitionPage(
               key: state.pageKey,
-              child: const MessagesScreen(),
+              child: const ShellBackToHome(child: MessagesScreen()),
             ),
           ),
           // Profile & edit inside shell so the bottom nav stays visible
           GoRoute(
             path: AppRoutes.profile,
-            pageBuilder: (context, state) =>
-                _slidePage(key: state.pageKey, child: const ProfileScreen()),
+            pageBuilder: (context, state) => _slidePage(
+              key: state.pageKey,
+              child: const ShellBackToHome(child: ProfileScreen()),
+            ),
           ),
           GoRoute(
             path: AppRoutes.editProfile,
@@ -174,9 +181,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/ads/:id',
         pageBuilder: (context, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+          final preview = state.extra is AdListModel
+              ? (state.extra as AdListModel).primaryImage
+              : null;
           return _slidePage(
             key: state.pageKey,
-            child: AdDetailScreen(adId: id),
+            child: AdDetailScreen(adId: id, previewImage: preview),
           );
         },
       ),
@@ -188,7 +198,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // "commission rejected" notification) pass it as an `amount` query param.
           final fee = state.extra is num
               ? (state.extra as num).toDouble()
-              : double.tryParse(state.uri.queryParameters['amount'] ?? '') ?? 0.0;
+              : double.tryParse(state.uri.queryParameters['amount'] ?? '') ??
+                    0.0;
           return _slidePage(
             key: state.pageKey,
             child: BankTransferScreen(adId: id, fee: fee),
@@ -299,6 +310,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.termsOfService,
         pageBuilder: (context, state) =>
             _slidePage(key: state.pageKey, child: const TermsOfServiceScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.fees,
+        pageBuilder: (context, state) =>
+            _slidePage(key: state.pageKey, child: const FeesPricingScreen()),
       ),
       GoRoute(
         path: AppRoutes.howToBuy,

@@ -81,7 +81,8 @@ class DashboardController extends BaseController
         $pendingReports = Report::where('status', ReportStatus::Pending->value)->count();
 
         // ── Recent Activity ─────────────────────────────────────────────
-        $recentAds = Ad::with(['user:id,name,avatar', 'category:id,name_ar,name_en', 'city:id,name_ar,name_en'])
+        $recentAds = Ad::with(['primaryImage', 'user:id,name,avatar', 'category:id,name_ar,name_en', 'city:id,name_ar,name_en'])
+            ->withCount('images')
             ->latest()
             ->limit(10)
             ->get();

@@ -22,7 +22,8 @@ class FavoriteController extends Controller
         $ads = Ad::join('favorites', 'favorites.ad_id', '=', 'ads.id')
             ->where('favorites.user_id', $request->user()->id)
             ->where('ads.status', 'active')
-            ->with(['category', 'city', 'region', 'images'])
+            ->with(['category', 'city', 'region', 'primaryImage'])
+            ->withCount('images')
             ->orderByDesc('favorites.created_at')
             ->select('ads.*')
             ->paginate(20);

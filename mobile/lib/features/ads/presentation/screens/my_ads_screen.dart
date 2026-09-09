@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_cached_image.dart';
 import '../../data/ad_api.dart';
 import '../../domain/ad_model.dart';
 import '../widgets/sold_fee_sheet.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -99,8 +102,13 @@ class _MyAdsScreenState extends ConsumerState<MyAdsScreen> {
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                           itemCount: filtered.length,
-                          itemBuilder: (context, i) =>
-                              _AdListTile(ad: filtered[i]),
+                          // Keyed by ad id: without this, switching tabs or
+                          // removing an ad makes Flutter reuse a tile's State
+                          // for a different ad (or unmount it mid-dialog).
+                          itemBuilder: (context, i) => _AdListTile(
+                            key: ValueKey(filtered[i].id),
+                            ad: filtered[i],
+                          ),
                         ),
                       ),
               ),
@@ -290,7 +298,7 @@ class _StatusTabBar extends StatelessWidget {
 
 class _AdListTile extends ConsumerStatefulWidget {
   final AdListModel ad;
-  const _AdListTile({required this.ad});
+  const _AdListTile({super.key, required this.ad});
 
   @override
   ConsumerState<_AdListTile> createState() => _AdListTileState();
@@ -299,13 +307,113 @@ class _AdListTile extends ConsumerStatefulWidget {
 class _AdListTileState extends ConsumerState<_AdListTile> {
   bool _deletingAd = false;
   bool _markingSold = false;
+  bool _refreshingAd = false;
+  bool _renewingAd = false;
 
   AdListModel get ad => widget.ad;
+
+  /// Ads drop out of the feed 3 months after they are published. They are
+  /// only hidden — never destroyed — and renewal brings them back.
+  bool get _isHidden => ad.status == 'expired';
+
+  /// Renewal republishes a hidden ad for another 3 months. The backend
+  /// rejects this while the ad is still visible, which is why the button is
+  /// greyed out until then.
+  Future<void> _handleRenew() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'تجديد الإعلان',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: const Text(
+            'سيعود إعلانك للظهور في السوق لمدة 3 أشهر جديدة، وسيتصدّر أحدث الإعلانات.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF5A623),
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                elevation: 0,
+              ),
+              child: const Text('تجديد الآن'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() => _renewingAd = true);
+    try {
+      final updated = await ref.read(adRepositoryProvider).renewAd(ad.id);
+      ref.read(myAdsProvider.notifier).replaceLocally(updated);
+      ref.invalidate(adsFeedProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تجديد الإعلان وإعادته للظهور 🚀')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _renewingAd = false);
+    }
+  }
+
+  /// "تحديث" — bumps the ad back to the top of the feed. The backend enforces
+  /// a cooldown (default 24h) and returns the reason if it's too soon.
+  Future<void> _handleRefresh() async {
+    setState(() => _refreshingAd = true);
+    try {
+      await ref.read(adRepositoryProvider).refreshAd(ad.id);
+      await ref.read(myAdsProvider.notifier).refresh();
+      ref.invalidate(adsFeedProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث الإعلان بنجاح 🔄')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _refreshingAd = false);
+    }
+  }
+
+  /// "تعديل" — reuses the post-ad flow in edit mode (it takes an ad ID).
+  Future<void> _handleEdit() async {
+    await context.push(AppRoutes.postAd, extra: ad.id);
+    if (!mounted) return;
+    // Pick up whatever the seller changed.
+    await ref.read(myAdsProvider.notifier).refresh();
+    ref.invalidate(adsFeedProvider);
+  }
 
   Future<void> _handleDelete() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => Directionality(
+      builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
@@ -320,11 +428,11 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('إلغاء'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
@@ -358,14 +466,17 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
     setState(() => _markingSold = true);
     try {
       final result = await ref.read(adRepositoryProvider).markSold(ad.id);
-      ref.read(myAdsProvider.notifier).updateStatus(ad.id, 'sold', 'مُباع');
+      // Replace with the server model so the card keeps the commission fields
+      // and can offer "دفع العمولة" if the seller dismisses the sheet.
+      ref.read(myAdsProvider.notifier).replaceLocally(result);
       if (mounted) {
-        await SoldFeeSheet.show(
+        final deferred = await SoldFeeSheet.show(
           context,
           adId: ad.id,
           adTitle: ad.title,
           commission: result.paymentAmount ?? 0,
         );
+        if (deferred && mounted) showCommissionDeferredHint(context);
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -407,7 +518,7 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
           ],
         ),
         child: InkWell(
-          onTap: () => context.push('/ads/${ad.id}'),
+          onTap: () => context.push('/ads/${ad.id}', extra: ad),
           borderRadius: BorderRadius.circular(16),
           child: Column(
             children: [
@@ -424,11 +535,13 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
                         width: 90,
                         height: 90,
                         child: ad.primaryImage != null
-                            ? Image.network(
-                                ad.primaryImage!.thumbnailUrl,
+                            ? AppCachedImage(
+                                imageUrl: ad.primaryImage!.thumbnailUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _ImageFallback(icon: ad.category?.icon),
+                                memCacheWidth: 400,
+                                errorWidget: _ImageFallback(
+                                  icon: ad.category?.icon,
+                                ),
                               )
                             : _ImageFallback(icon: ad.category?.icon),
                       ),
@@ -472,7 +585,7 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
                           const SizedBox(height: 6),
 
                           // Price
-                          Text(
+                          RiyalText(
                             ad.priceDisplay,
                             style: const TextStyle(
                               fontSize: 15,
@@ -524,6 +637,56 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
                   ),
                 ),
 
+              // ── Hidden notice ───────────────────────────────────────
+              // The ad still exists — it just left the feed after 3 months.
+              if (_isHidden)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFED7AA)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.visibility_off_outlined,
+                        size: 14,
+                        color: Color(0xFFC2410C),
+                      ),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'تم إخفاء الإعلان بعد 3 أشهر — اضغط "تجديد" لإعادته للظهور',
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF9A3412),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ── Commission due / status ─────────────────────────────
+              // Persistent path back to payment after the seller taps "لاحقاً"
+              // on the sold sheet.
+              if (ad.status == 'sold' && (ad.paymentAmount ?? 0) > 0)
+                _CommissionStrip(
+                  amount: ad.paymentAmount!,
+                  status: ad.paymentStatus ?? 'pending',
+                  onPay: () => context.push(
+                    '/ads/${ad.id}/pay',
+                    extra: ad.paymentAmount,
+                  ),
+                ),
+
               // ── Divider ─────────────────────────────────────────────
               const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
@@ -533,10 +696,34 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
                   horizontal: 12,
                   vertical: 10,
                 ),
-                child: Row(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.start,
                   children: [
-                    // Mark sold — active ads only
+                    // Renewal is locked while the ad is still visible, unlocked
+                    // once the 3-month window has hidden it.
+                    if (isActive || _isHidden)
+                      _TileAction(
+                        label: 'تجديد',
+                        icon: Icons.rocket_launch_rounded,
+                        color: const Color(0xFFF5A623),
+                        isLoading: _renewingAd,
+                        enabled: ad.canRenew,
+                        disabledHint:
+                            'الإعلان ظاهر حالياً — يتاح التجديد بعد إخفائه',
+                        onTap: _handleRenew,
+                      ),
+
+                    // Active ads only: bump to top, mark sold, and edit.
                     if (isActive) ...[
+                      _TileAction(
+                        label: 'تحديث',
+                        icon: Icons.refresh_rounded,
+                        color: const Color(0xFF059669),
+                        isLoading: _refreshingAd,
+                        onTap: _handleRefresh,
+                      ),
                       _TileAction(
                         label: 'تم البيع',
                         icon: Icons.sell_outlined,
@@ -544,10 +731,13 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
                         isLoading: _markingSold,
                         onTap: _handleMarkSold,
                       ),
-                      const SizedBox(width: 8),
+                      _TileAction(
+                        label: 'تعديل',
+                        icon: Icons.edit_outlined,
+                        color: const Color(0xFF6B7280),
+                        onTap: _handleEdit,
+                      ),
                     ],
-
-                    const Spacer(),
 
                     // Delete — always shown
                     _TileAction(
@@ -578,6 +768,107 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
   static String _formatDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
 }
 
+// ── Commission strip (sold ads) ───────────────────────────────────────────────
+
+/// Shown on every sold ad that carries a commission, whatever the seller chose
+/// on the sold sheet — so "لاحقاً" always has a way back to paying.
+class _CommissionStrip extends StatelessWidget {
+  final double amount;
+  final String status; // pending | under_review | paid
+  final VoidCallback onPay;
+
+  const _CommissionStrip({
+    required this.amount,
+    required this.status,
+    required this.onPay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (
+      String label,
+      Color fg,
+      Color bg,
+      Color border,
+      bool payable,
+    ) = switch (status) {
+      'paid' => (
+        'تم سداد العمولة',
+        const Color(0xFF15803D),
+        const Color(0xFFF0FDF4),
+        const Color(0xFFBBF7D0),
+        false,
+      ),
+      'under_review' => (
+        'إيصال العمولة قيد المراجعة',
+        const Color(0xFF92400E),
+        const Color(0xFFFFFBEB),
+        const Color(0xFFFCD34D),
+        false,
+      ),
+      _ => (
+        'عمولة مستحقة: ${amount.toStringAsFixed(0)} ر.س',
+        const Color(0xFF991B1B),
+        const Color(0xFFFEF2F2),
+        const Color(0xFFFECACA),
+        true,
+      ),
+    };
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            payable
+                ? Icons.account_balance_wallet_outlined
+                : status == 'paid'
+                ? Icons.verified_rounded
+                : Icons.hourglass_top_rounded,
+            size: 15,
+            color: fg,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: RiyalText(
+              label,
+              textDirection: TextDirection.rtl,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: fg,
+              ),
+            ),
+          ),
+          if (payable)
+            TextButton(
+              onPressed: onPay,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text(
+                'ادفع الآن',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Tile action button ────────────────────────────────────────────────────────
 
 class _TileAction extends StatelessWidget {
@@ -587,6 +878,10 @@ class _TileAction extends StatelessWidget {
   final VoidCallback onTap;
   final bool isLoading;
   final bool isDestructive;
+  final bool enabled;
+
+  /// Long-press explanation shown while the action is locked.
+  final String? disabledHint;
 
   const _TileAction({
     required this.label,
@@ -595,21 +890,26 @@ class _TileAction extends StatelessWidget {
     required this.onTap,
     this.isLoading = false,
     this.isDestructive = false,
+    this.enabled = true,
+    this.disabledHint,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
+    // Locked actions drop to grey so they never read as tappable.
+    final tint = enabled ? color : AppTheme.neutralGray400;
+
+    final button = GestureDetector(
+      onTap: (isLoading || !enabled) ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isDestructive
-              ? color.withValues(alpha: .07)
-              : color.withValues(alpha: .10),
+              ? tint.withValues(alpha: .07)
+              : tint.withValues(alpha: .10),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: color.withValues(alpha: .25)),
+          border: Border.all(color: tint.withValues(alpha: .25)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -618,26 +918,28 @@ class _TileAction extends StatelessWidget {
               SizedBox(
                 width: 14,
                 height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: color,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 1.5, color: tint),
               )
             else
-              Icon(icon, size: 15, color: color),
+              Icon(icon, size: 15, color: tint),
             const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: color,
+                color: tint,
               ),
             ),
           ],
         ),
       ),
     );
+
+    if (!enabled && disabledHint != null) {
+      return Tooltip(message: disabledHint!, child: button);
+    }
+    return button;
   }
 }
 

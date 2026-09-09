@@ -30,7 +30,9 @@ class ErrorInterceptor extends Interceptor {
         if (responseData is Map<String, dynamic> &&
             responseData['errors'] is Map) {
           (responseData['errors'] as Map).forEach((key, value) {
-            errors[key.toString()] = (value as List).map((e) => e.toString()).toList();
+            errors[key.toString()] = (value as List)
+                .map((e) => e.toString())
+                .toList();
           });
         }
         exception = ValidationException(message, errors);
@@ -52,13 +54,17 @@ class ErrorInterceptor extends Interceptor {
         }
     }
 
-    debugPrint('[ErrorInterceptor] ${exception.runtimeType}: $message (HTTP $statusCode)');
+    debugPrint(
+      '[ErrorInterceptor] ${exception.runtimeType}: $message (HTTP $statusCode)',
+    );
 
-    handler.reject(DioException(
-      requestOptions: err.requestOptions,
-      response: err.response,
-      error: exception,
-      type: err.type,
-    ));
+    handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        response: err.response,
+        error: exception,
+        type: err.type,
+      ),
+    );
   }
 }

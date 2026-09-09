@@ -136,6 +136,20 @@ class AuthRepository {
     }
   }
 
+  // ── Permanent account deletion ───────────────────────────────────────────
+
+  Future<void> deleteAccount() async {
+    try {
+      await _dio.delete(
+        '/auth/account',
+        data: const {'confirmation': 'DELETE'},
+      );
+      await _storage.delete(key: 'auth_token');
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   Future<Response> _post(String path, Map<String, dynamic> body) async {

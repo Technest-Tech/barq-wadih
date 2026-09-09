@@ -13,7 +13,8 @@ class RegenerateAdImageVariants extends Command
      */
     protected $signature = 'ads:regenerate-images
         {--chunk=100 : Number of images to process per batch}
-        {--keep-originals : Do not delete the original full-size files after regenerating}';
+        {--keep-originals : Do not delete the original full-size files after regenerating}
+        {--force : Regenerate images that already have WebP variants}';
 
     /**
      * The console command description.
@@ -27,6 +28,7 @@ class RegenerateAdImageVariants extends Command
     {
         $chunk         = (int) $this->option('chunk');
         $keepOriginals = (bool) $this->option('keep-originals');
+        $force         = (bool) $this->option('force');
 
         $processed = 0;
         $skipped   = 0;
@@ -36,10 +38,10 @@ class RegenerateAdImageVariants extends Command
 
         AdImage::query()
             ->orderBy('id')
-            ->chunkById($chunk, function ($rows) use ($images, $keepOriginals, &$processed, &$skipped, &$failed) {
+            ->chunkById($chunk, function ($rows) use ($images, $keepOriginals, $force, &$processed, &$skipped, &$failed) {
                 foreach ($rows as $image) {
                     // Already a generated variant — nothing to do.
-                    if (str_contains((string) $image->image_url, '_image.webp')) {
+                    if (! $force && str_contains((string) $image->image_url, '_image.webp')) {
                         $skipped++;
                         continue;
                     }

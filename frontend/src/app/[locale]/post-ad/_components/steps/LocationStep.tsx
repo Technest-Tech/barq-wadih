@@ -9,6 +9,7 @@ import { createAd } from '@/lib/api/ads';
 import { fetchRegions, fetchCities, type Region, type City } from '@/lib/api/regions';
 import { fetchDistrictsByCity, type District } from '@/lib/api/districts';
 import { normalizePhone, usePostAdWizard } from '@/store/postAdWizard.store';
+import { useAuthStore } from '@/store/auth.store';
 import { SearchableList } from '../shared/SearchableList';
 import { WizardFooter } from '../WizardFooter';
 
@@ -32,6 +33,8 @@ const LeafletMap = dynamic(() => import('./MapStepLeaflet').then((m) => m.MapSte
 export function LocationStep() {
   const router = useRouter();
   const w = usePostAdWizard();
+  const isDealer = useAuthStore((state) => state.user?.is_dealer === true);
+  const sellerType = isDealer ? 'dealer' : 'individual';
 
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -77,16 +80,31 @@ export function LocationStep() {
   const useFreeTextDistrict = !loadingDistricts && !!w.city && districts.length === 0;
 
   // Publishing is free; the flat commission is owed only after the sale.
-  const commission = (() => {
+  // Vehicle categories charge showrooms less than individuals, so read both
+  // rates and show them side by side wherever they differ.
+  const { commission, dealerCommission, individualCommission } = (() => {
     const cat = w.category as unknown as Record<
       string,
       number | string | null | boolean | undefined
     >;
-    if (cat?.['is_free']) return 0;
-    const v = cat?.['deferred_commission_individual'];
-    return v === null || v === undefined ? 0 : Number(v);
+    const rate = (key: string) => {
+      const v = cat?.[key];
+      return v === null || v === undefined ? 0 : Number(v);
+    };
+    if (cat?.['is_free']) {
+      return { commission: 0, dealerCommission: 0, individualCommission: 0 };
+    }
+    const dealer = rate('deferred_commission_dealer');
+    const individual = rate('deferred_commission_individual');
+    return {
+      commission: isDealer ? dealer : individual,
+      dealerCommission: dealer,
+      individualCommission: individual,
+    };
   })();
   const hasCommission = commission > 0;
+  const hasSeparateSellerRates =
+    hasCommission && dealerCommission !== individualCommission;
 
   const mapFallback: [number, number] = [
     Number(w.city?.latitude ?? 24.7136),
@@ -108,7 +126,7 @@ export function LocationStep() {
     setError(null);
     try {
       const fd = new FormData();
-      fd.append('seller_type', 'individual');
+      fd.append('seller_type', sellerType);
       fd.append('category_id', String(w.category.id));
       fd.append('city_id', String(w.city.id));
       fd.append('pledge_accepted', '1');
@@ -304,11 +322,30 @@ export function LocationStep() {
               <span>رسوم النشر</span>
               <span>مجاني</span>
             </div>
-            <div className={styles.feeRow}>
-              <span>عمولة البيع (تُدفع بعد إتمام البيع)</span>
-              <span>{hasCommission ? `${commission.toLocaleString('ar-SA')} ر.س` : 'مجاني'}</span>
-            </div>
-            {hasCommission ? (
+            {hasSeparateSellerRates ? (
+              <>
+                <div className={styles.feeRow}>
+                  <span>عمولة البيع للمعارض (تُدفع بعد إتمام البيع)</span>
+                  <span>{`${dealerCommission.toLocaleString('ar-SA')} ر.س`}</span>
+                </div>
+                <div className={styles.feeRow}>
+                  <span>عمولة البيع للأفراد (تُدفع بعد إتمام البيع)</span>
+                  <span>{`${individualCommission.toLocaleString('ar-SA')} ر.س`}</span>
+                </div>
+              </>
+            ) : (
+              <div className={styles.feeRow}>
+                <span>عمولة البيع (تُدفع بعد إتمام البيع)</span>
+                <span>{hasCommission ? `${commission.toLocaleString('ar-SA')} ر.س` : 'مجاني'}</span>
+              </div>
+            )}
+            {hasSeparateSellerRates ? (
+              <p className={styles.feeWarn}>
+                ℹ️ النشر مجاني. عند إتمام البيع تُستحق عمولة ثابتة (شاملة ضريبة القيمة المضافة):{' '}
+                {dealerCommission.toLocaleString('ar-SA')} ر.س للمعارض و
+                {individualCommission.toLocaleString('ar-SA')} ر.س للأفراد.
+              </p>
+            ) : hasCommission ? (
               <p className={styles.feeWarn}>
                 ℹ️ النشر مجاني. عند إتمام البيع تُستحق عمولة ثابتة{' '}
                 {commission.toLocaleString('ar-SA')} ر.س (شاملة ضريبة القيمة المضافة).

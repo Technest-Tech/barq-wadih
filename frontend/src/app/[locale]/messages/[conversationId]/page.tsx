@@ -29,6 +29,9 @@ import { useMessages } from '@/lib/hooks/useMessages';
 import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth';
 import { useAuthStore } from '@/store/auth.store';
 import { notifyNewMessage } from '@/lib/api/chat';
+import { markNotificationsReadFor } from '@/lib/api/notifications';
+import { NOTIFICATION_COUNT_KEY } from '@/lib/hooks/useNotificationCount';
+import { useQueryClient } from '@tanstack/react-query';
 import { resolveStorageUrl } from '@/lib/storageUrl';
 import styles from './page.module.css';
 
@@ -71,6 +74,9 @@ interface ConvMeta {
   participantIds?: string[];
   participantNames?: Record<string, string>;
   participantAvatars?: Record<string, string | null>;
+  /** Mobile-app spelling of the two maps above; either may be present. */
+  peerNames?: Record<string, string>;
+  peerAvatars?: Record<string, string | null>;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -78,6 +84,7 @@ interface ConvMeta {
 export default function ConversationPage() {
   const { conversationId, locale } = useParams<{ conversationId: string; locale: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isReady: firebaseReady } = useFirebaseAuth();
 
@@ -120,6 +127,24 @@ export default function ConversationPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, imgPreview]);
+
+  // Firestore tracks the chat's own unread counter; the bell badge is driven by
+  // the backend notification table, which knows nothing about it. Without this,
+  // reading a message here left its "رسالة جديدة" notification unread forever.
+  // Re-runs as the peer's messages arrive, so one that lands while the chat is
+  // already open does not leave an unread notification behind it either.
+  const peerMessageCount = messages.filter((m) => m.senderId !== myId).length;
+
+  useEffect(() => {
+    if (!conversationId || peerMessageCount === 0) return;
+    markNotificationsReadFor({ type: 'new_message', conversation_id: conversationId })
+      .then((cleared) => {
+        if (cleared > 0) {
+          queryClient.invalidateQueries({ queryKey: NOTIFICATION_COUNT_KEY });
+        }
+      })
+      .catch(() => {});
+  }, [conversationId, peerMessageCount, queryClient]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -415,9 +440,16 @@ export default function ConversationPage() {
 
   const adHref = convMeta?.adId ? `/${locale}/ads/${convMeta.adId}` : '#';
   const otherId = convMeta?.participantIds?.find((id) => id !== myId);
-  const peerName = (otherId && convMeta?.participantNames?.[otherId]) || convMeta?.adTitle || '...';
+  const peerName =
+    (otherId &&
+      (convMeta?.participantNames?.[otherId] ?? convMeta?.peerNames?.[otherId])) ||
+    convMeta?.adTitle ||
+    '...';
   const peerAvatar = resolveStorageUrl(
-    (otherId && convMeta?.participantAvatars?.[otherId]) || null
+    (otherId &&
+      (convMeta?.participantAvatars?.[otherId] ??
+        convMeta?.peerAvatars?.[otherId])) ||
+    null
   );
   const initial = peerName.trim().charAt(0).toUpperCase() || '?';
   const canSend = text.trim().length > 0;

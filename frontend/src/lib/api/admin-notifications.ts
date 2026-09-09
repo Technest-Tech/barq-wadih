@@ -51,6 +51,12 @@ export interface CampaignCreateData {
   scheduled_at?: string;
 }
 
+export interface SendMessageResult {
+  id: number;
+  status: string;
+  recipients_count: number;
+}
+
 export interface PaginatedCampaigns {
   data: CampaignItem[];
   pagination: { current_page: number; last_page: number; per_page: number; total: number };
@@ -71,6 +77,18 @@ export async function fetchCampaignDetail(id: number): Promise<CampaignDetail> {
 
 export async function createCampaign(data: CampaignCreateData) {
   return apiClient.post(ENDPOINTS.ADMIN_NOTIFICATION_CAMPAIGNS, data);
+}
+
+/**
+ * Compose and deliver in one step.
+ *
+ * `createCampaign` + `sendCampaign` needs two round trips and strands a draft
+ * if the second one fails, so the composer and the per-user "send message"
+ * button both use this instead. Passing `scheduled_at` schedules rather than sends.
+ */
+export async function sendMessageNow(data: CampaignCreateData): Promise<SendMessageResult> {
+  const res = await apiClient.post<SendMessageResult>(ENDPOINTS.ADMIN_NOTIFICATION_SEND, data);
+  return res.data;
 }
 
 export async function updateCampaign(id: number, data: Partial<CampaignCreateData>) {

@@ -17,12 +17,45 @@ service cloud.firestore {
           && request.auth.uid in request.resource.data.participantUids;
       }
 
+      function validParticipantSet() {
+        return request.resource.data.participantIds is list
+          && request.resource.data.participantUids is list
+          && request.resource.data.participantIds.size() == 2
+          && request.resource.data.participantUids.size() == 2
+          && request.resource.data.participantIds == request.resource.data.participantUids
+          && request.auth.uid in request.resource.data.participantIds;
+      }
+
       allow read:   if isParticipant();
       allow create: if isParticipantOnCreate()
         && request.resource.data.keys().hasAll([
           'participantIds', 'participantUids', 'adId', 'adTitle'
-        ]);
-      allow update: if isParticipant();
+        ])
+        && request.resource.data.keys().hasOnly([
+          'participantIds', 'participantUids', 'adId', 'adTitle', 'adImage',
+          'peerNames', 'peerAvatars', 'participantNames',
+          'participantAvatars', 'lastMessage', 'lastMessageAt',
+          'lastMessageSenderId', 'unreadCount', 'createdAt', 'updatedAt'
+        ])
+        && validParticipantSet();
+      allow update: if isParticipant()
+        && request.resource.data.participantIds == resource.data.participantIds
+        && request.resource.data.participantUids == resource.data.participantUids
+        && request.resource.data.adId == resource.data.adId
+        // `createdAt` is listed because re-opening a chat for the same ad
+        // re-runs the client's idempotent seed write, which stamps a fresh
+        // serverTimestamp(). Without it that second seed is denied and the
+        // message silently fails to send. Creation time carries no authority.
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'adTitle', 'adImage', 'peerNames', 'peerAvatars', 'participantNames',
+          'participantAvatars', 'lastMessage', 'lastMessageAt',
+          'lastMessageSenderId', 'unreadCount', 'createdAt', 'updatedAt'
+        ])
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['lastMessageSenderId'])
+          || request.resource.data.lastMessageSenderId == request.auth.uid
+        );
       allow delete: if false; // Conversations are never deleted
 
       // ── Messages subcollection ───────────────────────────────────────────────
@@ -40,14 +73,23 @@ service cloud.firestore {
         allow read:   if isMember();
         allow create: if isMember()
           && request.auth.uid == request.resource.data.senderUid
+          && request.auth.uid == request.resource.data.senderId
           && request.resource.data.keys().hasAll([
             'senderUid', 'senderId', 'text', 'type', 'isRead', 'createdAt'
           ])
-          && request.resource.data.type in ['text', 'image', 'voice'];
+          && request.resource.data.keys().hasOnly([
+            'senderUid', 'senderId', 'text', 'type', 'imageUrl', 'voiceUrl',
+            'duration', 'isRead', 'readAt', 'createdAt'
+          ])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 4000
+          && request.resource.data.type in ['text', 'image', 'voice']
+          && request.resource.data.isRead == false;
         allow update: if isMember()
           // Only allow marking as read (isRead: true, readAt: timestamp)
           && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['isRead', 'readAt']);
+              .hasOnly(['isRead', 'readAt'])
+          && request.resource.data.isRead == true;
         allow delete: if false; // Messages are immutable
       }
     }

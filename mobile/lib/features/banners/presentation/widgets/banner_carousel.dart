@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../data/banner_providers.dart';
 import '../../domain/banner_model.dart';
@@ -138,7 +137,9 @@ class _BannerCarouselState extends ConsumerState<BannerCarousel> {
                     children: [
                       // Image
                       CachedNetworkImage(
-                        imageUrl: AppConstants.normalizeImageUrl(banner.imageUrlMobile ?? banner.imageUrl),
+                        imageUrl: AppConstants.normalizeImageUrl(
+                          banner.imageUrlMobile ?? banner.imageUrl,
+                        ),
                         fit: BoxFit.cover,
                         placeholder: (_, __) => Container(
                           color: theme.colorScheme.surfaceContainerHighest,
@@ -186,10 +187,7 @@ class _BannerCarouselState extends ConsumerState<BannerCarousel> {
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               shadows: [
-                                Shadow(
-                                  blurRadius: 6,
-                                  color: Colors.black38,
-                                ),
+                                Shadow(blurRadius: 6, color: Colors.black38),
                               ],
                             ),
                             maxLines: 1,

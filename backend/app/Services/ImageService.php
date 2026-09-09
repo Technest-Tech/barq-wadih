@@ -19,8 +19,9 @@ class ImageService
      *  - image:     detail view (web carousel + mobile full image)
      */
     private const VARIANTS = [
-        'thumbnail' => [400, 72],
-        'image'     => [1280, 80],
+        // 640px stays sharp on 2x/3x phone screens while remaining a small WebP.
+        'thumbnail' => [640, 75],
+        'image' => [1280, 80],
     ];
 
     /** Cache for one year — variant filenames are content-unique, so they're immutable. */
@@ -62,41 +63,45 @@ class ImageService
     public function storeVariants(string $sourcePath, string $directory): array
     {
         $format = $this->variantFormat();
-        $ext    = $format === 'webp' ? 'webp' : 'jpg';
-        $mime   = $format === 'webp' ? 'image/webp' : 'image/jpeg';
-        $base   = trim($directory, '/') . '/' . Str::random(40);
+        $ext = $format === 'webp' ? 'webp' : 'jpg';
+        $mime = $format === 'webp' ? 'image/webp' : 'image/jpeg';
+        $base = trim($directory, '/').'/'.Str::random(40);
 
-        $urls      = [];
+        $urls = [];
         $imageBytes = 0;
-        $width      = 0;
-        $height     = 0;
+        $width = 0;
+        $height = 0;
 
         foreach (self::VARIANTS as $name => [$maxWidth, $quality]) {
             [$blob, $w, $h] = $this->encodeVariant($sourcePath, $maxWidth, $quality, $format);
 
             $path = "{$base}_{$name}.{$ext}";
-            Storage::disk($this->disk)->put($path, $blob, [
-                'visibility'   => 'public',
+            $stored = Storage::disk($this->disk)->put($path, $blob, [
+                'visibility' => 'public',
                 'CacheControl' => self::CACHE_CONTROL,
-                'ContentType'  => $mime,
+                'ContentType' => $mime,
             ]);
+
+            if (! $stored) {
+                throw new \RuntimeException("فشل تخزين نسخة الصورة: {$path}");
+            }
 
             $urls[$name] = Storage::disk($this->disk)->url($path);
 
             // Record the dimensions/size of the larger "image" variant.
             if ($name === 'image') {
                 $imageBytes = strlen($blob);
-                $width      = $w;
-                $height     = $h;
+                $width = $w;
+                $height = $h;
             }
         }
 
         return [
             'thumbnail_url' => $urls['thumbnail'],
-            'image_url'     => $urls['image'],
-            'width'         => $width,
-            'height'        => $height,
-            'file_size'     => $imageBytes,
+            'image_url' => $urls['image'],
+            'width' => $width,
+            'height' => $height,
+            'file_size' => $imageBytes,
         ];
     }
 
@@ -104,7 +109,7 @@ class ImageService
      * Download a stored object (by relative path or full URL) to a temp file.
      * Used by the backfill command to re-process existing originals.
      *
-     * @return string|null  Temp file path, or null if the object is missing.
+     * @return string|null Temp file path, or null if the object is missing.
      */
     public function downloadToTemp(string $pathOrUrl): ?string
     {
@@ -131,6 +136,12 @@ class ImageService
         }
     }
 
+    /** Delete all stored files below a relative directory. */
+    public function deleteDirectory(string $directory): void
+    {
+        Storage::disk($this->disk)->deleteDirectory(trim($directory, '/'));
+    }
+
     /**
      * Return the full public URL for a stored path.
      */
@@ -149,7 +160,7 @@ class ImageService
         $size = @getimagesize($file->getRealPath());
 
         return [
-            'width'  => $size ? (int) $size[0] : 0,
+            'width' => $size ? (int) $size[0] : 0,
             'height' => $size ? (int) $size[1] : 0,
         ];
     }
@@ -158,7 +169,7 @@ class ImageService
      * Encode a single resized variant. Prefers Imagick (with WebP); falls back
      * to GD when Imagick is unavailable.
      *
-     * @return array{0:string,1:int,2:int}  [blob, width, height]
+     * @return array{0:string,1:int,2:int} [blob, width, height]
      */
     private function encodeVariant(string $sourcePath, int $maxWidth, int $quality, string $format): array
     {
@@ -185,8 +196,8 @@ class ImageService
             $img->setImageCompressionQuality($quality);
 
             $blob = $img->getImageBlob();
-            $w    = $img->getImageWidth();
-            $h    = $img->getImageHeight();
+            $w = $img->getImageWidth();
+            $h = $img->getImageHeight();
 
             $img->clear();
             $img->destroy();
@@ -200,7 +211,7 @@ class ImageService
     /**
      * GD fallback encoder.
      *
-     * @return array{0:string,1:int,2:int}  [blob, width, height]
+     * @return array{0:string,1:int,2:int} [blob, width, height]
      */
     private function encodeVariantGd(string $sourcePath, int $maxWidth, int $quality, string $format): array
     {
@@ -211,10 +222,10 @@ class ImageService
 
         $src = match ($info[2]) {
             IMAGETYPE_JPEG => imagecreatefromjpeg($sourcePath),
-            IMAGETYPE_PNG  => imagecreatefrompng($sourcePath),
+            IMAGETYPE_PNG => imagecreatefrompng($sourcePath),
             IMAGETYPE_WEBP => imagecreatefromwebp($sourcePath),
-            IMAGETYPE_GIF  => imagecreatefromgif($sourcePath),
-            default        => throw new \RuntimeException('صيغة صورة غير مدعومة'),
+            IMAGETYPE_GIF => imagecreatefromgif($sourcePath),
+            default => throw new \RuntimeException('صيغة صورة غير مدعومة'),
         };
 
         $srcW = imagesx($src);
@@ -281,11 +292,11 @@ class ImageService
         // We use a non-empty placeholder key to derive the base URL — passing
         // an empty string to S3-compatible drivers triggers an AWS SDK
         // validation error ("GetObject Key expected string length >= 1").
-        $placeholder    = '__base__';
+        $placeholder = '__base__';
         $placeholderUrl = Storage::disk($this->disk)->url($placeholder);
-        $baseUrl        = rtrim(substr($placeholderUrl, 0, -strlen($placeholder)), '/');
+        $baseUrl = rtrim(substr($placeholderUrl, 0, -strlen($placeholder)), '/');
 
-        if ($baseUrl && str_starts_with($pathOrUrl, $baseUrl . '/')) {
+        if ($baseUrl && str_starts_with($pathOrUrl, $baseUrl.'/')) {
             return substr($pathOrUrl, strlen($baseUrl) + 1);
         }
 

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { fetchAdminAds, approveAd, rejectAd, deleteAd, restoreAd, type AdminAd, type AdminAdFilters } from '@/lib/api/admin';
 import s from '../admin-shared.module.css';
 
@@ -150,8 +151,10 @@ export default function AdminAdsPage() {
                     <td>
                       {ad.images?.[0]?.url ? <img src={ad.images[0].url} alt="" className={s.thumbnail} /> : <div className={s.thumbnail} style={{ background: 'var(--admin-surface)' }} />}
                     </td>
-                    <td style={{ color: 'var(--admin-text)', fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ad.title}
+                    <td style={{ fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <Link href={`/admin/ads/${ad.id}`} style={{ color: 'var(--admin-text)', textDecoration: 'none' }}>
+                        {ad.title}
+                      </Link>
                     </td>
                     <td>
                       <div className={s.userCell}>
@@ -167,6 +170,7 @@ export default function AdminAdsPage() {
                     <td style={{ fontSize: 12, color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>{fmtDate(ad.created_at)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
+                        <Link href={`/admin/ads/${ad.id}`} className={`${s.btn} ${s.sm}`} title="عرض التفاصيل">👁️</Link>
                         {ad.moderation_status !== 'approved' && !ad.deleted_at && (
                           <button className={`${s.btn} ${s.success} ${s.sm}`} onClick={() => handleApprove(ad)} disabled={busy === ad.id}>✅</button>
                         )}

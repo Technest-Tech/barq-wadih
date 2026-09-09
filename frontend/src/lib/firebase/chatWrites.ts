@@ -123,6 +123,10 @@ export async function writeChatMessage(payload: WritePayload): Promise<void> {
         participantUids: seed.participantUids,
         participantNames: seed.participantNames,
         participantAvatars: seed.participantAvatars ?? {},
+        // The mobile app reads `peerNames`/`peerAvatars`. Mirror them so a
+        // thread opened here shows the right peer inside the app too.
+        peerNames: seed.participantNames,
+        peerAvatars: seed.participantAvatars ?? {},
         adId: seed.adId,
         adTitle: seed.adTitle,
         adImage: seed.adImage,

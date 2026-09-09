@@ -7,7 +7,6 @@ import '../../../categories/presentation/category_browser_sheet.dart';
 import '../../../regions/presentation/region_city_picker.dart';
 import '../../../regions/domain/region_model.dart';
 
-
 // ── Provider ─────────────────────────────────────────────────────────────────
 
 final healthProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -58,8 +57,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(Icons.flash_on_rounded,
-                          color: Colors.white, size: 40),
+                      child: const Icon(
+                        Icons.flash_on_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -74,7 +76,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Text(
                       'منصة الإعلانات المبوبة الأولى في السعودية',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                       textDirection: TextDirection.rtl,
                       textAlign: TextAlign.center,
@@ -110,20 +114,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               _DemoButton(
                 icon: Icons.location_city_rounded,
-                label: _selectedLocation != null && _selectedLocation!.isNotEmpty
+                label:
+                    _selectedLocation != null && _selectedLocation!.isNotEmpty
                     ? '${_selectedLocation!.map((c) => c.nameAr).join('، ')} ✓'
                     : 'اختر المدينة',
                 subtitle: 'اختيار المدن للمطابقة',
                 color: theme.colorScheme.secondary,
                 onTap: () async {
                   final result = await showRegionCityPicker(
-                    context, 
-                    ref, 
+                    context,
+                    ref,
                     isMultiSelect: true,
                     initialSelection: _selectedLocation,
                   );
                   if (result != null && mounted) {
-                     setState(() => _selectedLocation = result);
+                    setState(() => _selectedLocation = result);
                   }
                 },
               ),
@@ -150,8 +155,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Center(
                 child: Chip(
                   label: const Text('Sprint 4 — الأقسام والمناطق ✅'),
-                  backgroundColor:
-                      theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.1,
+                  ),
                   labelStyle: TextStyle(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w600,
@@ -213,20 +219,31 @@ class _DemoButton extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(label,
-                        textDirection: TextDirection.rtl,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 15)),
-                    Text(subtitle,
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600)),
+                    Text(
+                      label,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.arrow_back_ios_rounded,
-                  size: 16, color: Colors.grey.shade400),
+              Icon(
+                Icons.arrow_back_ios_rounded,
+                size: 16,
+                color: Colors.grey.shade400,
+              ),
             ],
           ),
         ),
@@ -276,9 +293,11 @@ class _ServiceRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(

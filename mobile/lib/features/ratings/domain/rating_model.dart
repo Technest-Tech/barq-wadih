@@ -21,16 +21,16 @@ class RatingModel {
 
   factory RatingModel.fromJson(Map<String, dynamic> json) {
     final raterJson = json['rater'] as Map<String, dynamic>;
-    final adJson    = json['ad'] as Map<String, dynamic>?;
+    final adJson = json['ad'] as Map<String, dynamic>?;
 
     return RatingModel(
-      id:         json['id'] as int,
-      stars:      json['stars'] as int,
-      comment:    json['comment'] as String?,
+      id: json['id'] as int,
+      stars: json['stars'] as int,
+      comment: json['comment'] as String?,
       isApproved: json['is_approved'] as bool? ?? true,
       rater: (
-        id:     raterJson['id'] as int,
-        name:   raterJson['name'] as String? ?? '',
+        id: raterJson['id'] as int,
+        name: raterJson['name'] as String? ?? '',
         avatar: raterJson['avatar'] as String?,
       ),
       ad: adJson != null
@@ -54,11 +54,11 @@ class RatingSummary {
 
   factory RatingSummary.fromJson(Map<String, dynamic> json) {
     final rawDist = json['distribution'] as Map<String, dynamic>? ?? {};
-    final dist    = rawDist.map(
+    final dist = rawDist.map(
       (k, v) => MapEntry(int.parse(k), (v as num).toInt()),
     );
     return RatingSummary(
-      avgRating:   json['avg_rating'] != null
+      avgRating: json['avg_rating'] != null
           ? double.tryParse(json['avg_rating'].toString()) ?? 0.0
           : 0.0,
       ratingCount: json['rating_count'] as int? ?? 0,

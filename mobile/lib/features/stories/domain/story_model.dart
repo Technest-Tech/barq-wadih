@@ -37,7 +37,9 @@ class StoryItem {
       imageUrl: json['image_url'] as String?,
       title: json['title'] as String? ?? '',
       description: json['description'] as String?,
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
+          DateTime.now(),
       isSeen: json['is_seen'] as bool? ?? false,
       adCategory: json['ad_category'] as String?,
       adId: json['ad_id'] as int?,

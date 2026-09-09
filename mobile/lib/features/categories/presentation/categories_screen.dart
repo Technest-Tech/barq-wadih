@@ -63,44 +63,95 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             onPressed: () => context.pop(),
           ),
         ),
-        body: cats.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) =>
-              _ErrorView(onRetry: () => ref.refresh(categoriesProvider)),
-          data: (catList) {
-            if (catList.isEmpty) {
-              return const Center(child: Text('لا توجد أقسام'));
-            }
-            final selectedIdx = _selectedIdx.clamp(0, catList.length - 1);
-            final selectedCat = catList[selectedIdx];
+        body: Column(
+          children: [
+            const _RealEstateNotice(),
+            Expanded(
+              child: cats.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) =>
+                    _ErrorView(onRetry: () => ref.refresh(categoriesProvider)),
+                data: (catList) {
+                  if (catList.isEmpty) {
+                    return const Center(child: Text('لا توجد أقسام'));
+                  }
+                  final selectedIdx = _selectedIdx.clamp(0, catList.length - 1);
+                  final selectedCat = catList[selectedIdx];
 
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Right sidebar: main categories ───────────────────────────
-                _MainCategoryList(
-                  categories: catList,
-                  selectedIdx: selectedIdx,
-                  isDark: isDark,
-                  surface: surface,
-                  onTap: (i) {
-                    HapticFeedback.selectionClick();
-                    setState(() => _selectedIdx = i);
-                  },
-                ),
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Right sidebar: main categories ───────────────────────────
+                      _MainCategoryList(
+                        categories: catList,
+                        selectedIdx: selectedIdx,
+                        isDark: isDark,
+                        surface: surface,
+                        onTap: (i) {
+                          HapticFeedback.selectionClick();
+                          setState(() => _selectedIdx = i);
+                        },
+                      ),
 
-                // ── Left area: subcategories grid ────────────────────────────
-                Expanded(
-                  child: _SubcategoryGrid(
-                    parent: selectedCat,
-                    isDark: isDark,
-                    onTap: (sub) => _navigate(context, selectedCat, sub),
-                    onParentTap: () => _navigate(context, selectedCat, null),
-                  ),
+                      // ── Left area: subcategories grid ────────────────────────────
+                      Expanded(
+                        child: _SubcategoryGrid(
+                          parent: selectedCat,
+                          isDark: isDark,
+                          onTap: (sub) => _navigate(context, selectedCat, sub),
+                          onParentTap: () =>
+                              _navigate(context, selectedCat, null),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RealEstateNotice extends StatelessWidget {
+  const _RealEstateNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label:
+          'تنبيه مهم. لا نستقبل عروضًا عقارية حاليًا. ولا تتحمل منصة برق واضح مسؤولية أي عرض عقاري يُنشر بالمخالفة لذلك.',
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.error.withValues(alpha: .42)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: colors.error, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'تنبيه مهم: لا نستقبل عروضًا عقارية حاليًا. ولا تتحمل منصة برق واضح مسؤولية أي عرض عقاري يُنشر بالمخالفة لذلك.',
+                style: TextStyle(
+                  color: colors.onErrorContainer,
+                  fontSize: 14,
+                  height: 1.5,
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -22,7 +22,8 @@ class RegionRepository {
           .toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل المناطق',
+        message:
+            e.response?.data?['message'] as String? ?? 'فشل في تحميل المناطق',
         statusCode: e.response?.statusCode,
       );
     }
@@ -39,7 +40,8 @@ class RegionRepository {
           .toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل المدن',
+        message:
+            e.response?.data?['message'] as String? ?? 'فشل في تحميل المدن',
         statusCode: e.response?.statusCode,
       );
     }
@@ -54,7 +56,9 @@ class RegionRepository {
           .toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل جميع المدن',
+        message:
+            e.response?.data?['message'] as String? ??
+            'فشل في تحميل جميع المدن',
         statusCode: e.response?.statusCode,
       );
     }
@@ -62,14 +66,17 @@ class RegionRepository {
 
   Future<List<DistrictModel>> getDistricts(int cityId) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/cities/$cityId/districts');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/cities/$cityId/districts',
+      );
       final data = response.data!['data'] as List<dynamic>;
       return data
           .map((e) => DistrictModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data?['message'] as String? ?? 'فشل في تحميل الأحياء',
+        message:
+            e.response?.data?['message'] as String? ?? 'فشل في تحميل الأحياء',
         statusCode: e.response?.statusCode,
       );
     }
@@ -84,8 +91,8 @@ final regionRepositoryProvider = Provider<RegionRepository>((ref) {
 
 final regionsProvider =
     AsyncNotifierProvider<RegionsNotifier, List<RegionModel>>(
-  RegionsNotifier.new,
-);
+      RegionsNotifier.new,
+    );
 
 class RegionsNotifier extends AsyncNotifier<List<RegionModel>> {
   @override
@@ -101,7 +108,10 @@ class RegionsNotifier extends AsyncNotifier<List<RegionModel>> {
   }
 }
 
-final citiesProvider = FutureProvider.family<List<CityModel>, String>((ref, regionSlug) {
+final citiesProvider = FutureProvider.family<List<CityModel>, String>((
+  ref,
+  regionSlug,
+) {
   return ref.read(regionRepositoryProvider).getCities(regionSlug);
 });
 
@@ -109,6 +119,9 @@ final allCitiesProvider = FutureProvider<List<CityModel>>((ref) {
   return ref.read(regionRepositoryProvider).getAllCities();
 });
 
-final districtsProvider = FutureProvider.family<List<DistrictModel>, int>((ref, cityId) {
+final districtsProvider = FutureProvider.family<List<DistrictModel>, int>((
+  ref,
+  cityId,
+) {
   return ref.read(regionRepositoryProvider).getDistricts(cityId);
 });

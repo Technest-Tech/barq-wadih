@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dio/dio.dart';
 
 import '../domain/chat_models.dart';
+import '../../../core/network/api_client.dart';
 
 class ChatRepository {
   ChatRepository({required Dio dio}) : _dio = dio;
@@ -72,6 +72,9 @@ class ChatRepository {
     Map<String, String?> peerAvatars = const {},
   }) async {
     final convRef = _fs.collection('conversations').doc(conversationId);
+    // The web client reads `participantNames`/`participantAvatars` while this
+    // app historically wrote `peerNames`/`peerAvatars`. Write both so a thread
+    // started on either platform renders the peer correctly on the other.
     await convRef.set(
       {
         'participantIds': participantIds,
@@ -81,6 +84,8 @@ class ChatRepository {
         'adImage': adImage,
         'peerNames': peerNames,
         'peerAvatars': peerAvatars,
+        'participantNames': peerNames,
+        'participantAvatars': peerAvatars,
       },
       SetOptions(
         mergeFields: [
@@ -91,6 +96,8 @@ class ChatRepository {
           'adImage',
           'peerNames',
           'peerAvatars',
+          'participantNames',
+          'participantAvatars',
         ],
       ),
     );
@@ -190,6 +197,7 @@ class ChatRepository {
     required String myUid,
     required String text,
   }) async {
+    await _ensureContentAllowed(text);
     final convRef = _fs.collection('conversations').doc(conversationId);
     final convSnap = await convRef.get();
     if (!convSnap.exists) return;
@@ -200,6 +208,7 @@ class ChatRepository {
       (id) => id != myId,
       orElse: () => '',
     );
+    await _ensureInteractionAllowed(otherId);
 
     final now = FieldValue.serverTimestamp();
 
@@ -240,7 +249,7 @@ class ChatRepository {
     }
   }
 
-  /// Upload voice recording to Firebase Storage then send as voice message.
+  /// Upload a voice recording through Laravel, then send its URL in Firestore.
   Future<void> sendVoice({
     required String conversationId,
     required String myId,
@@ -249,31 +258,25 @@ class ChatRepository {
     required int duration,
     void Function(double progress)? onProgress,
   }) async {
-    final path =
-        'chat_voice/$conversationId/${DateTime.now().millisecondsSinceEpoch}.m4a';
-    final storageRef = FirebaseStorage.instance.ref().child(path);
-    final task = storageRef.putFile(voiceFile);
-
-    if (onProgress != null) {
-      task.snapshotEvents.listen((snap) {
-        if (snap.totalBytes > 0) {
-          onProgress(snap.bytesTransferred / snap.totalBytes);
-        }
-      });
-    }
-
-    await task;
-    final downloadUrl = await storageRef.getDownloadURL();
-
     final convRef = _fs.collection('conversations').doc(conversationId);
     final convSnap = await convRef.get();
-    if (!convSnap.exists) return;
+    if (!convSnap.exists) {
+      throw const ApiException(message: 'المحادثة غير موجودة');
+    }
 
     final data = convSnap.data()!;
     final participants = List<String>.from(data['participantIds'] ?? []);
     final otherId = participants.firstWhere(
       (id) => id != myId,
       orElse: () => '',
+    );
+    await _ensureInteractionAllowed(otherId);
+
+    final downloadUrl = await _uploadMedia(
+      conversationId: conversationId,
+      type: 'voice',
+      file: voiceFile,
+      onProgress: onProgress,
     );
 
     final now = FieldValue.serverTimestamp();
@@ -312,7 +315,7 @@ class ChatRepository {
     }
   }
 
-  /// Upload image to Firebase Storage then send as image message.
+  /// Upload an image through Laravel, then send its URL in Firestore.
   Future<void> sendImage({
     required String conversationId,
     required String myId,
@@ -320,31 +323,25 @@ class ChatRepository {
     required File imageFile,
     void Function(double progress)? onProgress,
   }) async {
-    final path =
-        'chat_images/$conversationId/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
-    final storageRef = FirebaseStorage.instance.ref().child(path);
-    final task = storageRef.putFile(imageFile);
-
-    if (onProgress != null) {
-      task.snapshotEvents.listen((snap) {
-        if (snap.totalBytes > 0) {
-          onProgress(snap.bytesTransferred / snap.totalBytes);
-        }
-      });
-    }
-
-    await task;
-    final downloadUrl = await storageRef.getDownloadURL();
-
     final convRef = _fs.collection('conversations').doc(conversationId);
     final convSnap = await convRef.get();
-    if (!convSnap.exists) return;
+    if (!convSnap.exists) {
+      throw const ApiException(message: 'المحادثة غير موجودة');
+    }
 
     final data = convSnap.data()!;
     final participants = List<String>.from(data['participantIds'] ?? []);
     final otherId = participants.firstWhere(
       (id) => id != myId,
       orElse: () => '',
+    );
+    await _ensureInteractionAllowed(otherId);
+
+    final downloadUrl = await _uploadMedia(
+      conversationId: conversationId,
+      type: 'image',
+      file: imageFile,
+      onProgress: onProgress,
     );
 
     final now = FieldValue.serverTimestamp();
@@ -424,5 +421,90 @@ class ChatRepository {
     } catch (_) {
       // Non-fatal — push notifications are Sprint 10
     }
+  }
+
+  Future<void> _ensureContentAllowed(String text) async {
+    try {
+      await _dio.post<void>('/safety/check-content', data: {'text': text});
+    } on DioException catch (e) {
+      throw _apiError(e, 'تعذر التحقق من محتوى الرسالة');
+    }
+  }
+
+  Future<void> _ensureInteractionAllowed(String otherId) async {
+    final userId = int.tryParse(otherId);
+    if (userId == null) {
+      throw const ApiException(message: 'تعذر التحقق من طرف المحادثة');
+    }
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/safety',
+      );
+      final data = response.data?['data'] as Map<String, dynamic>?;
+      if (data?['interaction_blocked'] == true) {
+        throw const ApiException(
+          message: 'لا يمكن إرسال رسائل لهذا المستخدم بسبب الحظر.',
+          statusCode: 403,
+        );
+      }
+    } on DioException catch (e) {
+      throw _apiError(e, 'تعذر التحقق من حالة المستخدم');
+    }
+  }
+
+  Future<String> _uploadMedia({
+    required String conversationId,
+    required String type,
+    required File file,
+    void Function(double progress)? onProgress,
+  }) async {
+    try {
+      final fileName = file.path.split(Platform.pathSeparator).last;
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/chat/conversations/$conversationId/media',
+        data: FormData.fromMap({
+          'type': type,
+          'file': await MultipartFile.fromFile(file.path, filename: fileName),
+        }),
+        options: Options(contentType: 'multipart/form-data'),
+        onSendProgress: onProgress == null
+            ? null
+            : (sent, total) {
+                if (total > 0) onProgress(sent / total);
+              },
+      );
+
+      final body = response.data;
+      final data = body?['data'];
+      final url = data is Map ? data['url']?.toString() : null;
+      if (url == null || url.isEmpty) {
+        throw const ApiException(message: 'لم يُرجع الخادم رابط الملف');
+      }
+
+      return url;
+    } on DioException catch (e) {
+      throw _apiError(e, 'تعذر رفع الملف إلى الخادم');
+    }
+  }
+
+  ApiException _apiError(DioException e, String fallback) {
+    final body = e.response?.data;
+    String? message;
+    if (body is Map) {
+      final errors = body['errors'];
+      if (errors is Map) {
+        for (final value in errors.values) {
+          if (value is List && value.isNotEmpty) {
+            message = value.first.toString();
+            break;
+          }
+        }
+      }
+      message ??= body['message']?.toString();
+    }
+    return ApiException(
+      message: message ?? fallback,
+      statusCode: e.response?.statusCode,
+    );
   }
 }

@@ -215,7 +215,9 @@ export function DetailsStep() {
                 className={pm.pmInput}
                 type="number"
                 inputMode="numeric"
-                min={1}
+                // "على السوم" accepts 0 — "no asking price, make me an offer".
+                // A fixed price still has to be above zero.
+                min={priceOption === 'negotiable' ? 0 : 1}
                 placeholder={priceOption === 'negotiable' ? 'السعر المطلوب' : 'مثال: 45000'}
                 value={d.price}
                 onChange={(e) => patch({ price: e.target.value })}
@@ -227,7 +229,7 @@ export function DetailsStep() {
             {priceOption === 'call'
               ? 'لن يظهر سعر — يتواصل المشتري معك للسعر.'
               : priceOption === 'negotiable'
-                ? 'يظهر السعر مع وسم «على السوم» للمشترين.'
+                ? 'يظهر السعر مع وسم «على السوم» للمشترين. اكتب 0 إذا كنت تريد عروضاً بدون سعر محدد.'
                 : 'سيظهر السعر للمشترين.'}
           </span>
         </div>

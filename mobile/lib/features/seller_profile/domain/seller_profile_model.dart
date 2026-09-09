@@ -3,6 +3,13 @@
 class SellerProfileModel {
   final int id;
   final String name;
+
+  /// Public @handle (without the "@"), e.g. "ahmd_aamr".
+  final String? username;
+
+  /// Canonical shareable link — https://barqwadih.com/@ahmd_aamr.
+  final String? profileUrl;
+
   final String? avatar;
   final String? bio;
   final bool isVerified;
@@ -19,6 +26,8 @@ class SellerProfileModel {
   const SellerProfileModel({
     required this.id,
     required this.name,
+    this.username,
+    this.profileUrl,
     this.avatar,
     this.bio,
     required this.isVerified,
@@ -37,22 +46,24 @@ class SellerProfileModel {
     final dist = (json['rating_distribution'] as Map<String, dynamic>? ?? {})
         .map((k, v) => MapEntry(int.tryParse(k) ?? 0, v as int? ?? 0));
     return SellerProfileModel(
-      id:               json['id'] as int,
-      name:             json['name'] as String? ?? '',
-      avatar:           json['avatar'] as String?,
-      bio:              json['bio'] as String?,
-      isVerified:       json['is_verified'] as bool? ?? false,
-      isDealer:         json['is_dealer'] as bool? ?? false,
-      avgRating:        double.tryParse(json['avg_rating'].toString()) ?? 0.0,
-      ratingCount:      json['rating_count'] as int? ?? 0,
+      id: json['id'] as int,
+      name: json['name'] as String? ?? '',
+      username: json['username'] as String?,
+      profileUrl: json['profile_url'] as String?,
+      avatar: json['avatar'] as String?,
+      bio: json['bio'] as String?,
+      isVerified: json['is_verified'] as bool? ?? false,
+      isDealer: json['is_dealer'] as bool? ?? false,
+      avgRating: double.tryParse(json['avg_rating'].toString()) ?? 0.0,
+      ratingCount: json['rating_count'] as int? ?? 0,
       ratingDistribution: dist,
-      activeAdsCount:   json['active_ads_count'] as int? ?? 0,
-      soldAdsCount:     json['sold_ads_count'] as int? ?? 0,
-      totalAdsCount:    json['total_ads_count'] as int? ?? 0,
-      memberSince:      json['member_since'] != null
+      activeAdsCount: json['active_ads_count'] as int? ?? 0,
+      soldAdsCount: json['sold_ads_count'] as int? ?? 0,
+      totalAdsCount: json['total_ads_count'] as int? ?? 0,
+      memberSince: json['member_since'] != null
           ? DateTime.tryParse(json['member_since'] as String)
           : null,
-      lastActiveAt:     json['last_active_at'] != null
+      lastActiveAt: json['last_active_at'] != null
           ? DateTime.tryParse(json['last_active_at'] as String)
           : null,
     );
@@ -78,14 +89,14 @@ class SellerReviewModel {
 
   factory SellerReviewModel.fromJson(Map<String, dynamic> json) {
     final raterJson = json['rater'] as Map<String, dynamic>;
-    final adJson    = json['ad'] as Map<String, dynamic>?;
+    final adJson = json['ad'] as Map<String, dynamic>?;
     return SellerReviewModel(
-      id:        json['id'] as int,
-      stars:     json['stars'] as int? ?? 0,
-      comment:   json['comment'] as String?,
+      id: json['id'] as int,
+      stars: json['stars'] as int? ?? 0,
+      comment: json['comment'] as String?,
       rater: (
-        id:     raterJson['id'] as int,
-        name:   raterJson['name'] as String? ?? '',
+        id: raterJson['id'] as int,
+        name: raterJson['name'] as String? ?? '',
         avatar: raterJson['avatar'] as String?,
       ),
       ad: adJson != null

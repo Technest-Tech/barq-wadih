@@ -1,7 +1,7 @@
 # Barq Wadih — Production Deployment Documentation
 
 > **Last updated:** 2026-06-17  
-> **Deployed by:** Antigravity AI  
+> **Deployed by:** Technest-Tech  
 > **Status:** ✅ LIVE
 
 > ⚠️ **SECURITY:** This file is committed to git. **Never** put real secrets here
@@ -235,6 +235,36 @@ docker compose -f /var/www/barq-wadih/docker-compose.yml restart
 
 ---
 
+## ⏰ Scheduled Tasks (cron)
+
+Everything in `backend/routes/console.php` runs off Laravel's scheduler, which
+needs **one** system cron entry. Without it none of these ever fire:
+
+| Command | Cadence | What breaks without it |
+|---------|---------|------------------------|
+| `ads:expire` | daily | Ads are never hidden after their 3-month window, so the "ترقية" button in My Ads never unlocks |
+| `banners:deactivate-expired` | daily | Expired banners keep showing |
+| `boosts:expire` | hourly | ⚡ مميز badges never come off |
+| `campaigns:send-scheduled` | every 5 min | Scheduled notification campaigns never send |
+
+Install it once on the droplet:
+
+```bash
+ssh root@192.81.212.150
+crontab -e
+# add:
+* * * * * cd /var/www/barq-wadih/backend && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Verify it is wired up:
+
+```bash
+php artisan schedule:list          # shows the next run time per command
+php artisan ads:expire             # safe to run by hand; prints how many it hid
+```
+
+---
+
 ## 🖼️ Image Pipeline (thumbnails / WebP)
 
 Ad images are resized into **WebP variants** on upload so clients download ~25 KB
@@ -253,7 +283,7 @@ If Imagick is absent the code falls back to GD (needs `imagewebp`).
 **Variants generated** (`app/Services/ImageService.php`):
 | Variant | Max width | Used by | API field |
 |---------|-----------|---------|-----------|
-| thumbnail | 400px | feed / listing cards | `thumbnail_url` |
+| thumbnail | 640px | feed / listing cards on 2x/3x screens | `thumbnail_url` |
 | image | 1280px | detail carousel (web + mobile) | `image_url` |
 
 Files are uploaded with `Cache-Control: public, max-age=31536000, immutable`.
@@ -263,8 +293,10 @@ Files are uploaded with `Cache-Control: public, max-age=31536000, immutable`.
 cd /var/www/barq-wadih/backend
 php artisan ads:regenerate-images               # regenerate + delete originals
 php artisan ads:regenerate-images --keep-originals   # safer: keep originals
+php artisan ads:regenerate-images --force --keep-originals  # rebuild existing 400px thumbnails at 640px
 ```
-Resumable and idempotent (skips images already converted to `_image.webp`).
+Resumable and idempotent by default (skips images already converted to
+`_image.webp`). Use `--force` once after changing variant dimensions.
 
 **CDN:** enable CDN on the `barq-wadih-media` Space in the DigitalOcean panel, then
 set `DO_SPACES_URL` to the `.cdn.digitaloceanspaces.com` host (see config section) so
@@ -389,6 +421,8 @@ The debug keystore fingerprints above **will not work** for a production/Play St
    DO_SPACES_ENDPOINT=https://sgp1.digitaloceanspaces.com
    # Use the CDN edge (.cdn) for fast image delivery — enable CDN on the Space first:
    DO_SPACES_URL=https://barq-wadih-media.sgp1.cdn.digitaloceanspaces.com
+   OBJECT_STORAGE_CONNECT_TIMEOUT=10
+   OBJECT_STORAGE_REQUEST_TIMEOUT=30
    ```
    Then run `php artisan config:cache`
 3. **Seed data** — Run `php artisan db:seed` for initial categories/regions

@@ -11,16 +11,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../domain/story_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/riyal_text.dart';
 
 class StoryViewer extends StatefulWidget {
   final List<StoryItem> stories;
   final int initialIndex;
 
-  const StoryViewer({
-    super.key,
-    required this.stories,
-    this.initialIndex = 0,
-  });
+  const StoryViewer({super.key, required this.stories, this.initialIndex = 0});
 
   @override
   State<StoryViewer> createState() => _StoryViewerState();
@@ -85,7 +82,6 @@ class _StoryViewerState extends State<StoryViewer>
         body: Stack(
           fit: StackFit.expand,
           children: [
-
             // ── 1. Background image ────────────────────────────────────────
             _Background(story: story),
 
@@ -105,7 +101,9 @@ class _StoryViewerState extends State<StoryViewer>
 
             // ── 5. Progress bars ───────────────────────────────────────────
             Positioned(
-              top: 0, left: 0, right: 0,
+              top: 0,
+              left: 0,
+              right: 0,
               child: SafeArea(
                 bottom: false,
                 child: Padding(
@@ -121,8 +119,8 @@ class _StoryViewerState extends State<StoryViewer>
                               value: i < _currentIndex
                                   ? 1.0
                                   : i == _currentIndex
-                                      ? _controller.value
-                                      : 0.0,
+                                  ? _controller.value
+                                  : 0.0,
                             ),
                           ),
                         ),
@@ -135,7 +133,9 @@ class _StoryViewerState extends State<StoryViewer>
 
             // ── 6. Top bar: avatar + name + time + close ───────────────────
             Positioned(
-              top: 0, left: 0, right: 0,
+              top: 0,
+              left: 0,
+              right: 0,
               child: SafeArea(
                 bottom: false,
                 child: Padding(
@@ -206,8 +206,11 @@ class _StoryViewerState extends State<StoryViewer>
                             color: Colors.black38,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.close_rounded,
-                              color: Colors.white, size: 20),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
@@ -218,11 +221,10 @@ class _StoryViewerState extends State<StoryViewer>
 
             // ── 7. Bottom info card ────────────────────────────────────────
             Positioned(
-              left: 0, right: 0, bottom: 0,
-              child: SafeArea(
-                top: false,
-                child: _BottomCard(story: story),
-              ),
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(top: false, child: _BottomCard(story: story)),
             ),
           ],
         ),
@@ -289,12 +291,15 @@ class _BottomCard extends StatelessWidget {
                   if (story.adCategory != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF3CD),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: AppTheme.accentGold.withValues(alpha: .5)),
+                          color: AppTheme.accentGold.withValues(alpha: .5),
+                        ),
                       ),
                       child: Text(
                         story.adCategory!,
@@ -336,7 +341,7 @@ class _BottomCard extends StatelessWidget {
                   // Price
                   if (story.price != null) ...[
                     const SizedBox(height: 8),
-                    Text(
+                    RiyalText(
                       story.price!,
                       textAlign: TextAlign.right,
                       style: const TextStyle(
@@ -361,8 +366,11 @@ class _BottomCard extends StatelessWidget {
                   const CircleAvatar(
                     radius: 14,
                     backgroundColor: AppTheme.primaryBlue,
-                    child: Icon(Icons.person_rounded,
-                        size: 16, color: Colors.white),
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -389,8 +397,10 @@ class _BottomCard extends StatelessWidget {
                   ),
                   // Verified badge
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(20),
@@ -398,14 +408,20 @@ class _BottomCard extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.verified_rounded,
-                            size: 12, color: AppTheme.colorSuccess),
+                        Icon(
+                          Icons.verified_rounded,
+                          size: 12,
+                          color: AppTheme.colorSuccess,
+                        ),
                         SizedBox(width: 3),
-                        Text('موثّق',
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: AppTheme.colorSuccess,
-                                fontWeight: FontWeight.w600)),
+                        Text(
+                          'موثّق',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.colorSuccess,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -436,8 +452,11 @@ class _BottomCard extends StatelessWidget {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.chat_rounded,
-                                color: Colors.white, size: 18),
+                            Icon(
+                              Icons.chat_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                             SizedBox(width: 6),
                             Text(
                               'واتساب',
@@ -468,8 +487,11 @@ class _BottomCard extends StatelessWidget {
                         color: AppTheme.primaryBlue,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.phone_rounded,
-                          color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.phone_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
@@ -530,7 +552,9 @@ class _TopGradient extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: 0, left: 0, right: 0,
+      top: 0,
+      left: 0,
+      right: 0,
       height: MediaQuery.of(context).size.height * 0.28,
       child: const DecoratedBox(
         decoration: BoxDecoration(
@@ -549,7 +573,9 @@ class _BottomGradient extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      left: 0, right: 0, bottom: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
       height: MediaQuery.of(context).size.height * 0.50,
       child: const DecoratedBox(
         decoration: BoxDecoration(

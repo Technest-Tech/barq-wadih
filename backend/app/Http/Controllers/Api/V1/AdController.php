@@ -28,8 +28,20 @@ class AdController extends BaseController
 
     public function index(Request $request): JsonResponse
     {
-        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
+        $query = Ad::with(['primaryImage', 'category', 'city', 'region', 'user'])
+            ->withCount('images')
             ->feed(); // scopeFeed: active + approved, boosted first
+
+        // This route is public, but the mobile client still sends its Sanctum
+        // token. Filter blocked sellers at the source for refreshes/pages.
+        $viewer = $request->user('sanctum');
+        if ($viewer) {
+            auth()->setUser($viewer);
+            $blockedUserIds = $viewer->blockedUsers()->pluck('users.id');
+            if ($blockedUserIds->isNotEmpty()) {
+                $query->whereNotIn('user_id', $blockedUserIds);
+            }
+        }
 
         // ── Category ──────────────────────────────────────────────────────────
         if ($request->filled('category_id')) {
@@ -134,6 +146,10 @@ class AdController extends BaseController
         $isOwner = $user && $user->id === $ad->user_id;
         $isAdmin = $user && $user->isAdmin();
 
+        if ($user && ! $isOwner && ! $isAdmin && $user->hasBlocked($ad->user_id)) {
+            abort(404);
+        }
+
         if (! $isOwner && ! $isAdmin) {
             if ($ad->status !== AdStatus::Active
                 || $ad->moderation_status !== ModerationStatus::Approved) {
@@ -202,13 +218,31 @@ class AdController extends BaseController
         /** @var User $user */
         $user = $request->user();
 
-        $ads = Ad::withTrashed()
+        // Deliberately NOT withTrashed(): a soft-deleted ad must stay gone for
+        // the seller. It used to come back with a "deleted" badge, and tapping
+        // حذف on it 404'd because route-model binding skips trashed rows.
+        $ads = Ad::query()
             ->where('user_id', $user->id)
-            ->with(['images', 'category', 'city', 'user'])
+            ->with(['primaryImage', 'category', 'city', 'user'])
+            ->withCount('images')
             ->latest()
             ->paginate(20);
 
         return $this->paginatedResponse(AdListResource::collection($ads));
+    }
+
+    // ── Auth: Renew (bring a hidden ad back) ──────────────────────────────────
+
+    public function renew(Ad $ad): JsonResponse
+    {
+        $this->authorize('renew', $ad);
+
+        $fresh = $this->adService->renew($ad);
+
+        return $this->successResponse(
+            new AdListResource($fresh),
+            'تم تجديد الإعلان وإعادته للظهور 🚀',
+        );
     }
 
     // ── Auth: Mark Sold ───────────────────────────────────────────────────────
@@ -229,7 +263,7 @@ class AdController extends BaseController
             throw $e;
         }
 
-        $fresh = $ad->fresh(['images', 'category', 'city', 'region', 'user']);
+        $fresh = $ad->fresh(['primaryImage', 'category', 'city', 'region', 'user']);
 
         return $this->successResponse(
             $fresh ? new AdListResource($fresh) : null,
@@ -248,26 +282,43 @@ class AdController extends BaseController
         return $this->successResponse(CategoryFieldResource::collection($fields));
     }
 
-    // ── Public: Commission Preview ────────────────────────────────────────────
+    // ── Authenticated: Commission Preview ─────────────────────────────────────
 
     public function commissionPreview(Request $request): JsonResponse
     {
         $price = (float) $request->input('price', 0);
         $categoryId = (int) $request->input('category_id', 0);
-        $sellerType = (string) $request->input('seller_type', 'individual');
+        // Preview the amount for the signed-in account. Anonymous visitors use
+        // the individual rate; the query string cannot claim dealer status.
+        $sellerType = $request->user()?->is_dealer ? 'dealer' : 'individual';
 
         $amount = $this->adService->calculateCommission($categoryId, $price, false, $sellerType);
         $isFlatFee = $this->adService->isFlatFeeCategory($categoryId, $sellerType);
 
+        // Both rates, so the wizard can show what a showroom pays next to what
+        // an individual pays. Vehicle categories charge dealers less, and a
+        // seller comparing the two should not have to switch accounts to see it.
+        $individualAmount = $this->adService->calculateCommission($categoryId, $price, false, 'individual');
+        $dealerAmount = $this->adService->calculateCommission($categoryId, $price, false, 'dealer');
+        $ratesDiffer = $individualAmount !== $dealerAmount;
+
+        if ($amount <= 0) {
+            $note = 'النشر والعمولة مجاناً بالكامل في هذا القسم.';
+        } elseif ($ratesDiffer) {
+            $note = "النشر مجاني. عمولة ثابتة (شاملة الضريبة) تُدفع بعد إتمام البيع: {$dealerAmount} ر.س للمعارض و{$individualAmount} ر.س للأفراد.";
+        } else {
+            $note = "النشر مجاني. عمولة ثابتة {$amount} ر.س (شاملة الضريبة) تُدفع بعد إتمام البيع.";
+        }
+
         return $this->successResponse([
             'price' => $price,
             'commission_amount' => $amount,
+            'commission_individual' => $individualAmount,
+            'commission_dealer' => $dealerAmount,
             'commission_rate' => null,
             'is_flat_fee' => true,
             'minimum_commission' => null,
-            'note' => $amount > 0
-                ? "النشر مجاني. عمولة ثابتة {$amount} ر.س (شاملة الضريبة) تُدفع بعد إتمام البيع."
-                : 'النشر والعمولة مجاناً بالكامل في هذا القسم.',
+            'note' => $note,
         ]);
     }
 }

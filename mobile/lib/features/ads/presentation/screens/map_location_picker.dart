@@ -8,7 +8,15 @@ import '../../../../core/theme/app_theme.dart';
 
 class MapLocationPicker extends StatefulWidget {
   final LatLng? initialLocation;
-  const MapLocationPicker({super.key, this.initialLocation});
+  final LatLng? initialCenter;
+  final String? cityName;
+
+  const MapLocationPicker({
+    super.key,
+    this.initialLocation,
+    this.initialCenter,
+    this.cityName,
+  });
 
   @override
   State<MapLocationPicker> createState() => _MapLocationPickerState();
@@ -34,7 +42,11 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
         foregroundColor: AppTheme.neutralGray900,
         title: const Text(
           'تحديد الموقع على الخريطة',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Colors.white),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppTheme.neutralGray900,
+          ),
         ),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
@@ -72,8 +84,15 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
         children: [
           FlutterMap(
             options: MapOptions(
-              initialCenter: widget.initialLocation ?? const LatLng(24.6877, 46.7219),
-              initialZoom: widget.initialLocation != null ? 13.0 : 6.0,
+              initialCenter:
+                  widget.initialLocation ??
+                  widget.initialCenter ??
+                  const LatLng(24.6877, 46.7219),
+              initialZoom:
+                  (widget.initialLocation != null ||
+                      widget.initialCenter != null)
+                  ? 14.0
+                  : 12.0,
               onTap: (_, point) => setState(() => _picked = point),
             ),
             children: [
@@ -109,28 +128,35 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: .95),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 6),
+                ],
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.touch_app_rounded,
                     size: 18,
-                    color: _picked != null ? AppTheme.primaryBlue : AppTheme.neutralGray500,
+                    color: _picked != null
+                        ? AppTheme.primaryBlue
+                        : AppTheme.neutralGray500,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _picked == null
-                          ? 'اضغط على الخريطة لتحديد موقعك بدقة'
+                          ? widget.cityName == null
+                                ? 'اضغط على الخريطة لتحديد موقعك بدقة'
+                                : 'الخريطة مركزة على ${widget.cityName} — اضغط لتحديد موقعك بدقة'
                           : 'تم تحديد الموقع — يمكنك تغييره بالضغط مجدداً',
                       style: TextStyle(
                         fontSize: 13,
                         color: _picked == null
                             ? AppTheme.neutralGray700
                             : AppTheme.primaryBlue,
-                        fontWeight:
-                            _picked != null ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: _picked != null
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                       textDirection: TextDirection.rtl,
                     ),
@@ -166,7 +192,11 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'تأكيد الموقع',

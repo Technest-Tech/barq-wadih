@@ -13,8 +13,14 @@ class TrustedPurchaseScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
-        title: const Text('الشراء الموثوق',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        title: const Text(
+          'الشراء الموثوق',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         elevation: 0,
         centerTitle: true,
       ),
@@ -58,16 +64,20 @@ class TrustedPurchaseScreen extends StatelessWidget {
           Text(
             'خدمة الشراء الموثوق',
             style: TextStyle(
-                color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           SizedBox(height: 8),
           Text(
             'نشتري بدلاً عنك ونضمن لك المنتج الأصلي',
             textAlign: TextAlign.center,
             style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500),
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -87,14 +97,20 @@ class TrustedPurchaseScreen extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.info_outline_rounded,
-                  color: AppTheme.primaryBlue, size: 20),
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppTheme.primaryBlue,
+                size: 20,
+              ),
               SizedBox(width: 8),
-              Text('كيف تعمل الخدمة؟',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryBlue)),
+              Text(
+                'كيف تعمل الخدمة؟',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -123,9 +139,10 @@ class TrustedPurchaseScreen extends StatelessWidget {
             child: Text(
               '$number',
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700),
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -134,17 +151,23 @@ class TrustedPurchaseScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.neutralGray800)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.neutralGray800,
+                ),
+              ),
               const SizedBox(height: 3),
-              Text(description,
-                  style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.neutralGray500,
-                      height: 1.5)),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.neutralGray500,
+                  height: 1.5,
+                ),
+              ),
             ],
           ),
         ),
@@ -167,11 +190,14 @@ class TrustedPurchaseScreen extends StatelessWidget {
             children: [
               Icon(Icons.star_rounded, color: AppTheme.accentGold, size: 20),
               SizedBox(width: 8),
-              Text('ضماناتنا لك',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.neutralGray800)),
+              Text(
+                'ضماناتنا لك',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.neutralGray800,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -181,13 +207,21 @@ class TrustedPurchaseScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle_rounded,
-                      color: AppTheme.accentGold, size: 18),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppTheme.accentGold,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(guarantee,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppTheme.neutralGray700, height: 1.5)),
+                    child: Text(
+                      guarantee,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.neutralGray700,
+                        height: 1.5,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -199,18 +233,25 @@ class TrustedPurchaseScreen extends StatelessWidget {
 
   Widget _buildCategoriesSection() {
     const cats = [
-      'إلكترونيات', 'سيارات', 'أثاث', 'ملابس',
-      'هواتف', 'أجهزة منزلية',
+      'إلكترونيات',
+      'سيارات',
+      'أثاث',
+      'ملابس',
+      'هواتف',
+      'أجهزة منزلية',
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('الفئات المدعومة',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.neutralGray800)),
+        const Text(
+          'الفئات المدعومة',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.neutralGray800,
+          ),
+        ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -218,14 +259,19 @@ class TrustedPurchaseScreen extends StatelessWidget {
           children: cats
               .map(
                 (cat) => Chip(
-                  label: Text(cat,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                  label: Text(
+                    cat,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                   backgroundColor: AppTheme.primaryBlue.withValues(alpha: .08),
                   side: BorderSide(
-                      color: AppTheme.primaryBlue.withValues(alpha: .2)),
-                  labelStyle:
-                      const TextStyle(color: AppTheme.primaryBlue),
+                    color: AppTheme.primaryBlue.withValues(alpha: .2),
+                  ),
+                  labelStyle: const TextStyle(color: AppTheme.primaryBlue),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                 ),
               )
@@ -248,26 +294,27 @@ class TrustedPurchaseScreen extends StatelessWidget {
           end: Alignment.bottomLeft,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: AppTheme.primaryBlue.withValues(alpha: .15)),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: .15)),
       ),
       child: Column(
         children: [
           const Text(
             'هل تريد استخدام الخدمة؟',
             style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.neutralGray800),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.neutralGray800,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
             'تواصل مع فريقنا وسنرشدك لاستكمال طلب الشراء الموثوق.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.neutralGray600,
-                height: 1.5),
+              fontSize: 12,
+              color: AppTheme.neutralGray600,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(
@@ -280,7 +327,10 @@ class TrustedPurchaseScreen extends StatelessWidget {
               minimumSize: const Size(double.infinity, 46),
               shape: const StadiumBorder(),
               textStyle: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -289,21 +339,15 @@ class TrustedPurchaseScreen extends StatelessWidget {
   }
 
   static const _steps = <(String, String)>[
-    (
-      'طلب الشراء',
-      'أرسل لنا رابط الإعلان الذي تريد شراءه وسنتحقق منه فوراً.'
-    ),
-    (
-      'التحقق والفحص',
-      'يقوم فريقنا بفحص المنتج والتحقق من صحة وصف الإعلان.'
-    ),
+    ('طلب الشراء', 'أرسل لنا رابط الإعلان الذي تريد شراءه وسنتحقق منه فوراً.'),
+    ('التحقق والفحص', 'يقوم فريقنا بفحص المنتج والتحقق من صحة وصف الإعلان.'),
     (
       'الدفع الآمن',
-      'يُدفع المبلغ بشكل آمن ولا يُحوَّل للبائع إلا بعد التسليم.'
+      'يُدفع المبلغ بشكل آمن ولا يُحوَّل للبائع إلا بعد التسليم.',
     ),
     (
       'التسليم والضمان',
-      'تستلم المنتج مفحوصاً مع ضمان استرجاع كامل إن لم يطابق الوصف.'
+      'تستلم المنتج مفحوصاً مع ضمان استرجاع كامل إن لم يطابق الوصف.',
     ),
   ];
 

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\StaticPage;
+use App\Support\LegalContent;
 use Illuminate\Database\Seeder;
 
 class StaticPagesSeeder extends Seeder
@@ -12,12 +13,12 @@ class StaticPagesSeeder extends Seeder
         $pages = [
             // ── Terms & Conditions ──────────────────────────────────────────
             [
-                'slug'                => 'terms',
-                'title_ar'            => 'الشروط والأحكام',
-                'title_en'            => 'Terms & Conditions',
+                'slug' => 'terms',
+                'title_ar' => 'الشروط والأحكام',
+                'title_en' => 'Terms & Conditions',
                 'meta_description_ar' => 'اقرأ شروط وأحكام استخدام منصة برق واضح للإعلانات المبوبة.',
                 'meta_description_en' => 'Read the terms and conditions for using the Barq Wadih classifieds platform.',
-                'content_ar'          => <<<'HTML'
+                'content_ar' => <<<'HTML'
 <h2>أولاً: قبول الشروط</h2>
 <p>باستخدامك منصة <strong>برق واضح</strong> أو أيٍّ من خدماتها، فأنت توافق على الالتزام بهذه الشروط والأحكام. إن لم توافق عليها، يُرجى التوقف عن استخدام المنصة.</p>
 
@@ -65,7 +66,7 @@ class StaticPagesSeeder extends Seeder
 
 <p style="color:#888;font-size:0.85em;">آخر تحديث: يوليو 2026</p>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>1. Acceptance of Terms</h2>
 <p>By accessing or using <strong>Barq Wadih</strong>, you agree to be bound by these Terms and Conditions. If you do not agree, please discontinue use of the platform.</p>
 
@@ -118,12 +119,12 @@ HTML,
 
             // ── Privacy Policy ──────────────────────────────────────────────
             [
-                'slug'                => 'privacy',
-                'title_ar'            => 'سياسة الخصوصية',
-                'title_en'            => 'Privacy Policy',
+                'slug' => 'privacy',
+                'title_ar' => 'سياسة الخصوصية',
+                'title_en' => 'Privacy Policy',
                 'meta_description_ar' => 'تعرّف على كيفية جمع بياناتك واستخدامها وحمايتها على منصة برق واضح.',
                 'meta_description_en' => 'Learn how Barq Wadih collects, uses, and protects your personal data.',
-                'content_ar'          => <<<'HTML'
+                'content_ar' => <<<'HTML'
 <h2>١. مقدمة</h2>
 <p>تلتزم <strong>برق واضح</strong> بحماية خصوصيتك. تُوضّح هذه السياسة كيفية جمع بياناتك الشخصية واستخدامها ومشاركتها وحمايتها.</p>
 
@@ -168,7 +169,7 @@ HTML,
 
 <p style="color:#888;font-size:0.85em;">آخر تحديث: يناير 2025</p>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>1. Introduction</h2>
 <p><strong>Barq Wadih</strong> is committed to protecting your privacy. This policy explains how we collect, use, share, and protect your personal data.</p>
 
@@ -218,12 +219,12 @@ HTML,
 
             // ── Fees ─────────────────────────────────────────────────────────
             [
-                'slug'                => 'fees',
-                'title_ar'            => 'الرسوم والأسعار',
-                'title_en'            => 'Fees & Pricing',
-                'meta_description_ar' => 'تعرّف على رسوم النشر والعمولات وطرق الدفع على منصة برق واضح.',
-                'meta_description_en' => 'Learn about publishing fees, commissions, and payment methods on Barq Wadih.',
-                'content_ar'          => <<<'HTML'
+                'slug' => 'fees',
+                'title_ar' => 'الرسوم والأسعار',
+                'title_en' => 'Fees & Pricing',
+                'meta_description_ar' => 'تعرّف على عمولات ما بعد البيع وطرق الدفع على منصة برق واضح. النشر مجاني.',
+                'meta_description_en' => 'Learn about after-sale commissions and payment methods on Barq Wadih. Publishing is free.',
+                'content_ar' => <<<'HTML'
 <h2>١. عمولات المنصة ⚖️</h2>
 <p style="color:#555;margin-bottom:16px;">تُستحق العمولة في ذمة المعلن فور إتمام عملية البيع.</p>
 
@@ -259,17 +260,15 @@ HTML,
 </ul>
 
 <h2>٣. طرق دفع العمولة 💳</h2>
-<p>ندعم طرق الدفع التالية:</p>
+<p>طريقة الدفع المتاحة حالياً:</p>
 <ul>
   <li>تحويل لحساب مؤسسة برق واضح</li>
-  <li>بطاقة فيزا / ماستركارد</li>
-  <li>مدى</li>
-  <li>Apple Pay</li>
+  <li>إرفاق صورة إيصال التحويل من داخل التطبيق للمراجعة</li>
 </ul>
 
-<p style="color:#888;font-size:0.85em;">آخر تحديث: يونيو 2026</p>
+<p style="color:#888;font-size:0.85em;">آخر تحديث: أغسطس 2026</p>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>1. Platform Commissions ⚖️</h2>
 <p style="color:#555;margin-bottom:16px;">Commission becomes due from the seller upon completing a sale.</p>
 
@@ -305,27 +304,25 @@ HTML,
 </ul>
 
 <h2>3. Commission Payment Methods 💳</h2>
-<p>We support the following payment methods:</p>
+<p>The payment method currently available is:</p>
 <ul>
   <li>Bank transfer to Barq Wadih Establishment account</li>
-  <li>Visa / Mastercard</li>
-  <li>Mada</li>
-  <li>Apple Pay</li>
+  <li>Upload the bank-transfer receipt inside the app for review</li>
 </ul>
 
-<p style="color:#888;font-size:0.85em;">Last updated: June 2026</p>
+<p style="color:#888;font-size:0.85em;">Last updated: August 2026</p>
 HTML,
                 'is_published' => true,
             ],
 
             // ── How We Buy ───────────────────────────────────────────────────
             [
-                'slug'                => 'how-we-buy',
-                'title_ar'            => 'كيف نشتري',
-                'title_en'            => 'How to Buy',
+                'slug' => 'how-we-buy',
+                'title_ar' => 'كيف نشتري',
+                'title_en' => 'How to Buy',
                 'meta_description_ar' => 'تعلّم كيف تشتري بأمان من خلال منصة برق واضح.',
                 'meta_description_en' => 'Learn how to buy safely through the Barq Wadih platform.',
-                'content_ar'          => <<<'HTML'
+                'content_ar' => <<<'HTML'
 <h2>اشترِ بثقة في 5 خطوات</h2>
 
 <div style="counter-reset:step;">
@@ -381,7 +378,7 @@ HTML,
   <li>في حال اشتباهك بإعلان مزيّف، بلّغ عنه فوراً من خلال زر "الإبلاغ".</li>
 </ul>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>Buy with Confidence in 5 Steps</h2>
 
 <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:24px;">
@@ -438,12 +435,12 @@ HTML,
 
             // ── How We Sell ──────────────────────────────────────────────────
             [
-                'slug'                => 'how-we-sell',
-                'title_ar'            => 'كيف نبيع',
-                'title_en'            => 'How to Sell',
+                'slug' => 'how-we-sell',
+                'title_ar' => 'كيف نبيع',
+                'title_en' => 'How to Sell',
                 'meta_description_ar' => 'تعلّم كيف تنشر إعلانك وتبيع منتجاتك بسهولة على منصة برق واضح.',
                 'meta_description_en' => 'Learn how to post your listing and sell your items on Barq Wadih.',
-                'content_ar'          => <<<'HTML'
+                'content_ar' => <<<'HTML'
 <h2>ابدأ البيع في دقائق</h2>
 
 <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:24px;">
@@ -498,7 +495,7 @@ HTML,
 <h2>هل أنت تاجر؟</h2>
 <p>إذا كنت تبيع بكميات تجارية، سجّل كتاجر واستفد من مزايا حساب التاجر: إعلانات غير محدودة، أولوية في البحث، لوحة تحكم متخصصة، ودعم مميز.</p>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>Start Selling in Minutes</h2>
 
 <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:24px;">
@@ -558,12 +555,12 @@ HTML,
 
             // ── Contact Us (informational page — has dedicated form page) ───
             [
-                'slug'                => 'contact-info',
-                'title_ar'            => 'معلومات التواصل',
-                'title_en'            => 'Contact Information',
+                'slug' => 'contact-info',
+                'title_ar' => 'معلومات التواصل',
+                'title_en' => 'Contact Information',
                 'meta_description_ar' => 'تواصل مع فريق دعم برق واضح.',
                 'meta_description_en' => 'Contact Barq Wadih support team.',
-                'content_ar'          => <<<'HTML'
+                'content_ar' => <<<'HTML'
 <h2>فريق الدعم</h2>
 <p>نحن هنا لمساعدتك. يمكنك التواصل معنا عبر النموذج أو البريد الإلكتروني أدناه.</p>
 <ul>
@@ -572,7 +569,7 @@ HTML,
   <li><strong>مدة الاستجابة:</strong> خلال يوم عمل واحد</li>
 </ul>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>Support Team</h2>
 <p>We're here to help. You can reach us via the form or email below.</p>
 <ul>
@@ -586,12 +583,12 @@ HTML,
 
             // ── About Us ─────────────────────────────────────────────────────
             [
-                'slug'                => 'about',
-                'title_ar'            => 'من نحن',
-                'title_en'            => 'About Us',
+                'slug' => 'about',
+                'title_ar' => 'من نحن',
+                'title_en' => 'About Us',
                 'meta_description_ar' => 'تعرّف على منصة برق واضح — منصة إعلانات مبوبة سعودية مملوكة ومدارة من مؤسسة برق واضح.',
                 'meta_description_en' => 'Learn about Barq Wadih — a Saudi classifieds platform owned and operated by Barq Wadih Est.',
-                'content_ar'          => <<<'HTML'
+                'content_ar' => <<<'HTML'
 <h2>من نحن</h2>
 <p>
   تطبيق وموقع <strong>برق واضح</strong> هو منصة إلكترونية سعودية متخصصة في مجال الإعلانات المبوبة،
@@ -623,7 +620,7 @@ HTML,
   </tbody>
 </table>
 HTML,
-                'content_en'          => <<<'HTML'
+                'content_en' => <<<'HTML'
 <h2>About Us</h2>
 <p>
   <strong>Barq Wadih</strong> (برق واضح) is a Saudi electronic platform specializing in classified ads,
@@ -665,6 +662,19 @@ HTML,
             StaticPage::updateOrCreate(['slug' => $data['slug']], $data);
         }
 
-        $this->command->info('Static pages seeded: ' . implode(', ', array_column($pages, 'slug')));
+        StaticPage::where('slug', 'privacy')->update([
+            'content_ar' => LegalContent::privacyAr(),
+            'content_en' => LegalContent::privacyEn(),
+        ]);
+
+        $terms = StaticPage::where('slug', 'terms')->first();
+        if ($terms) {
+            $terms->update([
+                'content_ar' => LegalContent::termsAr($terms->content_ar),
+                'content_en' => LegalContent::termsEn($terms->content_en),
+            ]);
+        }
+
+        $this->command->info('Static pages seeded: '.implode(', ', array_column($pages, 'slug')));
     }
 }

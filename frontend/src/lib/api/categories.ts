@@ -24,6 +24,7 @@ export type CategoryChild = {
   publish_fee_dealer: string | number | null;
   /** Flat after-sale commission (VAT-inclusive) owed when the ad is sold. */
   deferred_commission_individual: string | number | null;
+  deferred_commission_dealer: string | number | null;
   fee_deductible_from_commission: boolean;
   /** Nested subcategories (e.g. طيور → حمام/دجاج/بط). Present at any level. */
   children?: CategoryChild[];

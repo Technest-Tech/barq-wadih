@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 /// Bottom sheet shown after a seller marks an ad as sold.
 ///
@@ -9,6 +10,29 @@ import '../../../../core/theme/app_theme.dart';
 /// sale. This sheet shows the owed commission and sends the seller to the
 /// bank-transfer screen to pay it (gateways aren't live yet). When the category
 /// is free (commission = 0) it's a simple congratulations sheet.
+/// Reminder shown when a seller defers the commission — keeps the path back to
+/// paying it visible instead of leaving the sheet as the only entry point.
+void showCommissionDeferredHint(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: const Text(
+        'العمولة محفوظة كمستحقة. تقدر تسددها لاحقاً من «سداد العمولات».',
+        style: TextStyle(color: Colors.white),
+        textDirection: TextDirection.rtl,
+      ),
+      backgroundColor: AppTheme.primaryBlue,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      action: SnackBarAction(
+        label: 'سداد العمولات',
+        textColor: Colors.white,
+        onPressed: () => context.push('/payments'),
+      ),
+    ),
+  );
+}
+
 class SoldFeeSheet extends StatelessWidget {
   final int adId;
   final String adTitle;
@@ -146,7 +170,7 @@ class SoldFeeSheet extends StatelessWidget {
                             color: AppTheme.primaryBlue,
                           ),
                         ),
-                        Text(
+                        RiyalText(
                           '${commission.toStringAsFixed(0)} ر.س',
                           style: const TextStyle(
                             fontSize: 18,
@@ -196,15 +220,25 @@ class SoldFeeSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(context, false),
                 child: const Text(
-                  'لاحقاً',
+                  'أدفع لاحقاً',
                   style: TextStyle(
                     color: AppTheme.neutralGray500,
                     fontSize: 14,
                   ),
+                ),
+              ),
+              const Text(
+                'العمولة تبقى مستحقة، وتقدر تسددها في أي وقت من «إعلاناتي» '
+                'عند الإعلان المُباع، أو من «سداد العمولات» في القائمة.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: AppTheme.neutralGray500,
+                  height: 1.5,
                 ),
               ),
             ] else ...[

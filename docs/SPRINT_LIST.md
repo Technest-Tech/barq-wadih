@@ -1,6 +1,6 @@
 # Barq Wadih (برق واضح) — Sprint List
 
-> **Methodology**: 2-week sprints | **Developer**: Solo (Claude vibe coding)
+> **Methodology**: 2-week sprints | **Developer**: Technest-Tech
 >
 > Each sprint is designed to be self-contained and shippable. Sprints are ordered by dependency — each one builds on the previous.
 

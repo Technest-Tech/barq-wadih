@@ -4,16 +4,47 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/share_account_sheet.dart';
 import '../../ads/domain/ad_model.dart';
 import '../../ads/presentation/widgets/ad_card.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
+import '../../safety/presentation/user_safety_sheet.dart';
 import '../data/seller_profile_api.dart';
 import '../domain/seller_profile_model.dart';
+
+// ── Account sharing ────────────────────────────────────────────────────────────
+
+/// Canonical public link for a seller. Prefers the URL the API hands back;
+/// falls back to the id route for accounts created before @handles existed.
+String _profileUrlFor(SellerProfileModel profile) {
+  final fromApi = profile.profileUrl;
+  if (fromApi != null && fromApi.isNotEmpty) return fromApi;
+
+  final handle = profile.username;
+  if (handle != null && handle.isNotEmpty) {
+    return AppConstants.profileWebUrl(handle);
+  }
+
+  return '${AppConstants.webBaseUrl}/users/${profile.id}';
+}
+
+Future<void> _shareSeller(BuildContext context, SellerProfileModel profile) {
+  return showShareAccountSheet(
+    context,
+    account: ShareAccountData(
+      name: profile.name,
+      username: profile.username,
+      avatarUrl: profile.avatar,
+      profileUrl: _profileUrlFor(profile),
+    ),
+  );
+}
 
 class SellerProfileScreen extends ConsumerStatefulWidget {
   final int userId;
@@ -43,6 +74,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(sellerProfileProvider(widget.userId));
+    final currentUser = ref.watch(currentUserProvider);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -71,20 +103,30 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen>
           actions: [
             IconButton(
               icon: const Icon(Icons.share, color: Colors.white),
-              onPressed: () {
-                Clipboard.setData(
-                  ClipboardData(
-                    text: 'برق واضح — ملف البائع #${widget.userId}',
-                  ),
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('تم نسخ رابط البائع'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
+              tooltip: 'مشاركة الحساب',
+              // Disabled until the profile loads — there is no link to share
+              // before then.
+              onPressed: profileState.asData?.value == null
+                  ? null
+                  : () => _shareSeller(context, profileState.asData!.value),
             ),
+            if (currentUser != null && currentUser.id != widget.userId)
+              IconButton(
+                icon: const Icon(Icons.shield_outlined, color: Colors.white),
+                tooltip: 'الإبلاغ أو الحظر',
+                onPressed: profileState.asData?.value == null
+                    ? null
+                    : () async {
+                        final blocked = await showUserSafetySheet(
+                          context,
+                          userId: widget.userId,
+                          userName: profileState.asData!.value.name,
+                        );
+                        if (blocked == true && context.mounted) {
+                          Navigator.of(context).maybePop();
+                        }
+                      },
+              ),
           ],
         ),
         body: profileState.when(
@@ -227,6 +269,10 @@ class _Header extends StatelessWidget {
               color: AppTheme.neutralGray900,
             ),
           ),
+          if (profile.username != null) ...[
+            const SizedBox(height: 2),
+            _HandleRow(profile: profile),
+          ],
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -253,6 +299,46 @@ class _Header extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "@ahmd_aamr" with the QR button beside it — tapping either opens the share
+/// sheet, the same affordance the reference apps put next to the handle.
+class _HandleRow extends StatelessWidget {
+  final SellerProfileModel profile;
+  const _HandleRow({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _shareSeller(context, profile),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              LucideIcons.qrCode,
+              size: 15,
+              color: AppTheme.primaryBlueLight,
+            ),
+            const SizedBox(width: 6),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                '@${profile.username}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryBlueLight,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -505,7 +591,7 @@ class _SellerAdsTab extends ConsumerWidget {
             return AdCard(
               ad: ad,
               isGrid: false,
-              onTap: () => context.push('/ads/${ad.id}'),
+              onTap: () => context.push('/ads/${ad.id}', extra: ad),
             );
           },
         );

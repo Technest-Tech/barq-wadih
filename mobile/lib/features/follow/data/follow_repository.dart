@@ -31,6 +31,9 @@ final followRepositoryProvider = Provider<FollowRepository>((ref) {
   return FollowRepository(ref.watch(dioProvider));
 });
 
-final followStatusProvider = FutureProvider.family<bool, int>((ref, categoryId) {
+final followStatusProvider = FutureProvider.family<bool, int>((
+  ref,
+  categoryId,
+) {
   return ref.watch(followRepositoryProvider).checkStatus(categoryId);
 });

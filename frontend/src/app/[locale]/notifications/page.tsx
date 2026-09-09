@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -64,6 +64,11 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [autoCleared, setAutoCleared] = useState(false);
+  // Mirrors `autoCleared`, but readable synchronously — the effect below has to
+  // claim the clear before its own setState lands, or a second render would
+  // fire the request again.
+  const autoClearingRef = useRef(false);
 
   const load = useCallback(async (p: number) => {
     const res = await fetchNotifications(p);
@@ -80,7 +85,28 @@ export default function NotificationsPage() {
     load(1).finally(() => setLoading(false));
   }, [load]);
 
+  // Opening this page is the user reading their notifications, so clear them
+  // rather than waiting for a click on each one — otherwise the bell keeps
+  // advertising notifications that have already been seen. `items` is left
+  // alone on purpose: the highlight stays for this visit so the user can still
+  // tell which ones were new.
+  useEffect(() => {
+    if (loading || autoClearingRef.current || !items.some((n) => !n.is_read)) return;
+    autoClearingRef.current = true;
+    markAllNotificationsRead()
+      .then(() => {
+        setAutoCleared(true);
+        queryClient.invalidateQueries({ queryKey: NOTIFICATION_COUNT_KEY });
+      })
+      .catch(() => {
+        // Let a later render retry rather than leaving the badge wrong.
+        autoClearingRef.current = false;
+      });
+  }, [loading, items, queryClient]);
+
   async function handleMarkAll() {
+    autoClearingRef.current = true;
+    setAutoCleared(true);
     await markAllNotificationsRead();
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
     // Drop the header bell badge immediately instead of waiting for the poll.
@@ -105,7 +131,7 @@ export default function NotificationsPage() {
         <div className={styles.container}>
           <div className={styles.header}>
             <h1 className={styles.title}>🔔 الإشعارات</h1>
-            {unreadCount > 0 && (
+            {unreadCount > 0 && !autoCleared && (
               <button className={styles.markAllBtn} onClick={handleMarkAll}>
                 تعيين الكل كمقروء ({unreadCount})
               </button>

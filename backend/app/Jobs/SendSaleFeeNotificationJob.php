@@ -30,16 +30,21 @@ class SendSaleFeeNotificationJob implements ShouldQueue
 
         $price = $ad->price ? (float) $ad->price : null;
 
+        // `notifications.title_ar` is a 200-char column, so keep the headline
+        // short enough that a long listing title cannot overflow it.
+        $shortTitle = mb_strimwidth($ad->title, 0, 100, '…');
+
         $data = [
-            'type'   => 'sale_fee',
-            'ad_id'  => $ad->id,
-            'price'  => $price !== null ? strval($price) : null,
+            'type'     => 'sale_fee',
+            'ad_id'    => $ad->id,
+            'ad_title' => $ad->title,
+            'price'    => $price !== null ? strval($price) : null,
         ];
 
         $pushService->sendToUser(
             $ad->user_id,
             'sale_fee',
-            'تهانينا! أعلنت بيع إعلانك 🎉',
+            "تهانينا! أعلنت بيع: {$shortTitle} 🎉",
             $price !== null
                 ? "احسب رسوم البيع لإعلان: {$ad->title}"
                 : "تذكّر سداد رسوم البيع لإعلانك: {$ad->title}",

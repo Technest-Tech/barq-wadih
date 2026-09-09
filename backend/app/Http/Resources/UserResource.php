@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Models\City;
+use App\Models\Region;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,50 +16,54 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'                          => $this->id,
-            'name'                        => $this->name,
-            'email'                       => $this->email,
-            'phone'                       => $this->phone,
+            'id' => $this->id,
+            'name' => $this->name,
+            'username' => $this->username,
+            'profile_url' => $this->profile_url,
+            'email' => $this->email,
+            'phone' => $this->phone,
             // The Firebase UID that the backend mints for this user's chat
             // sessions. Must match ChatService::mintCustomToken(), which uses
             // strval($user->id) — a stable identifier that won't drift when
             // the underlying `firebase_uid` column changes (e.g. phone OTP).
-            'firebase_uid'                => strval($this->id),
-            'avatar_url'                  => $this->avatar_url,
-            'cover_image_url'             => $this->cover_image_url,
-            'bio'                         => $this->bio,
-            'role'                        => $this->role->value,
-            'locale'                      => $this->locale,
-            'is_verified'                 => $this->is_verified,
-            'is_dealer'                   => $this->is_dealer,
-            'is_active'                   => $this->is_active,
-            'avg_rating'                  => $this->avg_rating,
-            'rating_count'                => $this->rating_count,
-            'total_ads_count'             => $this->total_ads_count,
-            'phone_verified_at'           => $this->phone_verified_at?->toISOString(),
-            'email_verified_at'           => $this->email_verified_at?->toISOString(),
-            'unread_notifications_count'  => $this->unread_notifications_count,
-            'region'                      => $this->whenLoaded('region', function () {
-                /** @var \App\Models\Region $region */
+            'firebase_uid' => strval($this->id),
+            'avatar_url' => $this->avatar_url,
+            'cover_image_url' => $this->cover_image_url,
+            'bio' => $this->bio,
+            'role' => $this->role->value,
+            'locale' => $this->locale,
+            'is_verified' => $this->is_verified,
+            'is_dealer' => $this->is_dealer,
+            'is_active' => $this->is_active,
+            'avg_rating' => $this->avg_rating,
+            'rating_count' => $this->rating_count,
+            'total_ads_count' => $this->total_ads_count,
+            'phone_verified_at' => $this->phone_verified_at?->toISOString(),
+            'email_verified_at' => $this->email_verified_at?->toISOString(),
+            'unread_notifications_count' => $this->unread_notifications_count,
+            'region' => $this->whenLoaded('region', function () {
+                /** @var Region $region */
                 $region = $this->region;
+
                 return [
-                    'id'      => $region->id,
+                    'id' => $region->id,
                     'name_ar' => $region->name_ar,
                     'name_en' => $region->name_en,
-                    'slug'    => $region->slug,
+                    'slug' => $region->slug,
                 ];
             }),
-            'city'                        => $this->whenLoaded('city', function () {
-                /** @var \App\Models\City $city */
+            'city' => $this->whenLoaded('city', function () {
+                /** @var City $city */
                 $city = $this->city;
+
                 return [
-                    'id'      => $city->id,
+                    'id' => $city->id,
                     'name_ar' => $city->name_ar,
                     'name_en' => $city->name_en,
-                    'slug'    => $city->slug,
+                    'slug' => $city->slug,
                 ];
             }),
-            'created_at'                  => $this->created_at?->toISOString(),
+            'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }

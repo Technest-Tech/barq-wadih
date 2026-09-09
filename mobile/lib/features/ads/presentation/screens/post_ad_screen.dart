@@ -1,8 +1,12 @@
 // lib/features/ads/presentation/screens/post_ad_screen.dart
 
+import 'dart:async';
 import 'dart:io';
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/image_upload_preprocessor.dart';
+import '../../../../core/services/marketing_tracking_service.dart';
+import '../../../../core/widgets/app_cached_image.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -14,14 +18,18 @@ import 'package:latlong2/latlong.dart';
 
 import 'map_location_picker.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../categories/data/category_api.dart';
 import '../../../categories/domain/category_model.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../regions/presentation/region_city_picker.dart';
 import '../../../regions/domain/region_model.dart';
 import '../../../regions/data/region_api.dart';
 import '../../data/ad_api.dart';
+import '../../data/ad_draft_store.dart';
 import '../../domain/ad_model.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 enum _PriceOption { fixed, negotiable, callForPrice }
 
@@ -42,12 +50,28 @@ class PostAdScreen extends ConsumerStatefulWidget {
   ConsumerState<PostAdScreen> createState() => _PostAdScreenState();
 }
 
-class _PostAdScreenState extends ConsumerState<PostAdScreen> {
+class _PostAdScreenState extends ConsumerState<PostAdScreen>
+    with WidgetsBindingObserver {
   late final PageController _pageController;
   late int _step;
   bool _submitting = false;
+  String? _submitStatus;
+  int? _uploadPercent;
   bool _loadingExisting = false;
   Map<String, String> _fieldErrors = {};
+
+  /// A new ad is parked on disk as it is written, so an OS kill — routine on
+  /// Android while the system photo picker is up — does not cost the seller
+  /// the whole thing. Editing has the server's copy to fall back on and needs
+  /// no draft.
+  static const _draftStore = AdDraftStore();
+  Timer? _draftSaveTimer;
+  bool _draftPromptShown = false;
+
+  /// Flipped by any edit the seller makes. Drives the "discard changes?"
+  /// prompt so backing out of an untouched form never nags, while backing out
+  /// of a half-written ad always warns first.
+  bool _dirty = false;
 
   // Step 0 — Pledge
   bool _pledgeAccepted = false;
@@ -55,22 +79,41 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   // Step 1 — Category
   CategoryModel? _selectedCategory;
 
+  // The parent the seller has drilled into, if any. Held here rather than in
+  // the step widget so it survives the step being rebuilt, and so the back
+  // gesture can leave the sub-list before it leaves the step.
+  CategoryModel? _browsingCategory;
+
   // Step 2 — Details
-  // All users are individuals for now — the merchant/individual choice was removed.
-  final String _sellerType = 'individual';
+  // The account determines the commission tier; there is no user-selectable
+  // switch that could claim the dealer rate.
+  String get _sellerType {
+    final auth = ref.read(authProvider);
+    return auth is AuthAuthenticated && auth.user.isDealer
+        ? 'dealer'
+        : 'individual';
+  }
+
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   _PriceOption _priceOption = _PriceOption.fixed;
-  bool _showPhonePublicly = true;
+  // Publishing must never require a phone number: an account can be created
+  // with an email address alone, and buyers always reach the seller through
+  // in-app chat. Showing the number publicly is strictly opt-in.
+  bool _showPhonePublicly = false;
 
   // Dynamic category field values (e.g. the cars fields) keyed by field_key.
   final Map<String, TextEditingController> _dynControllers = {};
   final Map<String, String> _fieldValues = {};
 
-  // Step 3 — Images
-  final List<XFile> _images = [];
+  // Step 3 — Images. One ordered list holds photos already on the ad and ones
+  // picked in this session, so a freshly added photo can be dragged ahead of
+  // the old ones and become the cover.
+  final List<_GalleryEntry> _gallery = [];
+  final Set<int> _removedImageIds = {};
+  bool _recoveringImages = false;
 
   // Step 4 — Location + District
   RegionModel? _selectedRegion;
@@ -85,6 +128,15 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   bool get _isEditMode => widget.adId != null;
 
+  /// Editing skips the pledge, so the wizard does not always start at 0.
+  int get _firstStep => _isEditMode ? 1 : 0;
+  static const int _lastStep = 4;
+
+  static const int _maxImages = 10;
+
+  /// Mirrors the API's `images.*|max:5120` rule.
+  static const int _maxImageBytes = 5 * 1024 * 1024;
+
   bool get _step2Valid =>
       _titleCtrl.text.trim().length >= kTitleMinLen &&
       _descCtrl.text.trim().length >= kDescMinLen &&
@@ -95,18 +147,65 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Edit mode skips the pledge step (already agreed when first posting)
-    final initialPage = _isEditMode ? 1 : 0;
-    _pageController = PageController(initialPage: initialPage);
-    _step = initialPage;
+    _pageController = PageController(initialPage: _firstStep);
+    _step = _firstStep;
+    for (final c in [
+      _titleCtrl,
+      _descCtrl,
+      _priceCtrl,
+      _phoneCtrl,
+      _districtFreeTextCtrl,
+    ]) {
+      c.addListener(_touch);
+    }
     if (_isEditMode) {
       _pledgeAccepted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingAd());
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _offerDraftRestore();
+        await _recoverLostImages();
+      });
     }
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      // Android may destroy the activity while the system photo picker is in
+      // the foreground; the picked files are then parked until claimed.
+      case AppLifecycleState.resumed:
+        unawaited(_recoverLostImages());
+      // The last moment before the OS is free to kill us. Write now rather
+      // than waiting out the debounce.
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        _draftSaveTimer?.cancel();
+        if (!_isEditMode && _dirty) unawaited(_saveDraft());
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  /// Every edit funnels through here: it arms the discard prompt and queues a
+  /// draft write. Debounced so typing a description is not 200 disk writes.
+  void _touch() {
+    _dirty = true;
+    if (_isEditMode) return;
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(
+      const Duration(milliseconds: 700),
+      () => unawaited(_saveDraft()),
+    );
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _draftSaveTimer?.cancel();
     _pageController.dispose();
     _titleCtrl.dispose();
     _descCtrl.dispose();
@@ -117,6 +216,205 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  // ── Draft ──────────────────────────────────────────────────────────────────
+
+  // Models are written back in the API's own JSON shape so they rehydrate
+  // through the existing fromJson factories.
+  Map<String, dynamic>? _categoryJson(CategoryModel? c) => c == null
+      ? null
+      : {
+          'id': c.id,
+          'name_ar': c.nameAr,
+          'name_en': c.nameEn,
+          'slug': c.slug,
+          'icon': c.icon,
+          'sort_order': c.sortOrder,
+          'is_active': c.isActive,
+          'is_free': c.isFree,
+          'ads_count': c.adsCount,
+          'fields_count': c.fieldsCount,
+        };
+
+  Map<String, dynamic>? _regionJson(RegionModel? r) => r == null
+      ? null
+      : {
+          'id': r.id,
+          'name_ar': r.nameAr,
+          'name_en': r.nameEn,
+          'slug': r.slug,
+          'sort_order': r.sortOrder,
+          'cities_count': r.citiesCount,
+        };
+
+  Map<String, dynamic>? _cityJson(CityModel? c) => c == null
+      ? null
+      : {
+          'id': c.id,
+          'name_ar': c.nameAr,
+          'name_en': c.nameEn,
+          'slug': c.slug,
+          'latitude': c.latitude,
+          'longitude': c.longitude,
+          'ads_count': c.adsCount,
+          'districts_count': c.districtsCount,
+          'region': _regionJson(c.region),
+        };
+
+  Map<String, dynamic>? _districtJson(DistrictModel? d) =>
+      d == null ? null : {'id': d.id, 'name_ar': d.nameAr, 'name_en': d.nameEn};
+
+  AdDraft _currentDraft() => AdDraft(
+    savedAt: DateTime.now(),
+    step: _step,
+    pledgeAccepted: _pledgeAccepted,
+    category: _categoryJson(_selectedCategory),
+    browsingCategoryId: _browsingCategory?.id,
+    title: _titleCtrl.text,
+    description: _descCtrl.text,
+    price: _priceCtrl.text,
+    phone: _phoneCtrl.text,
+    priceOption: _priceOption.name,
+    showPhonePublicly: _showPhonePublicly,
+    fieldValues: Map<String, String>.from(_fieldValues),
+    imagePaths: _pickedFiles.map((f) => f.path).toList(),
+    region: _regionJson(_selectedRegion),
+    city: _cityJson(_selectedCity),
+    district: _districtJson(_selectedDistrict),
+    districtFreeText: _districtFreeTextCtrl.text,
+    latitude: _latitude,
+    longitude: _longitude,
+  );
+
+  Future<void> _saveDraft() async {
+    if (_isEditMode || _submitting) return;
+    final draft = _currentDraft();
+    // Emptying the form is itself a decision: leave the earlier draft parked
+    // and the seller would be offered back an ad they had just cleared out.
+    if (draft.isEmpty) {
+      await _draftStore.clear();
+      return;
+    }
+    await _draftStore.save(draft);
+    // Photos the seller has since removed no longer need their retained copy.
+    await _draftStore.pruneImages(draft.imagePaths);
+  }
+
+  Future<void> _discardDraft() async {
+    _draftSaveTimer?.cancel();
+    if (_isEditMode) return;
+    await _draftStore.clear();
+  }
+
+  /// Offers the parked draft on entry. Declining throws it away, so the seller
+  /// is never asked about the same abandoned ad twice.
+  Future<void> _offerDraftRestore() async {
+    if (_isEditMode || _draftPromptShown || !mounted) return;
+    _draftPromptShown = true;
+
+    final draft = await _draftStore.read();
+    if (draft == null || !mounted) return;
+
+    final missingPhotos = draft.step >= 3 && draft.imagePaths.isEmpty
+        ? 'وقد تعذّر استرجاع الصور، '
+        : '';
+    final resume = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          'لديك إعلان لم يكتمل',
+          textDirection: TextDirection.rtl,
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'بدأت بكتابة إعلان ولم تنشره. $missingPhotosهل تريد متابعته؟',
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إعلان جديد'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('متابعة الإعلان'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (resume == true) {
+      _applyDraft(draft);
+    } else {
+      await _draftStore.clear();
+    }
+  }
+
+  void _applyDraft(AdDraft draft) {
+    setState(() {
+      _pledgeAccepted = draft.pledgeAccepted;
+      if (draft.category != null) {
+        _selectedCategory = CategoryModel.fromJson(draft.category!);
+      }
+      if (draft.browsingCategoryId != null) {
+        // Only the id is read — step 1 looks the real category up in the list
+        // it fetches, so a stub is enough and cannot go stale.
+        _browsingCategory = CategoryModel(
+          id: draft.browsingCategoryId!,
+          nameAr: '',
+          nameEn: '',
+          slug: '',
+          sortOrder: 0,
+          isActive: true,
+          isFree: false,
+          adsCount: 0,
+          fieldsCount: 0,
+        );
+      }
+      _titleCtrl.text = draft.title;
+      _descCtrl.text = draft.description;
+      _priceCtrl.text = draft.price;
+      _phoneCtrl.text = draft.phone;
+      _priceOption = _PriceOption.values.firstWhere(
+        (o) => o.name == draft.priceOption,
+        orElse: () => _PriceOption.fixed,
+      );
+      _showPhonePublicly = draft.showPhonePublicly;
+      _fieldValues
+        ..clear()
+        ..addAll(draft.fieldValues);
+      for (final entry in draft.fieldValues.entries) {
+        // Seed any controller step 2 already built for this key.
+        final controller = _dynControllers[entry.key];
+        if (controller != null) controller.text = entry.value;
+      }
+      _gallery
+        ..clear()
+        ..addAll(draft.imagePaths.map((p) => _GalleryEntry.picked(XFile(p))));
+      if (draft.region != null) {
+        _selectedRegion = RegionModel.fromJson(draft.region!);
+      }
+      if (draft.city != null) _selectedCity = CityModel.fromJson(draft.city!);
+      if (draft.district != null) {
+        _selectedDistrict = DistrictModel.fromJson(draft.district!);
+      }
+      _districtFreeTextCtrl.text = draft.districtFreeText;
+      _latitude = draft.latitude;
+      _longitude = draft.longitude;
+      // A restored draft still holds unpublished work, so leaving must prompt.
+      _dirty = true;
+      // Photos that did not survive would strand the seller on a step they
+      // cannot leave, so back up to the images step in that case.
+      _step = (draft.imagePaths.isEmpty && draft.step > 3 ? 3 : draft.step)
+          .clamp(_firstStep, _lastStep);
+    });
+    if (_pageController.hasClients) _pageController.jumpToPage(_step);
+    final city = _selectedCity;
+    if (city != null) _loadDistricts(city.id, preserveSelection: true);
   }
 
   // ── Load existing ad ───────────────────────────────────────────────────────
@@ -152,6 +450,10 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
             ? _PriceOption.negotiable
             : _PriceOption.fixed;
         _showPhonePublicly = ad.showPhonePublicly;
+        _gallery
+          ..clear()
+          ..addAll(ad.images.map(_GalleryEntry.existing));
+        _removedImageIds.clear();
 
         for (final fv in ad.fieldValues) {
           _fieldValues[fv.fieldKey] = fv.value?.toString() ?? '';
@@ -186,7 +488,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       });
 
       if (_selectedCity != null) {
-        _loadDistricts(_selectedCity!.id);
+        // The ad's own district is already selected above; loading the city's
+        // district list must not wipe it.
+        _loadDistricts(_selectedCity!.id, preserveSelection: true);
       }
     } catch (e) {
       if (mounted) {
@@ -199,18 +503,30 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         context.pop();
       }
     } finally {
-      if (mounted) setState(() => _loadingExisting = false);
+      // Prefilling the controllers tripped the dirty listeners; nothing the
+      // seller did, so exiting straight away must not prompt.
+      if (mounted) {
+        setState(() {
+          _loadingExisting = false;
+          _dirty = false;
+        });
+      }
     }
   }
 
   // ── Districts ──────────────────────────────────────────────────────────────
 
-  Future<void> _loadDistricts(int cityId) async {
+  Future<void> _loadDistricts(
+    int cityId, {
+    bool preserveSelection = false,
+  }) async {
     if (_districtsLoadedForCityId == cityId) return;
     setState(() {
       _loadingDistricts = true;
-      _selectedDistrict = null;
-      _districtFreeTextCtrl.clear();
+      if (!preserveSelection) {
+        _selectedDistrict = null;
+        _districtFreeTextCtrl.clear();
+      }
     });
     try {
       final districts = await ref
@@ -242,34 +558,152 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _DistrictPickerSheet(districts: _districtsForCity!),
     );
-    if (result != null) setState(() => _selectedDistrict = result);
+    if (result != null) {
+      setState(() {
+        _selectedDistrict = result;
+        _districtFreeTextCtrl.clear();
+        _touch();
+      });
+    }
   }
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
-  void _jumpToStep(int step) {
-    _pageController.animateToPage(
-      step,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOutCubic,
-    );
-    setState(() => _step = step);
+  /// The single way the wizard changes page.
+  ///
+  /// Always animates to an absolute target derived from [_step]. `nextPage` /
+  /// `previousPage` read the *live* (fractional) page instead, so two taps
+  /// inside the 350ms animation used to move the indicator twice and the page
+  /// once — leaving the header, the visible step and the back button pointing
+  /// at three different places.
+  void _goToStep(int step) {
+    final target = step.clamp(_firstStep, _lastStep);
+    if (target == _step) return;
+    // A keyboard left open over the next step hides its buttons.
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _step = target);
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        target,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+      );
+    }
   }
 
-  void _next() {
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOutCubic,
-    );
-    setState(() => _step++);
+  void _jumpToStep(int step) => _goToStep(step);
+
+  void _next() => _goToStep(_step + 1);
+
+  void _prev() => _goToStep(_step - 1);
+
+  // ── Leaving the wizard ─────────────────────────────────────────────────────
+
+  /// System back (Android button, iOS edge swipe) walks the wizard backwards
+  /// rather than throwing the whole draft away. Only the first step closes it.
+  Future<void> _handleBackIntent() async {
+    if (_submitting) {
+      _toast('جارٍ نشر الإعلان… الرجاء الانتظار حتى ينتهي الرفع.');
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    // Inside a sub-category list, back returns to the parent list first.
+    if (_step == 1 && _browsingCategory != null) {
+      setState(() => _browsingCategory = null);
+      return;
+    }
+    if (_step > _firstStep) {
+      _goToStep(_step - 1);
+      return;
+    }
+    await _closeWizard();
   }
 
-  void _prev() {
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOutCubic,
+  /// The X in the app bar: leaves the wizard entirely, confirming first if the
+  /// seller has anything unsaved.
+  Future<void> _closeWizard() async {
+    if (_submitting) {
+      _toast('جارٍ نشر الإعلان… الرجاء الانتظار حتى ينتهي الرفع.');
+      return;
+    }
+    if (_dirty && !await _confirmDiscard()) return;
+    // Fire-and-forget: clearing the parked draft is cleanup, and the seller
+    // should not watch a spinner over a disk write to leave the screen.
+    unawaited(_discardDraft());
+    if (!mounted) return;
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      // Reached by deep link, so there is nothing underneath to pop back to.
+      context.go(AppRoutes.home);
+    }
+  }
+
+  Future<bool> _confirmDiscard() async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          'إلغاء الإعلان؟',
+          textDirection: TextDirection.rtl,
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          _isEditMode
+              ? 'ستفقد التعديلات التي أجريتها على الإعلان.'
+              : 'ستفقد البيانات والصور التي أدخلتها في هذا الإعلان.',
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('متابعة التعبئة'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('تجاهل', style: TextStyle(color: Colors.red.shade600)),
+          ),
+        ],
+      ),
     );
-    setState(() => _step--);
+    return discard == true;
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message, textDirection: TextDirection.rtl),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
+  /// Dynamic field values are defined by the chosen category, so moving an ad
+  /// to a different one drops them — the API wipes them server-side for the
+  /// same reason and demands the new category's required fields with the same
+  /// request. Controllers are cleared rather than disposed: step 2 may still be
+  /// alive in the PageView and holding on to them.
+  void _selectCategory(CategoryModel category) {
+    setState(() {
+      if (_selectedCategory?.id != category.id) {
+        for (final controller in _dynControllers.values) {
+          controller.clear();
+        }
+        _fieldValues.clear();
+        _fieldErrors = {};
+      }
+      _selectedCategory = category;
+      _touch();
+    });
   }
 
   /// Lazily-created controller for a dynamic category field, seeded from any
@@ -284,74 +718,293 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   // ── Image picking ──────────────────────────────────────────────────────────
 
-  Future<void> _pickImages() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickMultiImage(imageQuality: 80);
-    final remaining = 10 - _images.length;
-    setState(() => _images.addAll(picked.take(remaining)));
+  int get _totalImages => _gallery.length;
+
+  bool get _hasExistingImages => _gallery.any((e) => e.isExisting);
+
+  /// Files picked this session, in gallery order — this is exactly the order
+  /// they are uploaded in, which is what the `new:<i>` order tokens index into.
+  List<XFile> get _pickedFiles => [
+    for (final entry in _gallery)
+      if (entry.file != null) entry.file!,
+  ];
+
+  Future<void> _recoverLostImages() async {
+    if (!Platform.isAndroid ||
+        _recoveringImages ||
+        _loadingExisting ||
+        _submitting) {
+      return;
+    }
+    _recoveringImages = true;
+    try {
+      final response = await ImagePicker().retrieveLostData();
+      if (!mounted || response.isEmpty) return;
+      final recovered =
+          response.files ??
+          (response.file != null ? <XFile>[response.file!] : <XFile>[]);
+      if (recovered.isNotEmpty) {
+        await _addPickedImages(recovered);
+      } else if (response.exception != null) {
+        _toast('تعذّر استعادة الصور. يرجى اختيارها مرة أخرى.');
+      }
+    } on PlatformException {
+      if (mounted) _toast('تعذّر استعادة الصور. يرجى اختيارها مرة أخرى.');
+    } finally {
+      _recoveringImages = false;
+    }
+  }
+
+  Future<void> _pickImages({bool replaceExisting = false}) async {
+    if (!replaceExisting && _totalImages >= _maxImages) {
+      _toast('وصلت للحد الأقصى ($_maxImages صور). احذف صورة لإضافة غيرها.');
+      return;
+    }
+    final List<XFile> picked;
+    try {
+      picked = await ImagePicker().pickMultiImage(imageQuality: 80);
+    } on PlatformException catch (e) {
+      _toast(e.message ?? 'تعذّر فتح معرض الصور. تأكد من منح الإذن للتطبيق.');
+      return;
+    }
+    if (picked.isEmpty || !mounted) return;
+    await _addPickedImages(picked, replaceExisting: replaceExisting);
   }
 
   Future<void> _pickFromCamera() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 80,
-    );
-    if (picked != null && _images.length < 10) {
-      setState(() => _images.add(picked));
+    if (_totalImages >= _maxImages) {
+      _toast('وصلت للحد الأقصى ($_maxImages صور). احذف صورة لإضافة غيرها.');
+      return;
+    }
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
+    } on PlatformException catch (e) {
+      _toast(e.message ?? 'تعذّر فتح الكاميرا. تأكد من منح الإذن للتطبيق.');
+      return;
+    }
+    // The seller can leave the wizard while the camera is open, which used to
+    // land a setState on a disposed State.
+    if (picked == null || !mounted) return;
+    await _addPickedImages([picked]);
+  }
+
+  /// The single door photos come in through — gallery, camera, or recovered
+  /// after Android killed the app behind the system picker.
+  Future<void> _addPickedImages(
+    List<XFile> picked, {
+    bool replaceExisting = false,
+  }) async {
+    final known = _pickedFiles.map((f) => f.path).toSet();
+    final accepted = <XFile>[];
+    var oversized = 0;
+    for (final file in picked) {
+      if (!replaceExisting && !known.add(file.path)) continue;
+      // iOS photos are re-encoded by ImageUploadPreprocessor before upload, so
+      // only Android originals need checking against the API's 5MB rule — far
+      // kinder than a 422 after a long upload.
+      if (!Platform.isIOS) {
+        final int length;
+        try {
+          length = await file.length();
+        } on FileSystemException {
+          continue; // Picker handed back a path that no longer exists.
+        }
+        if (length > _maxImageBytes) {
+          oversized++;
+          continue;
+        }
+      }
+      accepted.add(file);
+    }
+    if (!mounted) return;
+
+    // image_picker hands back files in a cache directory both platforms may
+    // purge. Copy them somewhere durable so a restored draft still has its
+    // photos; retain() returns the original if the copy is not possible.
+    if (!_isEditMode && accepted.isNotEmpty) {
+      final retained = <XFile>[];
+      for (final file in accepted) {
+        retained.add(await _draftStore.retain(file));
+      }
+      if (!mounted) return;
+      accepted
+        ..clear()
+        ..addAll(retained);
+    }
+
+    var dropped = 0;
+    setState(() {
+      if (replaceExisting) {
+        _markRemoved(_gallery);
+        _gallery.clear();
+      }
+      // Never negative: an ad already carrying more than the cap made take()
+      // throw and killed the picker sheet.
+      final remaining = (_maxImages - _gallery.length).clamp(0, _maxImages);
+      dropped = accepted.length - remaining;
+      _gallery.addAll(accepted.take(remaining).map(_GalleryEntry.picked));
+      _touch();
+    });
+
+    if (oversized > 0) {
+      _toast('تم تجاهل $oversized صورة لأن حجمها يتجاوز 5 ميغابايت.');
+    } else if (dropped > 0) {
+      _toast(
+        'أُضيفت ${accepted.length - dropped} صور فقط — الحد الأقصى '
+        '$_maxImages صور.',
+      );
     }
   }
 
-  // ── Payment confirmation before submit ────────────────────────────────────
+  void _removeImageAt(int index) {
+    if (index < 0 || index >= _gallery.length) return;
+    setState(() {
+      final removed = _gallery.removeAt(index);
+      _markRemoved([removed]);
+      _touch();
+    });
+  }
+
+  /// Photos already stored on the ad have to be named to the API to be deleted;
+  /// ones picked in this session just vanish from the list.
+  void _markRemoved(Iterable<_GalleryEntry> entries) {
+    for (final entry in entries) {
+      final existing = entry.existing;
+      if (existing != null) _removedImageIds.add(existing.id);
+    }
+  }
+
+  void _reorderImage(int from, int to) {
+    if (from == to || from < 0 || from >= _gallery.length) return;
+    setState(() {
+      final entry = _gallery.removeAt(from);
+      _gallery.insert(to.clamp(0, _gallery.length), entry);
+      _touch();
+    });
+  }
+
+  /// Everything the API would reject, checked before a long upload starts, so
+  /// the seller lands on the step that needs fixing instead of reading a 422
+  /// after watching a progress bar fill.
+  ({int step, String message})? _firstBlockingGap() {
+    if (!_pledgeAccepted) {
+      return (step: 0, message: 'يجب الموافقة على تعهّد المعلن أولاً.');
+    }
+    if (_selectedCategory == null) {
+      return (step: 1, message: 'اختر تصنيف الإعلان.');
+    }
+    if (_titleCtrl.text.trim().length < kTitleMinLen) {
+      return (
+        step: 2,
+        message: 'العنوان يجب أن يكون $kTitleMinLen أحرف على الأقل.',
+      );
+    }
+    if (_descCtrl.text.trim().length < kDescMinLen) {
+      return (
+        step: 2,
+        message: 'الوصف يجب أن يكون $kDescMinLen أحرف على الأقل.',
+      );
+    }
+    if (_priceOption != _PriceOption.callForPrice &&
+        _priceCtrl.text.trim().isEmpty) {
+      return (step: 2, message: 'أدخل السعر أو اختر "عند الاتصال".');
+    }
+    if (_showPhonePublicly && !isValidSaudiPhone(_phoneCtrl.text)) {
+      return (step: 2, message: 'أدخل رقم جوال سعودي صحيح (05xxxxxxxx).');
+    }
+    if (_totalImages == 0) {
+      return (step: 3, message: 'أضف صورة واحدة على الأقل.');
+    }
+    if (_selectedCity == null) {
+      return (step: 4, message: 'اختر المدينة.');
+    }
+    return null;
+  }
 
   Future<void> _handleSubmit() async {
-    final publishFee = _selectedCategory?.publishFee(_sellerType) ?? 0.0;
-    final categoryIsFree = _selectedCategory?.isFree ?? false;
-
-    // Free category, no fee, or editing an existing ad — submit directly.
-    if (categoryIsFree || publishFee <= 0 || _isEditMode) {
-      await _submit();
+    if (_submitting) return;
+    final gap = _firstBlockingGap();
+    if (gap != null) {
+      _goToStep(gap.step);
+      _toast(gap.message);
       return;
     }
+    await _submit();
+  }
 
-    // Show payment confirmation sheet first
+  void _onUploadProgress(int sent, int total) {
+    if (!mounted || total <= 0) return;
+
+    final percent = ((sent / total) * 100).clamp(0, 100).round();
+    if (_uploadPercent == percent) return;
+
+    setState(() {
+      _uploadPercent = percent;
+      _submitStatus = percent >= 100
+          ? (_isEditMode
+                ? 'جارٍ حفظ التعديلات...'
+                : 'جارٍ إكمال نشر الإعلان...')
+          : 'جارٍ رفع الصور... $percent%';
+    });
+  }
+
+  Future<void> _showSubmitError(String message) async {
     if (!mounted) return;
-    final confirmed = await showModalBottomSheet<bool>(
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _PublishPaymentSheet(
-        fee: publishFee,
-        categoryName: _selectedCategory?.nameAr ?? '',
-        sellerType: _sellerType,
-        onConfirm: () => Navigator.pop(context, true),
-      ),
+      builder: (ctx) => _ErrorDialog(message: message, errors: const {}),
     );
-
-    if (confirmed == true && mounted) {
-      await _submit(publishFee: publishFee);
-    }
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
-  Future<void> _submit({double? publishFee}) async {
-    if (!_pledgeAccepted || _selectedCity == null) return;
+  Future<void> _submit() async {
+    if (_submitting || !_pledgeAccepted || _selectedCity == null) return;
+    final preparedTempPaths = <String>[];
     setState(() {
       _submitting = true;
+      _submitStatus = 'جارٍ تجهيز الصور...';
+      _uploadPercent = null;
       _fieldErrors = {};
     });
     try {
-      final imagesData = await Future.wait(
-        _images.map(
-          (f) async => MultipartFile.fromFile(
-            f.path,
-            filename: File(f.path).uri.pathSegments.last,
+      final imagesData = <MultipartFile>[];
+      final pickedFiles = _pickedFiles;
+      // Process one photo at a time. Decoding several high-resolution iPhone
+      // photos concurrently can cause a large memory spike and make the wizard
+      // appear frozen before the network request even starts.
+      for (var index = 0; index < pickedFiles.length; index++) {
+        if (mounted) {
+          setState(() {
+            _submitStatus =
+                'جارٍ تجهيز الصورة ${index + 1} من ${pickedFiles.length}...';
+          });
+        }
+
+        final source = pickedFiles[index];
+        final prepared = await ImageUploadPreprocessor.prepare(
+          source,
+        ).timeout(const Duration(seconds: 30));
+        if (prepared.path != source.path) {
+          preparedTempPaths.add(prepared.path);
+        }
+        imagesData.add(
+          await MultipartFile.fromFile(
+            prepared.path,
+            filename: File(prepared.path).uri.pathSegments.last,
           ),
-        ),
-      );
+        );
+      }
 
       final regionId = _selectedCity?.region?.id ?? _selectedRegion?.id;
+      final districtId = _selectedDistrict?.id.toString() ?? '';
+      final districtFree = _selectedDistrict == null
+          ? _districtFreeTextCtrl.text.trim()
+          : '';
 
       final formFields = <String, dynamic>{
         'seller_type': _sellerType,
@@ -368,47 +1021,95 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         'price_hidden': (_priceOption == _PriceOption.callForPrice) ? '1' : '0',
         'show_phone_publicly': _showPhonePublicly ? '1' : '0',
         'contact_phone': _phoneCtrl.text.trim(),
-        if (_selectedDistrict != null)
-          'district_id': _selectedDistrict!.id.toString()
-        else if (_districtFreeTextCtrl.text.trim().isNotEmpty)
-          'district_name_free': _districtFreeTextCtrl.text.trim(),
+        // Editing has to send both keys even when empty. Omitting them left
+        // the previously saved district on the record, so clearing it — or
+        // moving the ad to another city — silently kept the old one, and the
+        // ad ended up with a district belonging to a different city.
+        if (_isEditMode || districtId.isNotEmpty) 'district_id': districtId,
+        if (_isEditMode || districtFree.isNotEmpty)
+          'district_name_free': districtFree,
         'pledge_accepted': '1',
         if (_latitude != null) 'latitude': _latitude.toString(),
         if (_longitude != null) 'longitude': _longitude.toString(),
         ..._fieldValues.map((k, v) => MapEntry('fields[$k]', v)),
       };
 
-      if (!_isEditMode) {
-        formFields['category_id'] = _selectedCategory!.id.toString();
+      formFields['category_id'] = _selectedCategory!.id.toString();
+
+      if (_isEditMode) {
+        // The gallery as the seller arranged it. Existing photos go by id and
+        // ones added in this edit by their position in images[], so either can
+        // be the cover. Only meaningful on edit — a new ad's images are already
+        // stored in upload order.
+        var uploadIndex = 0;
+        formFields['image_order[]'] = [
+          for (final entry in _gallery)
+            entry.existing?.id.toString() ?? 'new:${uploadIndex++}',
+        ];
       }
 
       final formData = FormData.fromMap({
         ...formFields,
         if (imagesData.isNotEmpty) 'images[]': imagesData,
+        if (_removedImageIds.isNotEmpty)
+          'remove_image_ids[]': _removedImageIds
+              .map((id) => id.toString())
+              .toList(),
       });
+
+      if (mounted) {
+        setState(() => _submitStatus = 'جارٍ رفع الصور... 0%');
+      }
 
       final AdDetailModel ad;
       if (_isEditMode) {
         ad = await ref
             .read(adRepositoryProvider)
-            .updateAd(widget.adId!, formData);
+            .updateAd(
+              widget.adId!,
+              formData,
+              onSendProgress: _onUploadProgress,
+            );
       } else {
-        ad = await ref.read(adRepositoryProvider).createAd(formData);
+        ad = await ref
+            .read(adRepositoryProvider)
+            .createAd(formData, onSendProgress: _onUploadProgress);
+        unawaited(
+          ref
+              .read(marketingTrackingProvider)
+              .track(
+                MarketingEvent.publishAd,
+                properties: {
+                  'content_id': ad.id.toString(),
+                  'content_name': ad.title,
+                  if (ad.category != null)
+                    'content_category': ad.category!.nameAr,
+                  'content_type': 'product',
+                  'event_tag': 'publish_ad',
+                  if (ad.price != null) 'value': ad.price,
+                  if (ad.price != null) 'currency': 'SAR',
+                },
+              ),
+        );
       }
 
       if (mounted) {
         ref.invalidate(adsFeedProvider);
         ref.invalidate(myAdsProvider);
+        // adDetailProvider is a plain (non-autoDispose) family, so the ad page
+        // we are about to open would otherwise rebuild from the copy cached
+        // before the edit and show the seller their old values back.
+        ref.invalidate(adDetailProvider(ad.id));
 
-        // Paid ad — route to the bank-transfer + receipt-upload screen instead
-        // of the ad detail. The ad stays pending until the transfer is approved.
-        if (publishFee != null && publishFee > 0) {
-          context.go('/ads/${ad.id}/pay', extra: publishFee);
-          return;
-        }
-
+        // Resolved before navigating: this screen's context is defunct the
+        // moment go() replaces the route.
+        final messenger = ScaffoldMessenger.of(context);
+        // The draft is committed — leaving now must not prompt to discard it,
+        // and the parked copy must not resurface on the next new ad.
+        _dirty = false;
+        unawaited(_discardDraft());
         context.go('/ads/${ad.id}');
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -428,6 +1129,14 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
           ),
         );
       }
+    } on TimeoutException {
+      await _showSubmitError(
+        'تعذّر تجهيز إحدى الصور في الوقت المتوقع. أزل الصورة وحاول إضافتها مرة أخرى.',
+      );
+    } on PlatformException catch (e) {
+      await _showSubmitError(
+        e.message ?? 'تعذّر تجهيز إحدى الصور للرفع. حاول اختيارها مرة أخرى.',
+      );
     } on ApiException catch (e) {
       final errors = (e.errors ?? {}).map(
         (k, v) => MapEntry(k, (v as List).first as String),
@@ -461,7 +1170,20 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      for (final path in preparedTempPaths) {
+        try {
+          await File(path).delete();
+        } on FileSystemException {
+          // Temporary upload files are best-effort cleanup only.
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _submitStatus = null;
+          _uploadPercent = null;
+        });
+      }
     }
   }
 
@@ -469,6 +1191,20 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      // The wizard owns the back gesture. Android's back button and the iOS
+      // edge swipe used to pop the whole route from step 4, throwing away a
+      // fully written ad without so much as a prompt.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        unawaited(_handleBackIntent());
+      },
+      child: _buildWizard(),
+    );
+  }
+
+  Widget _buildWizard() {
     if (_loadingExisting) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -503,104 +1239,164 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
             child: PageView(
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
-              children: [
-                // ── Step 0: Pledge (القسم) ─────────────────────────────────
-                _Step0Pledge(
-                  pledgeAccepted: _pledgeAccepted,
-                  onPledgeChanged: (v) => setState(() => _pledgeAccepted = v),
-                  onNext: _pledgeAccepted ? _next : () {},
-                ),
-                // ── Step 1: Category ───────────────────────────────────────
-                _Step1Category(
-                  selected: _selectedCategory,
-                  isLocked: _isEditMode,
-                  onSelect: (cat) {
-                    setState(() => _selectedCategory = cat);
-                    _next();
-                  },
-                  onNextLocked: _isEditMode ? () => _jumpToStep(2) : null,
-                ),
-                // ── Step 2: Details ────────────────────────────────────────
-                _Step2Details(
-                  titleCtrl: _titleCtrl,
-                  descCtrl: _descCtrl,
-                  priceCtrl: _priceCtrl,
-                  phoneCtrl: _phoneCtrl,
-                  priceOption: _priceOption,
-                  showPhonePublicly: _showPhonePublicly,
-                  categoryId: _selectedCategory?.id,
-                  fieldValues: _fieldValues,
-                  errors: _fieldErrors,
-                  onPriceOptionChanged: (v) => setState(() => _priceOption = v),
-                  onShowPhoneChanged: (v) =>
-                      setState(() => _showPhonePublicly = v),
-                  onFieldChanged: (k, v) => setState(() => _fieldValues[k] = v),
-                  dynCtrl: _dynCtrl,
-                  onBack: _prev,
-                  onNext: () {
-                    if (_step2Valid) _next();
-                  },
-                ),
-                // ── Step 3: Images ─────────────────────────────────────────
-                _Step3Images(
-                  images: _images,
-                  onPickGallery: _pickImages,
-                  onPickCamera: _pickFromCamera,
-                  onRemove: (i) => setState(() => _images.removeAt(i)),
-                  onBack: _prev,
-                  onNext: _next,
-                ),
-                // ── Step 4: Location + Submit ──────────────────────────────
-                _Step4LocationSubmit(
-                  selectedRegion: _selectedRegion,
-                  selectedCity: _selectedCity,
-                  selectedDistrict: _selectedDistrict,
-                  districtsForCity: _districtsForCity,
-                  loadingDistricts: _loadingDistricts,
-                  districtFreeTextCtrl: _districtFreeTextCtrl,
-                  latitude: _latitude,
-                  longitude: _longitude,
-                  submitting: _submitting,
-                  isEditMode: _isEditMode,
-                  priceText: _priceCtrl.text.trim(),
-                  categoryId: _selectedCategory?.id,
-                  sellerType: _sellerType,
-                  onSelectLocation: (r, c) {
-                    setState(() {
-                      _selectedRegion = r;
-                      _selectedCity = c;
-                      _selectedDistrict = null;
-                      _districtFreeTextCtrl.clear();
-                    });
-                    if (c != null) _loadDistricts(c.id);
-                  },
-                  onPickDistrict: _showDistrictPicker,
-                  onClearDistrict: () =>
-                      setState(() => _selectedDistrict = null),
-                  onPickMapLocation: () async {
-                    final picked = await Navigator.push<LatLng>(
-                      context,
-                      MaterialPageRoute(
-                        fullscreenDialog: true,
-                        builder: (_) => MapLocationPicker(
-                          initialLocation:
-                              (_latitude != null && _longitude != null)
-                              ? LatLng(_latitude!, _longitude!)
-                              : null,
+              children:
+                  [
+                        // ── Step 0: Pledge (القسم) ─────────────────────────────────
+                        _Step0Pledge(
+                          pledgeAccepted: _pledgeAccepted,
+                          onPledgeChanged: (v) => setState(() {
+                            _pledgeAccepted = v;
+                            _touch();
+                          }),
+                          onNext: _pledgeAccepted ? _next : () {},
                         ),
-                      ),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _latitude = picked.latitude;
-                        _longitude = picked.longitude;
-                      });
-                    }
-                  },
-                  onBack: _prev,
-                  onSubmit: _handleSubmit,
-                ),
-              ],
+                        // ── Step 1: Category ───────────────────────────────────────
+                        _Step1Category(
+                          selected: _selectedCategory,
+                          isLocked: false,
+                          browsing: _browsingCategory,
+                          onBrowse: (cat) =>
+                              setState(() => _browsingCategory = cat),
+                          onSelect: (cat) {
+                            _selectCategory(cat);
+                            _next();
+                          },
+                          onNextLocked: null,
+                        ),
+                        // ── Step 2: Details ────────────────────────────────────────
+                        _Step2Details(
+                          titleCtrl: _titleCtrl,
+                          descCtrl: _descCtrl,
+                          priceCtrl: _priceCtrl,
+                          phoneCtrl: _phoneCtrl,
+                          priceOption: _priceOption,
+                          showPhonePublicly: _showPhonePublicly,
+                          categoryId: _selectedCategory?.id,
+                          fieldValues: _fieldValues,
+                          errors: _fieldErrors,
+                          onPriceOptionChanged: (v) => setState(() {
+                            _priceOption = v;
+                            _touch();
+                          }),
+                          onShowPhoneChanged: (v) => setState(() {
+                            _showPhonePublicly = v;
+                            _touch();
+                          }),
+                          onFieldChanged: (k, v) => setState(() {
+                            _fieldValues[k] = v;
+                            _touch();
+                          }),
+                          dynCtrl: _dynCtrl,
+                          onBack: _prev,
+                          onNext: () {
+                            if (_step2Valid) _next();
+                          },
+                        ),
+                        // ── Step 3: Images ─────────────────────────────────────────
+                        _Step3Images(
+                          isEditMode: _isEditMode,
+                          gallery: _gallery,
+                          onPickGallery: () => _pickImages(),
+                          onReplaceGallery: _isEditMode && _hasExistingImages
+                              ? () => _pickImages(replaceExisting: true)
+                              : null,
+                          onPickCamera: _pickFromCamera,
+                          onRemove: _removeImageAt,
+                          onReorder: _reorderImage,
+                          onBack: _prev,
+                          onNext: _next,
+                        ),
+                        // ── Step 4: Location + Submit ──────────────────────────────
+                        _Step4LocationSubmit(
+                          selectedRegion: _selectedRegion,
+                          selectedCity: _selectedCity,
+                          selectedDistrict: _selectedDistrict,
+                          districtsForCity: _districtsForCity,
+                          loadingDistricts: _loadingDistricts,
+                          districtFreeTextCtrl: _districtFreeTextCtrl,
+                          latitude: _latitude,
+                          longitude: _longitude,
+                          submitting: _submitting,
+                          submitStatus: _submitStatus,
+                          isEditMode: _isEditMode,
+                          priceText: _priceCtrl.text.trim(),
+                          categoryId: _selectedCategory?.id,
+                          sellerType: _sellerType,
+                          onSelectLocation: (r, c) {
+                            final cityChanged = _selectedCity?.id != c?.id;
+                            setState(() {
+                              _selectedRegion =
+                                  r ?? c?.region ?? _selectedRegion;
+                              _selectedCity = c;
+                              _touch();
+                              // Only an actual change resets the rest: re-picking the
+                              // same city used to silently drop the district and map
+                              // pin the seller had already chosen.
+                              if (cityChanged) {
+                                _selectedDistrict = null;
+                                _districtFreeTextCtrl.clear();
+                                // A pin chosen for another city must never override the
+                                // newly selected city's map centre.
+                                _latitude = null;
+                                _longitude = null;
+                              }
+                            });
+                            if (c != null && cityChanged) _loadDistricts(c.id);
+                          },
+                          onPickDistrict: _showDistrictPicker,
+                          onClearDistrict: () => setState(() {
+                            _selectedDistrict = null;
+                            _touch();
+                          }),
+                          onPickMapLocation: () async {
+                            final city = _selectedCity;
+                            if (city == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'اختر المدينة أولاً لعرض خريطتها',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            final picked = await Navigator.push<LatLng>(
+                              context,
+                              MaterialPageRoute(
+                                fullscreenDialog: true,
+                                builder: (_) => MapLocationPicker(
+                                  initialLocation:
+                                      (_latitude != null && _longitude != null)
+                                      ? LatLng(_latitude!, _longitude!)
+                                      : null,
+                                  initialCenter:
+                                      (city.latitude != null &&
+                                          city.longitude != null)
+                                      ? LatLng(city.latitude!, city.longitude!)
+                                      : null,
+                                  cityName: city.nameAr,
+                                ),
+                              ),
+                            );
+                            if (picked != null && mounted) {
+                              setState(() {
+                                _latitude = picked.latitude;
+                                _longitude = picked.longitude;
+                                _touch();
+                              });
+                            }
+                          },
+                          onBack: _prev,
+                          onSubmit: _handleSubmit,
+                        ),
+                      ]
+                      // PageView keeps no cache extent, so every step off-screen was
+                      // torn down and rebuilt from scratch — losing scroll position,
+                      // the sub-category the seller had drilled into, and the state of
+                      // the spec dropdowns. Going back now returns to what they left.
+                      .map<Widget>((page) => _KeepAlivePage(child: page))
+                      .toList(),
             ),
           ),
         ],
@@ -619,9 +1415,30 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen> {
     ),
     leading: IconButton(
       icon: const Icon(Icons.close_rounded),
-      onPressed: () => context.pop(),
+      onPressed: () => unawaited(_closeWizard()),
     ),
   );
+}
+
+/// Holds a wizard step in the tree while the seller is looking at another one.
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }
 
 // ── Step Indicator ────────────────────────────────────────────────────────────
@@ -940,12 +1757,20 @@ class _Step0Pledge extends StatelessWidget {
 class _Step1Category extends ConsumerStatefulWidget {
   final CategoryModel? selected;
   final bool isLocked;
+
+  /// The parent being drilled into. Owned by the wizard so that leaving the
+  /// step and coming back returns to the same sub-list, and so the system back
+  /// gesture can step out of the sub-list before it steps out of the wizard.
+  final CategoryModel? browsing;
+  final void Function(CategoryModel?) onBrowse;
   final void Function(CategoryModel) onSelect;
   final VoidCallback? onNextLocked;
 
   const _Step1Category({
     required this.selected,
     required this.isLocked,
+    required this.browsing,
+    required this.onBrowse,
     required this.onSelect,
     this.onNextLocked,
   });
@@ -955,8 +1780,6 @@ class _Step1Category extends ConsumerStatefulWidget {
 }
 
 class _Step1CategoryState extends ConsumerState<_Step1Category> {
-  CategoryModel? _browsing; // parent being drilled into
-
   @override
   Widget build(BuildContext context) {
     if (widget.isLocked) return _buildLocked();
@@ -984,9 +1807,16 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
           ],
         ),
       ),
-      data: (cats) => _browsing != null
-          ? _buildSubList(_browsing!)
-          : _buildParentList(cats),
+      data: (cats) {
+        final browsing = widget.browsing;
+        // The seller may have drilled into a category before a refresh
+        // reshuffled the list; fall back to the top level rather than showing
+        // a stale branch.
+        if (browsing != null && cats.any((c) => c.id == browsing.id)) {
+          return _buildSubList(cats.firstWhere((c) => c.id == browsing.id));
+        }
+        return _buildParentList(cats);
+      },
     );
   }
 
@@ -1130,7 +1960,7 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
               return InkWell(
                 onTap: () {
                   if (cat.children.isNotEmpty) {
-                    setState(() => _browsing = cat);
+                    widget.onBrowse(cat);
                   } else {
                     widget.onSelect(cat);
                   }
@@ -1222,7 +2052,7 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
       children: [
         // Back header
         InkWell(
-          onTap: () => setState(() => _browsing = null),
+          onTap: () => widget.onBrowse(null),
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             decoration: const BoxDecoration(
@@ -1401,6 +2231,14 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
         ? ref.watch(categoryFieldsProvider(widget.categoryId!))
         : null;
     final categoryFields = categoryFieldsState?.asData?.value ?? const [];
+    // Until the specs actually arrive there is nothing to check, and an empty
+    // list read as "no required fields" — so a seller on a slow connection
+    // could walk straight past the required car fields and only find out when
+    // the API rejected the finished ad.
+    final categoryFieldsReady =
+        categoryFieldsState == null || categoryFieldsState.hasValue;
+    final categoryFieldsFailed =
+        categoryFieldsState != null && categoryFieldsState.hasError;
     final requiredFieldsFilled = categoryFields
         .where((f) => f.isRequired)
         .every((f) => (widget.fieldValues[f.fieldKey] ?? '').trim().isNotEmpty);
@@ -1417,6 +2255,7 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
         titleText.length >= kTitleMinLen &&
         descText.length >= kDescMinLen &&
         phoneValid &&
+        categoryFieldsReady &&
         requiredFieldsFilled &&
         (widget.priceOption == _PriceOption.callForPrice ||
             widget.priceCtrl.text.trim().isNotEmpty);
@@ -1470,6 +2309,54 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
           ),
 
           // ── Dynamic category fields (e.g. cars: النوع/الموديل/الممشى/اللون) ──
+          if (categoryFieldsState != null && categoryFieldsState.isLoading) ...[
+            _SectionHeader(title: 'المواصفات', icon: Icons.tune_rounded),
+            const SizedBox(height: 12),
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ),
+            ),
+          ] else if (categoryFieldsFailed) ...[
+            _SectionHeader(title: 'المواصفات', icon: Icons.tune_rounded),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'تعذّر تحميل مواصفات هذا القسم.',
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => ref.invalidate(
+                      categoryFieldsProvider(widget.categoryId!),
+                    ),
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (categoryFields.isNotEmpty) ...[
             _SectionHeader(title: 'المواصفات', icon: Icons.tune_rounded),
             const SizedBox(height: 12),
@@ -1477,11 +2364,24 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               final value = (widget.fieldValues[f.fieldKey] ?? '').trim();
               final missing = f.isRequired && value.isEmpty;
               if (f.options.isNotEmpty) {
+                // A saved value that is no longer one of the options (the admin
+                // renamed it, or it came from a category the seller has since
+                // switched away from) used to trip DropdownButton's
+                // "exactly one item" assertion. Keep it selectable instead of
+                // dropping the seller's spec on the floor.
+                final saved = widget.fieldValues[f.fieldKey];
+                final isStale =
+                    saved != null &&
+                    saved.isNotEmpty &&
+                    !f.options.contains(saved);
                 return _FormField(
                   label: f.labelAr,
                   required: f.isRequired,
                   child: DropdownButtonFormField<String>(
-                    initialValue: widget.fieldValues[f.fieldKey],
+                    key: ValueKey('${f.fieldKey}:${f.options.length}'),
+                    initialValue: (saved != null && saved.isEmpty)
+                        ? null
+                        : saved,
                     hint: Text(
                       f.placeholderAr ?? 'اختر...',
                       style: const TextStyle(color: AppTheme.neutralGray500),
@@ -1489,14 +2389,19 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                     decoration: _inputDecoration(
                       error: missing ? 'هذا الحقل مطلوب' : null,
                     ),
-                    items: f.options
-                        .map(
-                          (o) => DropdownMenuItem(
-                            value: o,
-                            child: Text(o, textDirection: TextDirection.rtl),
-                          ),
-                        )
-                        .toList(),
+                    items: [
+                      if (isStale)
+                        DropdownMenuItem(
+                          value: saved,
+                          child: Text(saved, textDirection: TextDirection.rtl),
+                        ),
+                      ...f.options.map(
+                        (o) => DropdownMenuItem(
+                          value: o,
+                          child: Text(o, textDirection: TextDirection.rtl),
+                        ),
+                      ),
+                    ],
                     onChanged: (v) {
                       if (v != null) widget.onFieldChanged(f.fieldKey, v);
                     },
@@ -1580,12 +2485,9 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
                 decoration: _inputDecoration(
                   hint: '0',
                   error: widget.errors['price'],
-                  prefix: const Text(
-                    'ر.س  ',
-                    style: TextStyle(
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  prefix: const Padding(
+                    padding: EdgeInsetsDirectional.only(end: 8),
+                    child: RiyalIcon(size: 16, color: AppTheme.primaryBlue),
                   ),
                 ),
               ),
@@ -1605,10 +2507,19 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
               setState(() {});
             },
           ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'رقم الجوال اختياري. اتركه فارغاً وسيتواصل معك المشترون عبر المحادثة داخل التطبيق.',
+              style: TextStyle(fontSize: 12, color: AppTheme.neutralGray700),
+            ),
+          ),
           const SizedBox(height: 8),
 
           _FormField(
-            label: 'رقم التواصل',
+            label: widget.showPhonePublicly
+                ? 'رقم التواصل'
+                : 'رقم التواصل (اختياري)',
             required: widget.showPhonePublicly,
             child: TextField(
               controller: widget.phoneCtrl,
@@ -1644,23 +2555,44 @@ class _Step2DetailsState extends ConsumerState<_Step2Details> {
 
 // ── Step 3: Images ────────────────────────────────────────────────────────────
 
+/// One tile in the ad's photo gallery: either an image already stored on the
+/// ad (addressed by its server id) or a file picked during this session (sent
+/// as an upload and addressed by its position among the uploads).
+class _GalleryEntry {
+  final AdImageModel? existing;
+  final XFile? file;
+
+  const _GalleryEntry.existing(AdImageModel this.existing) : file = null;
+  const _GalleryEntry.picked(XFile this.file) : existing = null;
+
+  bool get isExisting => existing != null;
+}
+
 class _Step3Images extends StatelessWidget {
-  final List<XFile> images;
+  final bool isEditMode;
+  final List<_GalleryEntry> gallery;
   final VoidCallback onPickGallery, onPickCamera;
+  final VoidCallback? onReplaceGallery;
   final void Function(int) onRemove;
+  final void Function(int from, int to) onReorder;
   final VoidCallback onBack, onNext;
 
   const _Step3Images({
-    required this.images,
+    required this.isEditMode,
+    required this.gallery,
     required this.onPickGallery,
     required this.onPickCamera,
+    required this.onReplaceGallery,
     required this.onRemove,
+    required this.onReorder,
     required this.onBack,
     required this.onNext,
   });
 
   @override
   Widget build(BuildContext context) {
+    final totalImages = gallery.length;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
@@ -1682,21 +2614,28 @@ class _Step3Images extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'صور الإعلان',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    'أضف حتى 10 صور • الصورة الأولى ستكون الرئيسية',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.neutralGray500,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'صور الإعلان',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      isEditMode
+                          ? 'أضف أو احذف الصور، ورتّبها بالسحب — الأولى هي الرئيسية'
+                          : 'أضف حتى 10 صور • رتّبها بالسحب، والأولى هي الرئيسية',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.neutralGray500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1705,16 +2644,16 @@ class _Step3Images extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${images.length}/10 صور',
+                '$totalImages/10 صور',
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.neutralGray600,
                 ),
               ),
-              if (images.isNotEmpty)
+              if (totalImages > 0)
                 Text(
-                  'اضغط × لحذف صورة',
+                  'اضغط مطولاً للترتيب • ★ للرئيسية',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.neutralGray500,
@@ -1730,18 +2669,21 @@ class _Step3Images extends StatelessWidget {
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: images.length + (images.length < 10 ? 1 : 0),
+              itemCount: totalImages + (totalImages < 10 ? 1 : 0),
               itemBuilder: (context, i) {
-                if (i == images.length) {
+                if (i == totalImages) {
                   return _AddImageTile(
                     onPickGallery: onPickGallery,
                     onPickCamera: onPickCamera,
+                    onReplaceGallery: onReplaceGallery,
+                    isEditMode: isEditMode,
                   );
                 }
-                return _ImageTile(
-                  file: images[i],
-                  isPrimary: i == 0,
-                  onRemove: () => onRemove(i),
+
+                return _DraggableImageSlot(
+                  index: i,
+                  onReorder: onReorder,
+                  child: _tileAt(i),
                 );
               },
             ),
@@ -1749,23 +2691,151 @@ class _Step3Images extends StatelessWidget {
           const SizedBox(height: 12),
           _NavRow(
             onBack: onBack,
-            onNext: images.isNotEmpty ? onNext : null,
+            onNext: totalImages > 0 ? onNext : null,
             nextLabel: 'التالي: الموقع',
           ),
         ],
       ),
     );
   }
+
+  Widget _tileAt(int index) {
+    final entry = gallery[index];
+    final isPrimary = index == 0;
+    // Position 0 is the cover, so "make cover" is just a move to the front.
+    final onMakeCover = isPrimary ? null : () => onReorder(index, 0);
+    final existing = entry.existing;
+
+    if (existing != null) {
+      return _ExistingImageTile(
+        image: existing,
+        isPrimary: isPrimary,
+        onRemove: () => onRemove(index),
+        onMakeCover: onMakeCover,
+      );
+    }
+
+    return _ImageTile(
+      file: entry.file!,
+      isPrimary: isPrimary,
+      onRemove: () => onRemove(index),
+      onMakeCover: onMakeCover,
+    );
+  }
 }
 
-class _ImageTile extends StatelessWidget {
-  final XFile file;
+/// Long-press a photo to drag it onto another slot. The grid's first photo is
+/// the ad's cover, so dragging one to the front is how the cover is changed.
+class _DraggableImageSlot extends StatelessWidget {
+  final int index;
+  final void Function(int from, int to) onReorder;
+  final Widget child;
+
+  const _DraggableImageSlot({
+    required this.index,
+    required this.onReorder,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<int>(
+      onWillAcceptWithDetails: (details) => details.data != index,
+      onAcceptWithDetails: (details) => onReorder(details.data, index),
+      builder: (context, candidate, _) {
+        return LongPressDraggable<int>(
+          data: index,
+          feedback: Material(
+            color: Colors.transparent,
+            child: Opacity(
+              opacity: .9,
+              child: SizedBox(width: 104, height: 104, child: child),
+            ),
+          ),
+          childWhenDragging: Opacity(opacity: .25, child: child),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: candidate.isEmpty
+                  ? null
+                  : Border.all(color: AppTheme.primaryBlue, width: 2.5),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One line of the fees card: what the sale costs, and for whom. A null amount
+/// renders as مجاني rather than "0 ر.س".
+class _CommissionRow extends StatelessWidget {
+  final String label;
+  final double? amount;
+
+  const _CommissionRow({required this.label, required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.neutralGray700,
+            ),
+          ),
+        ),
+        RiyalText(
+          amount != null ? '${amount!.toStringAsFixed(0)} ر.س' : 'مجاني',
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.primaryBlue,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One-tap alternative to dragging a photo all the way to the front.
+class _MakeCoverButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MakeCoverButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: .55),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.star_rounded, size: 16, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _ExistingImageTile extends StatelessWidget {
+  final AdImageModel image;
   final bool isPrimary;
   final VoidCallback onRemove;
-  const _ImageTile({
-    required this.file,
+  final VoidCallback? onMakeCover;
+
+  const _ExistingImageTile({
+    required this.image,
     required this.isPrimary,
     required this.onRemove,
+    this.onMakeCover,
   });
 
   @override
@@ -1775,63 +2845,151 @@ class _ImageTile extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: Image.file(File(file.path), fit: BoxFit.cover),
-        ),
-        if (isPrimary)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: .85),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(10),
-                  bottomRight: Radius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'رئيسية',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+          child: AppCachedImage(
+            imageUrl: image.imageUrl,
+            lowResolutionUrl: image.thumbnailUrl,
+            fit: BoxFit.cover,
+            memCacheWidth: 420,
           ),
+        ),
+        if (isPrimary) const _PrimaryImageBadge(),
         Positioned(
           top: 4,
           left: 4,
-          child: GestureDetector(
-            onTap: onRemove,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
+          child: _RemoveImageButton(onRemove: onRemove),
+        ),
+        if (onMakeCover != null)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: _MakeCoverButton(onTap: onMakeCover!),
+          ),
+      ],
+    );
+  }
+}
+
+class _ImageTile extends StatelessWidget {
+  final XFile file;
+  final bool isPrimary;
+  final VoidCallback onRemove;
+  final VoidCallback? onMakeCover;
+  const _ImageTile({
+    required this.file,
+    required this.isPrimary,
+    required this.onRemove,
+    this.onMakeCover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.file(
+            File(file.path),
+            key: ValueKey(file.path),
+            fit: BoxFit.cover,
+            // Undecorated, ten 12MP photos decode to ~500MB of bitmaps for a
+            // grid of 120px thumbnails — far past the image cache's 100MB
+            // budget, which thrashes and, on Android, gets the activity killed
+            // behind the photo picker. That is what made picked photos vanish.
+            cacheWidth: 420,
+            gaplessPlayback: true,
+            errorBuilder: (context, _, __) => Container(
+              color: AppTheme.neutralGray100,
+              alignment: Alignment.center,
               child: const Icon(
-                Icons.close_rounded,
-                color: Colors.white,
-                size: 14,
+                Icons.broken_image_outlined,
+                color: AppTheme.neutralGray400,
+                size: 22,
               ),
             ),
           ),
         ),
+        if (isPrimary) const _PrimaryImageBadge(),
+        Positioned(
+          top: 4,
+          left: 4,
+          child: _RemoveImageButton(onRemove: onRemove),
+        ),
+        if (onMakeCover != null)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: _MakeCoverButton(onTap: onMakeCover!),
+          ),
       ],
+    );
+  }
+}
+
+class _PrimaryImageBadge extends StatelessWidget {
+  const _PrimaryImageBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryBlue.withValues(alpha: .85),
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(10),
+            bottomRight: Radius.circular(10),
+          ),
+        ),
+        child: const Text(
+          'رئيسية',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoveImageButton extends StatelessWidget {
+  final VoidCallback onRemove;
+
+  const _RemoveImageButton({required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onRemove,
+      child: Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          color: Colors.black54,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+      ),
     );
   }
 }
 
 class _AddImageTile extends StatelessWidget {
   final VoidCallback onPickGallery, onPickCamera;
+  final VoidCallback? onReplaceGallery;
+  final bool isEditMode;
+
   const _AddImageTile({
     required this.onPickGallery,
     required this.onPickCamera,
+    required this.onReplaceGallery,
+    required this.isEditMode,
   });
 
   @override
@@ -1862,12 +3020,29 @@ class _AddImageTile extends StatelessWidget {
                     Icons.photo_library_rounded,
                     color: AppTheme.primaryBlue,
                   ),
-                  title: const Text('اختر من المعرض'),
+                  title: Text(
+                    isEditMode ? 'إضافة صور من المعرض' : 'اختر من المعرض',
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     onPickGallery();
                   },
                 ),
+                if (onReplaceGallery != null)
+                  ListTile(
+                    leading: const Icon(
+                      Icons.find_replace_rounded,
+                      color: AppTheme.primaryBlue,
+                    ),
+                    title: const Text('استبدال كل الصور الحالية'),
+                    subtitle: const Text(
+                      'يحذف الصور القديمة ويضع المختارة مكانها',
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      onReplaceGallery!();
+                    },
+                  ),
                 ListTile(
                   leading: const Icon(
                     Icons.camera_alt_rounded,
@@ -1900,7 +3075,7 @@ class _AddImageTile extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'إضافة صورة',
+              isEditMode ? 'إدارة الصور' : 'إضافة صورة',
               style: TextStyle(
                 fontSize: 11,
                 color: AppTheme.neutralGray500,
@@ -1926,10 +3101,11 @@ class _Step4LocationSubmit extends ConsumerWidget {
   final double? latitude;
   final double? longitude;
   final bool submitting, isEditMode;
+  final String? submitStatus;
   final String? priceText;
   final int? categoryId;
   final String sellerType;
-  final void Function(RegionModel, CityModel?) onSelectLocation;
+  final void Function(RegionModel?, CityModel?) onSelectLocation;
   final VoidCallback onPickDistrict;
   final VoidCallback onClearDistrict;
   final VoidCallback onPickMapLocation;
@@ -1945,6 +3121,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
     required this.latitude,
     required this.longitude,
     required this.submitting,
+    required this.submitStatus,
     required this.isEditMode,
     required this.priceText,
     required this.categoryId,
@@ -1998,7 +3175,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                 initialSelection: selectedCity != null ? [selectedCity!] : null,
               );
               if (result != null && result.isNotEmpty) {
-                onSelectLocation(result.first.region!, result.first);
+                // A city's region can come back null from the picker; the ad
+                // only needs the city, so this must not throw.
+                onSelectLocation(result.first.region, result.first);
               }
             },
             child: Container(
@@ -2057,7 +3236,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: (latitude != null)
+                color: selectedCity == null
+                    ? AppTheme.neutralGray100
+                    : (latitude != null)
                     ? AppTheme.primaryBlue.withValues(alpha: .05)
                     : AppTheme.neutralGray50,
                 border: Border.all(
@@ -2083,7 +3264,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          (latitude != null)
+                          selectedCity == null
+                              ? 'اختر المدينة أولاً لعرض خريطتها'
+                              : (latitude != null)
                               ? 'تم تحديد الموقع على الخريطة'
                               : 'تحديد الموقع على الخريطة (اختياري)',
                           style: TextStyle(
@@ -2091,7 +3274,9 @@ class _Step4LocationSubmit extends ConsumerWidget {
                             fontWeight: (latitude != null)
                                 ? FontWeight.w700
                                 : FontWeight.normal,
-                            color: (latitude != null)
+                            color: selectedCity == null
+                                ? AppTheme.neutralGray400
+                                : (latitude != null)
                                 ? AppTheme.neutralGray900
                                 : AppTheme.neutralGray500,
                           ),
@@ -2147,7 +3332,7 @@ class _Step4LocationSubmit extends ConsumerWidget {
                   ),
                 ),
               )
-            else if (hasDistrictsLoaded)
+            else if (hasDistrictsLoaded) ...[
               GestureDetector(
                 onTap: onPickDistrict,
                 child: Container(
@@ -2205,8 +3390,20 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     ],
                   ),
                 ),
-              )
-            else if (noDistricts)
+              ),
+              if (selectedDistrict == null) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: districtFreeTextCtrl,
+                  textDirection: TextDirection.rtl,
+                  maxLength: 120,
+                  style: const TextStyle(color: AppTheme.neutralGray900),
+                  decoration: _inputDecoration(
+                    hint: 'الحي غير موجود؟ اكتب اسمه هنا (اختياري)',
+                  ),
+                ),
+              ],
+            ] else if (noDistricts)
               TextField(
                 controller: districtFreeTextCtrl,
                 textDirection: TextDirection.rtl,
@@ -2287,30 +3484,26 @@ class _Step4LocationSubmit extends ConsumerWidget {
                           color: AppTheme.neutralGray200,
                         ),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'عمولة البيع (تُدفع بعد إتمام البيع)',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.neutralGray700,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            hasCommission
-                                ? '${preview.commissionAmount.toStringAsFixed(0)} ر.س'
-                                : 'مجاني',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.primaryBlue,
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Vehicle categories charge showrooms less than
+                      // individuals, so both rates are listed rather than only
+                      // whichever one applies to the seller filling this in.
+                      if (preview.hasSeparateSellerRates) ...[
+                        _CommissionRow(
+                          label: 'عمولة البيع للمعارض (تُدفع بعد إتمام البيع)',
+                          amount: preview.commissionDealer!,
+                        ),
+                        const SizedBox(height: 8),
+                        _CommissionRow(
+                          label: 'عمولة البيع للأفراد (تُدفع بعد إتمام البيع)',
+                          amount: preview.commissionIndividual!,
+                        ),
+                      ] else
+                        _CommissionRow(
+                          label: 'عمولة البيع (تُدفع بعد إتمام البيع)',
+                          amount: hasCommission
+                              ? preview.commissionAmount
+                              : null,
+                        ),
                       const SizedBox(height: 8),
                       Text(
                         preview.note,
@@ -2388,13 +3581,30 @@ class _Step4LocationSubmit extends ConsumerWidget {
                     ),
                     child: Center(
                       child: submitting
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    submitStatus ?? 'جارٍ نشر الإعلان...',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -2863,12 +4073,20 @@ class _PrimaryButton extends StatelessWidget {
               ),
               const SizedBox(width: 8),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: enabled ? Colors.white : AppTheme.neutralGray500,
+            // "التالي: الصور" plus its chevron overflows a 390pt-wide phone
+            // (iPhone 12 through 16) — and any label gets longer again under
+            // large Dynamic Type.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: enabled ? Colors.white : AppTheme.neutralGray500,
+                ),
               ),
             ),
           ],
@@ -3009,213 +4227,4 @@ InputDecoration _inputDecoration({
       borderSide: const BorderSide(color: Colors.red, width: 1.5),
     ),
   );
-}
-
-// ── Publish Payment Confirmation Sheet ────────────────────────────────────────
-
-class _PublishPaymentSheet extends StatelessWidget {
-  final double fee;
-  final String categoryName;
-  final String sellerType;
-  final VoidCallback onConfirm;
-
-  const _PublishPaymentSheet({
-    required this.fee,
-    required this.categoryName,
-    required this.sellerType,
-    required this.onConfirm,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: AppTheme.neutralGray200,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          const Text('💳', style: TextStyle(fontSize: 36)),
-          const SizedBox(height: 12),
-          const Text(
-            'رسوم نشر الإعلان',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.neutralGray900,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'قسم: $categoryName',
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppTheme.neutralGray500,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Fee display
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: .06),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppTheme.primaryBlue.withValues(alpha: .2),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'رسوم النشر',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.neutralGray700,
-                  ),
-                ),
-                Text(
-                  '${fee.toStringAsFixed(0)} ر.س',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Payment method — bank transfer (gateways not yet live)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _pmBadge(
-                Icons.account_balance_rounded,
-                'تحويل بنكي',
-                const Color(0xFF1565C0),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'الدفع حالياً عبر تحويل بنكي، ثم إرفاق صورة الإيصال لمراجعته من الإدارة.',
-            textAlign: TextAlign.center,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: AppTheme.neutralGray600,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Non-refundable notice
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.orange.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: Colors.orange.shade700,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'الرسوم غير مستردة وتُخصم من العمولة عند إتمام البيع.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.orange.shade800,
-                      height: 1.4,
-                    ),
-                    textDirection: TextDirection.rtl,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Confirm button
-          ElevatedButton(
-            onPressed: onConfirm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 52),
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            child: Text(
-              'متابعة الدفع عبر تحويل بنكي (${fee.toStringAsFixed(0)} ر.س)',
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'إلغاء',
-              style: TextStyle(color: AppTheme.neutralGray500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pmBadge(IconData icon, String label, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.3)),
-          ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.neutralGray600,
-          ),
-        ),
-      ],
-    );
-  }
 }

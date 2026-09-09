@@ -11,6 +11,34 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
+.realEstateNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: calc(100% - 32px);
+  max-width: 1248px;
+  margin: 10px auto 0;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  color: #7f1d1d;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.realEstateNotice p {
+  margin: 0;
+}
+
+.noticeIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #b91c1c;
+}
+
 .track {
   display: flex;
   flex-wrap: nowrap;
@@ -161,6 +189,13 @@
 
 /* ── Mobile: Compact category tabs ─────────────────────────────────────────── */
 @media (max-width: 639px) {
+  .realEstateNotice {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    padding: 9px 11px;
+    font-size: var(--text-xs);
+  }
+
   .track {
     padding: 8px var(--space-2) 12px;
     gap: var(--space-2);

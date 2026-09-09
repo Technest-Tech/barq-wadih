@@ -7,16 +7,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../notifications/data/notification_providers.dart';
+import '../../../safety/presentation/user_safety_sheet.dart';
 import '../../data/chat_providers.dart';
 import '../../domain/chat_models.dart';
 import '../widgets/chat_background.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/services/image_cache_manager.dart';
+import '../../../../core/services/image_upload_preprocessor.dart';
 
 const _kHeaderBlue = Color(0xFF1B4FE4);
 const _kBubbleSent = Color(0xFFDCF8C6); // WhatsApp green
@@ -40,12 +46,29 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _focusNode = FocusNode();
   bool _uploading = false;
   Map<String, dynamic>? _convMeta;
+  bool _convMetaLoading = false;
+  bool _firestoreInitialised = false;
+  bool _markingRead = false;
+
+  // ── Upload progress ─────────────────────────────────────────────────────────
+  // Label is non-null exactly while an upload banner should be on screen.
+  // Progress is null when the transfer is finished but the Firestore write is
+  // still in flight, which renders as an indeterminate bar.
+  String? _uploadLabel;
+  double? _uploadProgress;
 
   // ── Voice recording state ────────────────────────────────────────────────────
   final _recorder = AudioRecorder();
   bool _isRecording = false;
   Duration _recordingDuration = Duration.zero;
   Timer? _recordingTimer;
+
+  // ── Recorded-but-not-yet-sent clip ──────────────────────────────────────────
+  // Stopping the recorder parks the clip here instead of firing it off, so the
+  // user gets an explicit send button and a chance to hear it back first.
+  String? _pendingVoicePath;
+  int _pendingVoiceSeconds = 0;
+  bool _isPreviewPlaying = false;
 
   // ── Voice playback state ─────────────────────────────────────────────────────
   final _player = AudioPlayer();
@@ -55,20 +78,26 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadConvMeta();
-      _markRead();
-    });
     _player.onPlayerComplete.listen((_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _playingMsgId = null;
           _isPlayerPlaying = false;
+          _isPreviewPlaying = false;
         });
+      }
     });
     _player.onPlayerStateChanged.listen((state) {
-      if (mounted)
-        setState(() => _isPlayerPlaying = state == PlayerState.playing);
+      if (!mounted) return;
+      final playing = state == PlayerState.playing;
+      setState(() {
+        _isPlayerPlaying = playing;
+        // The same player drives message playback and clip preview; only one
+        // of them can be active, so mirror the flag onto whichever is showing.
+        if (_pendingVoicePath != null && _playingMsgId == null) {
+          _isPreviewPlaying = playing;
+        }
+      });
     });
   }
 
@@ -83,7 +112,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     super.dispose();
   }
 
+  /// Fetch the conversation doc once.
+  ///
+  /// Deliberately a get() rather than a snapshots() listener: the security
+  /// rules gate reads on `resource.data.participantUids`, which is null for a
+  /// document that does not exist yet, so a listener attached before the first
+  /// message would be permission-denied and Firestore does not retry a denied
+  /// listener. A freshly opened chat seeds its doc on first send instead, and
+  /// [_refreshConvMetaIfMissing] picks it up from the messages stream.
   Future<void> _loadConvMeta() async {
+    if (_convMetaLoading) return;
+    _convMetaLoading = true;
     try {
       final snap = await FirebaseFirestore.instance
           .collection('conversations')
@@ -94,18 +133,64 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       }
     } catch (_) {
       /* swallow */
+    } finally {
+      _convMetaLoading = false;
     }
+  }
+
+  void _refreshConvMetaIfMissing() {
+    if (_convMeta == null) _loadConvMeta();
   }
 
   Future<void> _markRead() async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
-    await ref
-        .read(chatRepositoryProvider)
-        .markAsRead(
-          conversationId: widget.conversationId,
-          myId: user.id.toString(),
-        );
+    try {
+      await ref
+          .read(chatRepositoryProvider)
+          .markAsRead(
+            conversationId: widget.conversationId,
+            myId: user.id.toString(),
+          );
+    } catch (e) {
+      // Read receipts must never prevent the conversation itself from loading.
+      debugPrint('ConversationScreen: markAsRead failed — $e');
+    }
+
+    // Firestore only tracks the chat's own unread counter. The bell badge is
+    // driven by the backend notification table, which knows nothing about
+    // this — so without the call below, reading the message here left its
+    // "رسالة جديدة" notification unread forever.
+    await clearNotificationsFor(
+      ref,
+      type: 'new_message',
+      conversationId: widget.conversationId,
+    );
+  }
+
+  /// Clear read state for messages that arrive while the chat is on screen.
+  ///
+  /// Guarded twice over: only when the peer actually has an unread message
+  /// waiting, and never concurrently — the stream ticks on every write,
+  /// including our own.
+  void _markIncomingRead(List<MessageModel>? messages, String myId) {
+    if (_markingRead || messages == null) return;
+    final hasUnreadFromPeer = messages.any(
+      (m) => m.senderId != myId && !m.isRead,
+    );
+    if (!hasUnreadFromPeer) return;
+    _markingRead = true;
+    unawaited(_markRead().whenComplete(() => _markingRead = false));
+  }
+
+  void _initialiseFirestoreAfterAuth() {
+    if (_firestoreInitialised) return;
+    _firestoreInitialised = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _loadConvMeta();
+      await _markRead();
+    });
   }
 
   Future<void> _send() async {
@@ -117,16 +202,23 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
     _textController.clear();
 
-    await ref
-        .read(chatRepositoryProvider)
-        .sendMessage(
-          conversationId: widget.conversationId,
-          myId: user.id.toString(),
-          myUid: _firebaseUid(),
-          text: text,
-        );
-
-    _scrollToBottom();
+    try {
+      await ref
+          .read(chatRepositoryProvider)
+          .sendMessage(
+            conversationId: widget.conversationId,
+            myId: user.id.toString(),
+            myUid: _firebaseUid(),
+            text: text,
+          );
+      _scrollToBottom();
+    } on ApiException catch (e) {
+      _textController.text = text;
+      _showError(e.message);
+    } catch (_) {
+      _textController.text = text;
+      _showError('تعذر إرسال الرسالة. حاول مرة أخرى.');
+    }
   }
 
   Future<void> _pickImage() async {
@@ -140,27 +232,72 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
-    setState(() => _uploading = true);
+    _beginUpload('جارٍ إرسال الصورة…');
     try {
+      final prepared = await ImageUploadPreprocessor.prepare(picked);
       await ref
           .read(chatRepositoryProvider)
           .sendImage(
             conversationId: widget.conversationId,
             myId: user.id.toString(),
             myUid: _firebaseUid(),
-            imageFile: File(picked.path),
+            imageFile: File(prepared.path),
+            onProgress: _onUploadProgress,
           );
       _scrollToBottom();
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } catch (_) {
+      _showError('تعذر إرسال الصورة. حاول مرة أخرى.');
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      _endUpload();
     }
+  }
+
+  // ── Upload progress plumbing ─────────────────────────────────────────────────
+
+  void _beginUpload(String label) {
+    setState(() {
+      _uploading = true;
+      _uploadLabel = label;
+      _uploadProgress = 0;
+    });
+  }
+
+  void _onUploadProgress(double progress) {
+    if (!mounted) return;
+    // At 100% the bytes are up but the Firestore write still has to land, so
+    // drop to indeterminate rather than parking a full bar on screen.
+    setState(() => _uploadProgress = progress >= 1 ? null : progress);
+  }
+
+  void _endUpload() {
+    if (!mounted) return;
+    setState(() {
+      _uploading = false;
+      _uploadLabel = null;
+      _uploadProgress = null;
+    });
   }
 
   // ── Voice recording ──────────────────────────────────────────────────────────
 
   Future<void> _startRecording() async {
     final hasPermission = await _recorder.hasPermission();
-    if (!hasPermission) return;
+    if (!hasPermission) {
+      // Returning silently made the record button look broken once the user
+      // had declined the microphone prompt. Say what happened instead.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'لإرسال رسالة صوتية، فعّل إذن الميكروفون من إعدادات جهازك.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
     final tmpDir = await getTemporaryDirectory();
     final filePath =
@@ -181,27 +318,48 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     });
 
     _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _recordingDuration += const Duration(seconds: 1));
+      }
     });
   }
 
+  /// Stop the recorder and hold the clip for review. Sending is a separate,
+  /// deliberate tap — see [_sendPendingVoice].
   Future<void> _stopRecording() async {
     _recordingTimer?.cancel();
     final path = await _recorder.stop();
     final duration = _recordingDuration.inSeconds;
 
+    if (!mounted) return;
     setState(() {
       _isRecording = false;
       _recordingDuration = Duration.zero;
     });
 
-    if (path == null || duration == 0) return;
+    if (path == null || duration == 0) {
+      if (path != null) await _deleteFile(path);
+      return;
+    }
+
+    setState(() {
+      _pendingVoicePath = path;
+      _pendingVoiceSeconds = duration;
+      _isPreviewPlaying = false;
+    });
+  }
+
+  Future<void> _sendPendingVoice() async {
+    final path = _pendingVoicePath;
+    if (path == null) return;
 
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
-    setState(() => _uploading = true);
+    await _player.stop();
+    if (mounted) setState(() => _isPreviewPlaying = false);
+
+    _beginUpload('جارٍ إرسال الرسالة الصوتية…');
     try {
       await ref
           .read(chatRepositoryProvider)
@@ -210,22 +368,78 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             myId: user.id.toString(),
             myUid: _firebaseUid(),
             voiceFile: File(path),
-            duration: duration,
+            duration: _pendingVoiceSeconds,
+            onProgress: _onUploadProgress,
           );
+      await _deleteFile(path);
+      if (mounted) {
+        setState(() {
+          _pendingVoicePath = null;
+          _pendingVoiceSeconds = 0;
+        });
+      }
       _scrollToBottom();
+    } on ApiException catch (e) {
+      // Keep the clip so the send can be retried without re-recording.
+      _showError(e.message);
+    } catch (_) {
+      _showError('تعذر إرسال التسجيل. حاول مرة أخرى.');
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      _endUpload();
     }
+  }
+
+  Future<void> _discardPendingVoice() async {
+    final path = _pendingVoicePath;
+    await _player.stop();
+    if (mounted) {
+      setState(() {
+        _pendingVoicePath = null;
+        _pendingVoiceSeconds = 0;
+        _isPreviewPlaying = false;
+      });
+    }
+    if (path != null) await _deleteFile(path);
+  }
+
+  Future<void> _togglePreviewPlay() async {
+    final path = _pendingVoicePath;
+    if (path == null) return;
+
+    if (_isPreviewPlaying) {
+      await _player.pause();
+      return;
+    }
+    // Hand the player over from any message bubble that was playing.
+    await _player.stop();
+    if (mounted) setState(() => _playingMsgId = null);
+    await _player.play(DeviceFileSource(path));
   }
 
   Future<void> _cancelRecording() async {
     _recordingTimer?.cancel();
-    await _recorder.stop();
-    setState(() {
-      _isRecording = false;
-      _recordingDuration = Duration.zero;
-    });
+    final path = await _recorder.stop();
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _recordingDuration = Duration.zero;
+      });
+    }
+    if (path != null) await _deleteFile(path);
   }
+
+  Future<void> _deleteFile(String path) async {
+    try {
+      final file = File(path);
+      if (file.existsSync()) await file.delete();
+    } catch (_) {
+      /* a stray temp file is harmless */
+    }
+  }
+
+  String _formatSeconds(int secs) =>
+      '${(secs ~/ 60).toString().padLeft(2, '0')}:'
+      '${(secs % 60).toString().padLeft(2, '0')}';
 
   // ── Voice playback ───────────────────────────────────────────────────────────
 
@@ -253,6 +467,34 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         'user_${ref.read(currentUserProvider)?.id ?? 0}';
   }
 
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  Future<void> _openSafetyControls({
+    required String otherId,
+    required String displayName,
+  }) async {
+    final userId = int.tryParse(otherId);
+    if (userId == null) {
+      _showError('تعذر تحديد المستخدم');
+      return;
+    }
+
+    final blocked = await showUserSafetySheet(
+      context,
+      userId: userId,
+      userName: displayName,
+      conversationId: widget.conversationId,
+    );
+    if (blocked == true && mounted) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -270,7 +512,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final user = ref.watch(currentUserProvider);
     final myId = user?.id.toString() ?? '';
 
-    final firebaseAuth = ref.watch(firebaseChatAuthProvider);
+    // A notification can deep-link here while the app is still restoring the
+    // backend session. Do not start Firebase auth with an empty/wrong UID.
+    if (user == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFECE5DD),
+        appBar: _buildAppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final firebaseAuth = ref.watch(firebaseChatAuthProvider(myId));
     if (firebaseAuth.isLoading) {
       return Scaffold(
         backgroundColor: const Color(0xFFECE5DD),
@@ -294,7 +546,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: () => ref.invalidate(firebaseChatAuthProvider),
+                onPressed: () {
+                  _firestoreInitialised = false;
+                  ref.invalidate(firebaseChatAuthProvider(myId));
+                },
                 icon: const Icon(Icons.refresh),
                 label: const Text('إعادة المحاولة'),
               ),
@@ -304,10 +559,19 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       );
     }
 
+    _initialiseFirestoreAfterAuth();
+
     final msgsAsync = ref.watch(messagesStreamProvider(widget.conversationId));
 
-    ref.listen(messagesStreamProvider(widget.conversationId), (_, __) {
+    ref.listen(messagesStreamProvider(widget.conversationId), (_, next) {
       _scrollToBottom();
+      // A chat opened before its first message has no Firestore doc yet, so the
+      // initial metadata fetch came back empty. Sending seeds it — retry here
+      // so the ad header and peer name appear without leaving the screen.
+      _refreshConvMetaIfMissing();
+      // A message that lands while the chat is already open is read on arrival
+      // — it must not leave an unread notification (or badge) behind it.
+      _markIncomingRead(next.value, myId);
     });
 
     return Scaffold(
@@ -318,6 +582,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           top: false,
           child: Column(
             children: [
+              _buildAdHeader(),
               Expanded(
                 child: msgsAsync.when(
                   loading: () =>
@@ -326,6 +591,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   data: (messages) => _buildMessageList(messages, myId),
                 ),
               ),
+              _buildUploadBanner(),
               _buildInputBar(),
             ],
           ),
@@ -404,15 +670,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       orElse: () => '',
     );
 
-    final peerNames = Map<String, String>.from(
-      (_convMeta?['peerNames'] as Map<dynamic, dynamic>? ?? {}).map(
-        (k, v) => MapEntry(k.toString(), v.toString()),
-      ),
+    final peerNames = mergeStringMap(
+      _convMeta?['participantNames'],
+      _convMeta?['peerNames'],
     );
-    final peerAvatars = Map<String, String?>.from(
-      (_convMeta?['peerAvatars'] as Map<dynamic, dynamic>? ?? {}).map(
-        (k, v) => MapEntry(k.toString(), v?.toString()),
-      ),
+    final peerAvatars = mergeNullableStringMap(
+      _convMeta?['participantAvatars'],
+      _convMeta?['peerAvatars'],
     );
 
     final displayName =
@@ -427,6 +691,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       backgroundColor: _kHeaderBlue,
       foregroundColor: Colors.white,
       elevation: 0,
+      automaticallyImplyLeading: false,
+      leading: BackButton(
+        color: Colors.white,
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go(AppRoutes.messages);
+          }
+        },
+      ),
       titleSpacing: 0,
       iconTheme: const IconThemeData(color: Colors.white),
       title: Row(
@@ -499,19 +774,164 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.more_vert),
-          onPressed: () {},
+          onPressed: otherId.isEmpty
+              ? null
+              : () => _openSafetyControls(
+                  otherId: otherId,
+                  displayName: displayName,
+                ),
           tooltip: 'المزيد',
         ),
       ],
     );
   }
 
+  /// Pinned strip under the app bar naming the ad this thread is about, so the
+  /// subject stays visible no matter how far back the user scrolls. Mirrors the
+  /// web client's ad card. Renders nothing until the Firestore metadata lands.
+  Widget _buildAdHeader() {
+    final adId = int.tryParse(_convMeta?['adId']?.toString() ?? '');
+    if (adId == null) return const SizedBox.shrink();
+
+    final title = (_convMeta?['adTitle'] as String?)?.trim();
+    final image = (_convMeta?['adImage'] as String?)?.trim();
+    final hasImage = image != null && image.startsWith('http');
+
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.adDetailPath(adId)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Color(0x1F1B4FE4), width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: hasImage
+                      ? CachedNetworkImage(
+                          imageUrl: image,
+                          cacheManager: AppImageCacheManager.instance,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 160,
+                          memCacheHeight: 160,
+                          errorWidget: (_, __, ___) => const _AdThumbFallback(),
+                        )
+                      : const _AdThumbFallback(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'المحادثة بخصوص',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      title == null || title.isEmpty ? 'الإعلان' : title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: _kTextPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'عرض الإعلان',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _kHeaderBlue,
+                ),
+              ),
+              const Icon(
+                Icons.chevron_left_rounded,
+                size: 18,
+                color: _kHeaderBlue,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Progress strip shown above the composer while media is uploading. The
+  /// composer's own icon spinner is easy to miss, which made image sends look
+  /// like nothing had happened.
+  Widget _buildUploadBanner() {
+    final label = _uploadLabel;
+    if (label == null) return const SizedBox.shrink();
+
+    final pct = _uploadProgress;
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(14, 9, 14, 9),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, value: pct),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: _kTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: pct,
+                    minHeight: 4,
+                    backgroundColor: const Color(0x141B4FE4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (pct != null) ...[
+            const SizedBox(width: 10),
+            Text(
+              '${(pct * 100).round()}%',
+              style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputBar() {
     // ── Recording state UI ───────────────────────────────────────────────────
     if (_isRecording) {
-      final secs = _recordingDuration.inSeconds;
-      final label =
-          '${(secs ~/ 60).toString().padLeft(2, '0')}:${(secs % 60).toString().padLeft(2, '0')}';
+      final label = _formatSeconds(_recordingDuration.inSeconds);
       return Container(
         color: _kInputBg,
         padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
@@ -546,35 +966,116 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               ),
             ),
             const Spacer(),
-            // Swipe hint
+            // There is no swipe gesture wired up, so the old "swipe to cancel"
+            // hint pointed at nothing. Name the two buttons that do exist.
             Text(
-              'اسحب للإلغاء',
+              'أوقف التسجيل للمراجعة',
               style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             ),
             const SizedBox(width: 8),
-            // Stop & send
+            // Stop — hands off to the review bar, which is where sending happens.
             GestureDetector(
-              onTap: _uploading ? null : _stopRecording,
+              onTap: _stopRecording,
               child: Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  color: _uploading ? Colors.grey : Colors.redAccent,
+                decoration: const BoxDecoration(
+                  color: Colors.redAccent,
                   shape: BoxShape.circle,
                 ),
-                child: _uploading
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.stop_rounded,
+                child: const Icon(
+                  Icons.stop_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Recorded clip awaiting an explicit send ──────────────────────────────
+    if (_pendingVoicePath != null) {
+      return Container(
+        color: _kInputBg,
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.redAccent,
+              ),
+              onPressed: _uploading ? null : _discardPendingVoice,
+              tooltip: 'حذف التسجيل',
+            ),
+            // Preview playback
+            GestureDetector(
+              onTap: _uploading ? null : _togglePreviewPlay,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isPreviewPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  color: _kHeaderBlue,
+                  size: 22,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              _formatSeconds(_pendingVoiceSeconds),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _kTextPrimary,
+              ),
+            ),
+            const Spacer(),
+            // Unmistakable send affordance — the previous flow sent the clip
+            // the instant recording stopped, with only a stop icon to go on.
+            GestureDetector(
+              onTap: _uploading ? null : _sendPendingVoice,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: _uploading ? Colors.grey : _kHeaderBlue,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: _uploading
+                      ? null
+                      : const [
+                          BoxShadow(
+                            color: Color(0x441B4FE4),
+                            blurRadius: 8,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'إرسال',
+                      style: TextStyle(
                         color: Colors.white,
-                        size: 22,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
                       ),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(Icons.send_rounded, color: Colors.white, size: 16),
+                  ],
+                ),
               ),
             ),
           ],
@@ -707,6 +1208,22 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   bool _sameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+}
+
+class _AdThumbFallback extends StatelessWidget {
+  const _AdThumbFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0x141B4FE4),
+      child: const Icon(
+        Icons.shopping_bag_outlined,
+        size: 20,
+        color: _kHeaderBlue,
+      ),
+    );
   }
 }
 

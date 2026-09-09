@@ -8,6 +8,7 @@ import {
   updateUserRole,
   type AdminUserDetail,
 } from '@/lib/api/admin';
+import MessageComposer from '@/components/admin/MessageComposer/MessageComposer';
 import styles from './user-detail.module.css';
 
 interface Toast {
@@ -30,6 +31,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [toast, setToast] = useState<Toast | null>(null);
   const [modal, setModal] = useState<ConfirmModal | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
 
   const loadUser = async () => {
     setLoading(true);
@@ -155,6 +157,14 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         → العودة للمستخدمين
       </Link>
 
+      <MessageComposer
+        open={showComposer}
+        onClose={() => setShowComposer(false)}
+        onSent={(msg) => showToast(msg, 'success')}
+        onError={(msg) => showToast(msg, 'error')}
+        lockedRecipient={{ id: user.id, name: user.name, phone: user.phone }}
+      />
+
       {/* Profile Card */}
       <div className={styles.profileCard}>
         <div className={styles.profileHeader}>
@@ -193,6 +203,14 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           <div className={styles.profileActions}>
+            <button
+              className={`${styles.profileBtn} ${styles.primary}`}
+              onClick={() => setShowComposer(true)}
+              disabled={!user.is_active}
+              title={user.is_active ? undefined : 'لا يمكن مراسلة حساب معطل'}
+            >
+              ✉️ إرسال رسالة
+            </button>
             <select
               className={styles.roleSelect}
               value={user.role}

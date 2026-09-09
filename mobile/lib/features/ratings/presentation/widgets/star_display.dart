@@ -29,14 +29,16 @@ class StarDisplay extends StatelessWidget {
             children: List.generate(5, (i) {
               final star = i + 1;
               final filled = value >= star;
-              final half   = !filled && value >= star - 0.5;
+              final half = !filled && value >= star - 0.5;
               return Icon(
                 filled
                     ? Icons.star_rounded
                     : half
-                        ? Icons.star_half_rounded
-                        : Icons.star_outline_rounded,
-                color: filled || half ? const Color(0xFFF59E0B) : const Color(0xFF475569),
+                    ? Icons.star_half_rounded
+                    : Icons.star_outline_rounded,
+                color: filled || half
+                    ? const Color(0xFFF59E0B)
+                    : const Color(0xFF475569),
                 size: size,
               );
             }),

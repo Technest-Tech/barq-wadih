@@ -12,8 +12,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:geolocator/geolocator.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/exit_confirm_dialog.dart';
 import '../../../../core/widgets/shimmer_widgets.dart';
@@ -21,12 +24,14 @@ import '../../../categories/data/category_api.dart';
 import '../../../categories/domain/category_model.dart';
 import '../../../regions/presentation/region_city_picker.dart';
 import '../../../regions/domain/region_model.dart';
+import '../../../regions/data/region_api.dart';
 import '../../../auth/domain/auth_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/data/notification_providers.dart';
 import '../../../settings/providers/locale_provider.dart';
 import '../../data/ad_api.dart';
 import '../widgets/ad_card.dart';
+import '../../../../core/widgets/riyal_text.dart';
 
 class AdFeedScreen extends ConsumerStatefulWidget {
   const AdFeedScreen({super.key});
@@ -51,6 +56,8 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   final FocusNode _searchFocus = FocusNode();
   List<String> _suggestions = [];
   bool _showSuggestions = false;
+  bool _nearMe = false;
+  bool _geoLoading = false;
 
   bool get _hasActiveFilters =>
       _filter.priceMin != null ||
@@ -58,10 +65,48 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       (_filter.q?.isNotEmpty ?? false) ||
       _filter.sort != 'newest';
 
+  /// Anything at all narrowing the feed — search, city, category or the
+  /// advanced filter sheet. Back clears these before offering to exit.
+  bool get _isFeedFiltered =>
+      _hasActiveFilters ||
+      _selectedCategoryId != null ||
+      _selectedSubcategoryId != null ||
+      _nearMe ||
+      (_selectedCities?.isNotEmpty ?? false) ||
+      _searchController.text.isNotEmpty ||
+      _filter.categoryId != null ||
+      _filter.categoryIds != null ||
+      _filter.cityId != null ||
+      _filter.cityIds != null ||
+      _filter.regionId != null ||
+      _filter.condition != null ||
+      _filter.withImages != null ||
+      _filter.negotiable != null;
+
+  /// Reset the feed back to the unfiltered home state.
+  void _clearAllFilters() {
+    HapticFeedback.selectionClick();
+    _searchDebounce?.cancel();
+    _suggestDebounce?.cancel();
+    _searchController.clear();
+    _searchFocus.unfocus();
+    setState(() {
+      _selectedCategoryId = null;
+      _selectedSubcategoryId = null;
+      _subcategories = [];
+      _selectedCities = null;
+      _nearMe = false;
+      _suggestions = [];
+      _showSuggestions = false;
+    });
+    _filter = const AdsFilter();
+    ref.read(adsFeedProvider.notifier).applyFilter(_filter);
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     _searchFocus.addListener(() {
       if (!_searchFocus.hasFocus) {
         setState(() => _showSuggestions = false);
@@ -79,10 +124,37 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 300) {
+  /// The ad list lives inside [NestedScrollView.body], so [_scrollController]
+  /// only ever tracks the *outer* header slivers: once the categories header is
+  /// collapsed the outer position sits at its max and stops emitting updates,
+  /// while the list itself keeps scrolling on the inner position. Listening to
+  /// the controller therefore stopped paging after the first gesture — hence a
+  /// feed that never grew past its first page. Listen to the inner list's own
+  /// scroll notifications instead.
+  bool _onFeedScroll(ScrollNotification notification) {
+    final metrics = notification.metrics;
+    if (metrics.axis != Axis.vertical) return false;
+    if (notification.depth == 0 &&
+        metrics.extentAfter <= metrics.viewportDimension * 1.5) {
       ref.read(adsFeedProvider.notifier).loadMore();
+    }
+    return false;
+  }
+
+  Future<void> _refreshFeed() async {
+    try {
+      await ref.read(adsFeedProvider.notifier).refresh();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            Localizations.localeOf(context).languageCode == 'ar'
+                ? 'تعذّر تحديث الإعلانات. اسحب للأسفل للمحاولة مرة أخرى.'
+                : 'Could not refresh ads. Pull down to try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -144,6 +216,76 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   void _applySearch(String q) {
     _filter = _filter.copyWith(q: q, page: 1);
     ref.read(adsFeedProvider.notifier).applyFilter(_filter);
+  }
+
+  /// "القريب مني" — resolve the device location, snap the feed to the nearest
+  /// city, and pin the city filter to it. Toggling off clears the city filter.
+  Future<void> _toggleNearMe() async {
+    HapticFeedback.selectionClick();
+
+    if (_nearMe) {
+      setState(() {
+        _nearMe = false;
+        _selectedCities = null;
+      });
+      _filter = _filter.copyWith(clearCityIds: true, page: 1);
+      ref.read(adsFeedProvider.notifier).applyFilter(_filter);
+      return;
+    }
+
+    setState(() => _geoLoading = true);
+    try {
+      final cities = await ref.read(allCitiesProvider.future);
+      if (cities.isEmpty) {
+        throw const LocationFailure('لم يتم تحميل المدن بعد');
+      }
+
+      final pos = await getCurrentPosition();
+      final nearest = findNearestCity(cities, pos.latitude, pos.longitude);
+      if (nearest == null) {
+        throw const LocationFailure('تعذّر إيجاد مدينة قريبة');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _geoLoading = false;
+        _nearMe = true;
+        _selectedCities = [nearest];
+      });
+      _filter = _filter.copyWith(cityIds: [nearest.id], page: 1);
+      ref.read(adsFeedProvider.notifier).applyFilter(_filter);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يتم عرض الإعلانات في ${nearest.nameAr}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } on LocationFailure catch (e) {
+      if (!mounted) return;
+      setState(() => _geoLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          duration: const Duration(seconds: 3),
+          action: e.permanentlyDenied
+              ? SnackBarAction(
+                  label: 'الإعدادات',
+                  onPressed: Geolocator.openAppSettings,
+                )
+              : null,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _geoLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذّر تحديد موقعك، حاول مرة أخرى'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _onSearchChanged(String q) {
@@ -247,8 +389,10 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        if (_selectedCategoryId != null) {
-          _applyCategory(null, []);
+        // Back on a filtered feed resets it to the plain home feed; only an
+        // already-unfiltered home asks to exit the app.
+        if (_isFeedFiltered) {
+          _clearAllFilters();
         } else if (await showExitConfirmDialog(context)) {
           SystemNavigator.pop();
         }
@@ -463,6 +607,8 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                                     _selectedCities = result.isEmpty
                                         ? null
                                         : result;
+                                    // Manual city choice overrides "near me".
+                                    _nearMe = false;
                                   });
                                   _filter = _filter.copyWith(
                                     clearCityIds: result.isEmpty,
@@ -522,6 +668,17 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
                             ),
                             const SizedBox(width: 8),
                             GestureDetector(
+                              onTap: _geoLoading ? null : _toggleNearMe,
+                              child: _ThemedFilterChip(
+                                label: _geoLoading
+                                    ? 'جارٍ التحديد…'
+                                    : 'القريب مني',
+                                icon: Icons.my_location,
+                                isActive: _nearMe,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
                               onTap: _showFilterSheet,
                               child: _ThemedFilterChip(
                                 label: 'تصفية',
@@ -559,105 +716,105 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
               ],
 
               // ── Ad List ──────────────────────────────────────────────────────────
-              body: RefreshIndicator(
-                onRefresh: () => ref.read(adsFeedProvider.notifier).refresh(),
-                color: AppTheme.primaryBlue, // navy spinner on white bg
-                backgroundColor: Colors.white, // always white pull-down bg
-                child: feedState.when(
-                  data: (feed) {
-                    if (feed.ads.isEmpty) {
-                      return CustomScrollView(
-                        slivers: [
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: _EmptyState(
-                              searchQuery: _filter.q,
-                              categoryId: _selectedCategoryId,
-                              onPostAd:
-                                  ref.read(authProvider) is AuthAuthenticated
-                                  ? () => context.push('/post-ad')
-                                  : null,
+              body: NotificationListener<ScrollNotification>(
+                onNotification: _onFeedScroll,
+                child: RefreshIndicator(
+                  onRefresh: _refreshFeed,
+                  color: AppTheme.primaryBlue, // navy spinner on white bg
+                  backgroundColor: Colors.white, // always white pull-down bg
+                  child: feedState.when(
+                    data: (feed) {
+                      if (feed.ads.isEmpty) {
+                        return CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: _EmptyState(
+                                searchQuery: _filter.q,
+                                categoryId: _selectedCategoryId,
+                                onPostAd:
+                                    ref.read(authProvider) is AuthAuthenticated
+                                    ? () => context.push('/post-ad')
+                                    : null,
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    }
-                    if (_isGridView) {
-                      return GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.65,
-                            ),
+                          ],
+                        );
+                      }
+                      if (_isGridView) {
+                        return GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.65,
+                              ),
+                          itemCount: feed.hasMore
+                              ? feed.ads.length + 1
+                              : feed.ads.length,
+                          itemBuilder: (context, i) {
+                            if (i >= feed.ads.length) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.primaryBlue,
+                                ),
+                              );
+                            }
+                            final ad = feed.ads[i];
+                            return AdCard(
+                              key: ValueKey(ad.id),
+                              ad: ad,
+                              isGrid: true,
+                              onTap: () =>
+                                  context.push('/ads/${ad.id}', extra: ad),
+                            );
+                          },
+                        );
+                      }
+
+                      return ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        cacheExtent: 600,
+                        padding: const EdgeInsets.only(bottom: 100),
                         itemCount: feed.hasMore
                             ? feed.ads.length + 1
                             : feed.ads.length,
                         itemBuilder: (context, i) {
                           if (i >= feed.ads.length) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                color: AppTheme.primaryBlue,
+                            return const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.primaryBlue, // always navy
+                                  backgroundColor: Colors.transparent,
+                                  strokeWidth: 2.5,
+                                ),
                               ),
                             );
                           }
                           final ad = feed.ads[i];
-                          return _AnimatedAdCard(
-                            index: i,
-                            child: AdCard(
-                              ad: ad,
-                              isGrid: true,
-                              onTap: () => context.push('/ads/${ad.id}'),
-                            ),
+                          return AdCard(
+                            key: ValueKey(ad.id),
+                            ad: ad,
+                            isGrid: false,
+                            onTap: () =>
+                                context.push('/ads/${ad.id}', extra: ad),
                           );
                         },
                       );
-                    }
-
-                    return ListView.builder(
+                    },
+                    loading: () => ListView.separated(
                       padding: const EdgeInsets.only(bottom: 100),
-                      itemCount: feed.hasMore
-                          ? feed.ads.length + 1
-                          : feed.ads.length,
-                      itemBuilder: (context, i) {
-                        if (i >= feed.ads.length) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: AppTheme.primaryBlue, // always navy
-                                backgroundColor: Colors.transparent,
-                                strokeWidth: 2.5,
-                              ),
-                            ),
-                          );
-                        }
-                        final ad = feed.ads[i];
-                        return _AnimatedAdCard(
-                          index: i,
-                          child: AdCard(
-                            ad: ad,
-                            isGrid: false,
-                            onTap: () => context.push('/ads/${ad.id}'),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  loading: () => ListView.separated(
-                    padding: const EdgeInsets.only(bottom: 100),
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 8,
-                    separatorBuilder: (_, __) => const SizedBox(height: 1),
-                    itemBuilder: (_, __) => const AdListTileShimmer(),
-                  ),
-                  error: (err, _) => Center(
-                    child: _ErrorState(
-                      onRetry: () =>
-                          ref.read(adsFeedProvider.notifier).refresh(),
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 8,
+                      separatorBuilder: (_, __) => const SizedBox(height: 1),
+                      itemBuilder: (_, __) => const AdListTileShimmer(),
                     ),
+                    error: (err, _) =>
+                        Center(child: _ErrorState(onRetry: _refreshFeed)),
                   ),
                 ),
               ),
@@ -710,12 +867,30 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
   }
 
   Future<void> _shareApp() async {
-    final text = Uri.encodeComponent(
-      'حمّل تطبيق برق واضح للإعلانات المبوبة في المملكة العربية السعودية!',
-    );
-    final uri = Uri.parse('https://wa.me/?text=$text');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    const text = AppConstants.appShareMessage;
+
+    // iPad needs an anchor rect for the share popover.
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
+    try {
+      await Share.share(
+        text,
+        subject: AppConstants.appName,
+        sharePositionOrigin: origin,
+      );
+    } catch (_) {
+      // No share targets available — fall back to the clipboard.
+      await Clipboard.setData(const ClipboardData(text: text));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم نسخ رابط التطبيق'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 }
@@ -971,6 +1146,13 @@ class _SidebarOverlayRouteState extends ConsumerState<_SidebarOverlayRoute>
                 icon: Icons.sell_outlined,
                 title: 'كيف تبيع؟',
                 onTap: () => _closeAndNavigate('/how-to-sell'),
+              ),
+              const _Divider(),
+              _HarajDrawerItem(
+                icon: Icons.receipt_long_outlined,
+                title: 'الرسوم والأسعار',
+                subtitle: 'عمولات المنصة وطرق الدفع',
+                onTap: () => _closeAndNavigate('/fees'),
               ),
               const _Divider(),
               _HarajDrawerItem(
@@ -1559,44 +1741,6 @@ class _ThemedFilterChip extends StatelessWidget {
 
 // ── Shared animations & states ────────────────────────────────────────────────
 
-class _AnimatedAdCard extends StatefulWidget {
-  final Widget child;
-  final int index;
-  const _AnimatedAdCard({required this.child, required this.index});
-
-  @override
-  State<_AnimatedAdCard> createState() => _AnimatedAdCardState();
-}
-
-class _AnimatedAdCardState extends State<_AnimatedAdCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    final delay = Duration(milliseconds: (widget.index % 6) * 50);
-    Future.delayed(delay, () {
-      if (mounted) _ctrl.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(opacity: _ctrl, child: widget.child);
-  }
-}
-
 class _EmptyState extends ConsumerWidget {
   final VoidCallback? onPostAd;
   final String? searchQuery;
@@ -1661,7 +1805,8 @@ class _EmptyState extends ConsumerWidget {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                           child: AdCard(
                             ad: ad,
-                            onTap: () => context.push('/ads/${ad.id}'),
+                            onTap: () =>
+                                context.push('/ads/${ad.id}', extra: ad),
                           ),
                         ),
                       ),
@@ -2218,7 +2363,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                                     builder: (_, __, ___) =>
                                         ValueListenableBuilder(
                                           valueListenable: _priceMaxCtrl,
-                                          builder: (_, __, ___) => Text(
+                                          builder: (_, __, ___) => RiyalText(
                                             _rangeSummary,
                                             style: const TextStyle(
                                               fontSize: 13,
@@ -2633,7 +2778,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       ? AppTheme.primaryBlue
                       : AppTheme.neutralGray400,
                 ),
-                child: const Text('ر.س'),
+                child: const RiyalIcon(size: 12),
               ),
             ],
           ),

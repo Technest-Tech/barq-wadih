@@ -37,7 +37,10 @@ class RatingsListScreen extends ConsumerWidget {
           if (adId != null)
             TextButton(
               onPressed: () => _openRatingSheet(context, ref),
-              child: const Text('قيّم', style: TextStyle(color: Color(0xFF818CF8))),
+              child: const Text(
+                'قيّم',
+                style: TextStyle(color: Color(0xFF818CF8)),
+              ),
             ),
         ],
       ),
@@ -63,14 +66,20 @@ class RatingsListScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 48),
                     child: Column(
                       children: [
-                        Icon(Icons.star_outline_rounded,
-                            size: 56, color: Colors.grey[300]),
+                        Icon(
+                          Icons.star_outline_rounded,
+                          size: 56,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 12),
-                        Text('لا توجد تقييمات بعد',
-                            style: TextStyle(
-                              fontSize: 15, color: Colors.grey[600],
-                              fontWeight: FontWeight.w600,
-                            )),
+                        Text(
+                          'لا توجد تقييمات بعد',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -156,9 +165,13 @@ class _SummaryCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
-                      Text('$star', style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF94A3B8),
-                      )),
+                      Text(
+                        '$star',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: ClipRRect(
@@ -166,7 +179,9 @@ class _SummaryCard extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: pct,
                             backgroundColor: const Color(0xFFE2E8F0),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFF59E0B),
+                            ),
                             minHeight: 8,
                           ),
                         ),
@@ -176,7 +191,10 @@ class _SummaryCard extends StatelessWidget {
                         width: 24,
                         child: Text(
                           '${summary.distribution[star] ?? 0}',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF94A3B8),
+                          ),
                           textAlign: TextAlign.end,
                         ),
                       ),
@@ -230,8 +248,13 @@ class _RatingCard extends StatelessWidget {
                 backgroundColor: const Color(0xFF1B4FE4),
                 child: rating.rater.avatar == null
                     ? Text(
-                        rating.rater.name.isNotEmpty ? rating.rater.name[0] : '؟',
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        rating.rater.name.isNotEmpty
+                            ? rating.rater.name[0]
+                            : '؟',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       )
                     : null,
               ),
@@ -250,12 +273,19 @@ class _RatingCard extends StatelessWidget {
                     ),
                     Text(
                       timeAgo,
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF94A3B8),
+                      ),
                     ),
                   ],
                 ),
               ),
-              StarDisplay(value: rating.stars.toDouble(), showCount: false, size: 14),
+              StarDisplay(
+                value: rating.stars.toDouble(),
+                showCount: false,
+                size: 14,
+              ),
             ],
           ),
           if (rating.comment != null && rating.comment!.isNotEmpty) ...[
@@ -282,7 +312,7 @@ class _RatingCard extends StatelessWidget {
     final diff = DateTime.now().difference(date);
     if (diff.inDays == 0) return 'اليوم';
     if (diff.inDays == 1) return 'أمس';
-    if (diff.inDays < 7)  return 'منذ ${diff.inDays} أيام';
+    if (diff.inDays < 7) return 'منذ ${diff.inDays} أيام';
     return DateFormat('d MMMM yyyy', 'ar').format(date);
   }
 }

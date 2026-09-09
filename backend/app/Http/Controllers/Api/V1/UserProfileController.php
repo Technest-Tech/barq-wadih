@@ -24,27 +24,29 @@ class UserProfileController extends BaseController
             ->count();
 
         $ratings = Rating::forUser($user->id)->approved()->get(['stars']);
-        $total   = $ratings->count();
-        $avg     = $total > 0 ? round((float) $ratings->avg('stars'), 1) : 0.0;
+        $total = $ratings->count();
+        $avg = $total > 0 ? round((float) $ratings->avg('stars'), 1) : 0.0;
         $distribution = collect([5, 4, 3, 2, 1])->mapWithKeys(
-            fn (int $star) => [$star => $ratings->where('stars', $star)->count()]
+            fn (int $star) => [$star => $ratings->where('stars', $star)->count()],
         )->all();
 
         return $this->successResponse([
-            'id'             => $user->id,
-            'name'           => $user->name,
-            'avatar'         => $user->avatar_url,
-            'cover_image'    => $user->cover_image_url,
-            'bio'            => $user->bio,
-            'is_verified'    => (bool) $user->is_verified,
-            'is_dealer'      => (bool) $user->is_dealer,
-            'avg_rating'     => $avg,
-            'rating_count'   => $total,
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'profile_url' => $user->profile_url,
+            'avatar' => $user->avatar_url,
+            'cover_image' => $user->cover_image_url,
+            'bio' => $user->bio,
+            'is_verified' => (bool) $user->is_verified,
+            'is_dealer' => (bool) $user->is_dealer,
+            'avg_rating' => $avg,
+            'rating_count' => $total,
             'rating_distribution' => $distribution,
-            'active_ads_count'   => $activeAdsCount,
-            'sold_ads_count'     => $soldAdsCount,
-            'total_ads_count'    => $user->total_ads_count ?? ($activeAdsCount + $soldAdsCount),
-            'member_since'   => $user->created_at?->toIso8601String(),
+            'active_ads_count' => $activeAdsCount,
+            'sold_ads_count' => $soldAdsCount,
+            'total_ads_count' => $user->total_ads_count ?? ($activeAdsCount + $soldAdsCount),
+            'member_since' => $user->created_at?->toIso8601String(),
             'last_active_at' => $user->last_active_at?->toIso8601String(),
         ]);
     }
@@ -54,7 +56,8 @@ class UserProfileController extends BaseController
     {
         $sort = $request->input('sort', 'newest');
 
-        $query = Ad::with(['images', 'category', 'city', 'region', 'user'])
+        $query = Ad::with(['primaryImage', 'category', 'city', 'region', 'user'])
+            ->withCount('images')
             ->where('user_id', $user->id)
             ->active();
 

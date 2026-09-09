@@ -318,6 +318,17 @@
   gap: 0.3rem;
 }
 
+.hiddenNotice {
+  font-size: 0.76rem;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  margin: 0.35rem 0 0;
+  line-height: 1.5;
+}
+
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 .adActions {
   display: flex;
@@ -380,6 +391,13 @@
 .boostBtn:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+/* Locked while the ad is still visible — the gold gradient would otherwise
+   still read as "tap me" at 50% opacity. */
+.boostBtn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
 }
 
 .refreshBtn {

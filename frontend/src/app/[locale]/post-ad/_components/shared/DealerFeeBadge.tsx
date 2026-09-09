@@ -3,7 +3,7 @@
 import styles from '../../post-ad.module.css';
 
 type Props = {
-  /** Flat after-sale commission for the category (deferred_commission_individual). */
+  /** Flat after-sale commission resolved for the signed-in account tier. */
   fee: number | null;
 };
 

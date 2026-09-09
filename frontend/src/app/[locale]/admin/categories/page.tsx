@@ -854,7 +854,7 @@ export default function AdminCategoriesPage() {
                   <span>رسوم النشر والعمولة</span>
                 </div>
                 <div className={cs.pmSectionDesc}>
-                  الدفع المسبق إلزامي عبر Apple Pay / مدى. لا يُنشر الإعلان قبل نجاح الدفع.
+                  النشر مجاني ولا يتطلب أي دفع مسبق. العمولة تُستحق بعد إتمام البيع وتُسدَّد بتحويل بنكي.
                 </div>
 
                 <div className={cs.pmGrid}>

@@ -330,7 +330,7 @@ export default function Header() {
                 ref={inputRef}
                 className={styles.searchInput}
                 type="search"
-                placeholder="ابحث عن سيارات، عقارات، إلكترونيات..."
+                placeholder="ابحث عن سيارات، إلكترونيات، أثاث..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onFocus={() => setSearchOpen(true)}

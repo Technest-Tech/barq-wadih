@@ -73,6 +73,17 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Dedicated, privacy-safe delivery audit for marketing events. This
+        // intentionally ignores the application's global LOG_LEVEL so a
+        // production setting of "error" cannot hide rejected CAPI events.
+        'marketing_tracking' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/marketing-tracking.log'),
+            'level' => 'info',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

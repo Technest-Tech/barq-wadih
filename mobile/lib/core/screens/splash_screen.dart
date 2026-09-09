@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
-/// Premium splash screen featuring a sleek "writing" wipe animation 
+/// Premium splash screen featuring a sleek "writing" wipe animation
 /// for the app name, soft glowing effects, and elegant composition.
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -34,33 +33,38 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    _logoScale = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOutBack),
-    );
-    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _logoCtrl, curve: Curves.easeInQuad),
-    );
+    _logoScale = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOutBack));
+    _logoOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeInQuad));
 
     // 2. Writing effect: Reveals text right-to-left
     _writeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    _writeReveal = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _writeCtrl, curve: Curves.easeInOutSine),
-    );
+    _writeReveal = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _writeCtrl, curve: Curves.easeInOutSine));
 
     // 3. Subtitle: Fade and slide up
     _subCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _subOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _subCtrl, curve: Curves.easeIn),
-    );
-    _subSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
-      CurvedAnimation(parent: _subCtrl, curve: Curves.easeOutCubic),
-    );
+    _subOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _subCtrl, curve: Curves.easeIn));
+    _subSlide = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _subCtrl, curve: Curves.easeOutCubic));
 
     // ── Sequence ─────────────────────────────────────────────────────────────
     _logoCtrl.forward().then((_) {
@@ -161,7 +165,7 @@ class _SplashScreenState extends State<SplashScreen>
                               color: Colors.black12,
                               blurRadius: 10,
                               offset: Offset(0, 4),
-                            )
+                            ),
                           ],
                         ),
                         maxLines: 1,
@@ -218,10 +222,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

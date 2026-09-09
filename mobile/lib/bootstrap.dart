@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,16 @@ Future<void> bootstrap() async {
 
   // ── Firebase ───────────────────────────────────────────────────────────────
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // firebase_messaging normally starts APNs registration from the application
+  // launch notification. With Flutter's implicit-engine lifecycle the plugin
+  // is registered after that notification has already fired, so trigger APNs
+  // registration explicitly after native Firebase is ready.
+  if (Platform.isIOS) {
+    await const MethodChannel(
+      'com.barqwadih.app/push_registration',
+    ).invokeMethod<void>('registerForRemoteNotifications');
+  }
 
   // ── Push notifications ────────────────────────────────────────────────────
   // Registers the background handler and sets up notification channels.
