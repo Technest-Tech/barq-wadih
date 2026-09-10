@@ -94,6 +94,75 @@ class AdUpdateTest extends TestCase
         $this->assertFalse($fresh->show_phone_publicly);
     }
 
+    /**
+     * The app posts the contact field on every edit, so a seller who never
+     * filled it sends an empty string that Laravel converts to null. That null
+     * used to fail the `string` rule and block the whole edit — an optional
+     * field behaving as if it were required.
+     */
+    public function test_owner_can_save_an_edit_with_a_blank_phone_when_it_is_not_public(): void
+    {
+        [$owner, $ad] = $this->activeAd();
+        $ad->update(['show_phone_publicly' => false]);
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/ads/{$ad->id}", [
+            'title' => 'عنوان بعد التعديل',
+            'contact_phone' => null,
+            'show_phone_publicly' => false,
+        ])->assertOk();
+
+        $fresh = $ad->fresh();
+        $this->assertSame('عنوان بعد التعديل', $fresh->title);
+        $this->assertNull($fresh->contact_phone);
+    }
+
+    /**
+     * The exact payload the app sends: a multipart edit carrying an empty
+     * contact field for a seller who never entered a number.
+     */
+    public function test_owner_can_save_an_edit_with_an_empty_phone_string(): void
+    {
+        [$owner, $ad] = $this->activeAd();
+        $ad->update(['show_phone_publicly' => false]);
+        Sanctum::actingAs($owner);
+
+        $this->patch("/api/v1/ads/{$ad->id}", [
+            'title' => 'عنوان بعد التعديل',
+            'contact_phone' => '',
+            'show_phone_publicly' => '0',
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $this->assertNull($ad->fresh()->contact_phone);
+    }
+
+    public function test_clearing_the_phone_is_rejected_while_the_ad_shows_it_publicly(): void
+    {
+        [$owner, $ad] = $this->activeAd();
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/ads/{$ad->id}", [
+            'contact_phone' => null,
+            'show_phone_publicly' => true,
+        ])->assertStatus(422)->assertJsonValidationErrors('contact_phone');
+
+        $this->assertSame('0555555555', $ad->fresh()->contact_phone);
+    }
+
+    /**
+     * A client that clears the phone without resending the visibility flag has
+     * to be judged against the ad as it stands, not against an absent flag.
+     */
+    public function test_clearing_the_phone_is_rejected_when_the_ad_is_already_public_and_the_flag_is_omitted(): void
+    {
+        [$owner, $ad] = $this->activeAd();
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/ads/{$ad->id}", [
+            'contact_phone' => null,
+        ])->assertStatus(422)->assertJsonValidationErrors('contact_phone');
+    }
+
     // ── Category switching ────────────────────────────────────────────────
 
     public function test_changing_category_clears_the_old_categorys_field_values(): void

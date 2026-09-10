@@ -43,7 +43,17 @@ class UpdateAdRequest extends FormRequest
             'district_name_free' => ['sometimes', 'nullable', 'string', 'max:120'],
             'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
-            'contact_phone' => ['sometimes', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
+            // Empty strings arrive as null (ConvertEmptyStringsToNull), so the
+            // key is present on every edit even when the seller left the phone
+            // blank: without `nullable` that null failed the `string` rule and
+            // an optional field rejected the edit. It is only mandatory while
+            // the ad shows the number publicly.
+            'contact_phone' => [
+                'sometimes',
+                $this->phoneStaysPublic() ? 'required' : 'nullable',
+                'string',
+                'regex:/^(05|\+9665)[0-9]{8}$/',
+            ],
             'contact_whatsapp' => ['sometimes', 'nullable', 'string', 'regex:/^(05|\+9665)[0-9]{8}$/'],
             'show_phone_publicly' => ['sometimes', 'boolean'],
 
@@ -228,12 +238,31 @@ class UpdateAdRequest extends FormRequest
         return $ad instanceof Ad && $ad->is_negotiable;
     }
 
+    /**
+     * Whether this edit leaves the ad showing its number publicly.
+     *
+     * Every rule here is `sometimes`, so a client that edits without resending
+     * the flag has to fall back to what the ad already is — otherwise clearing
+     * the phone on a publicly-listed ad would slip through.
+     */
+    private function phoneStaysPublic(): bool
+    {
+        if ($this->has('show_phone_publicly')) {
+            return $this->boolean('show_phone_publicly');
+        }
+
+        $ad = $this->route('ad');
+
+        return $ad instanceof Ad && $ad->show_phone_publicly;
+    }
+
     public function messages(): array
     {
         return [
             'price.min' => $this->staysNegotiable()
                 ? 'لا يمكن أن يكون السعر بالسالب.'
                 : 'يجب أن يكون السعر أكبر من صفر.',
+            'contact_phone.required' => 'رقم التواصل مطلوب.',
             'contact_phone.regex' => 'رقم الهاتف يجب أن يكون سعودياً صحيحاً (05xxxxxxxx).',
             'images.*.mimes' => 'الصور يجب أن تكون بصيغة JPG أو PNG أو WebP أو HEIC.',
             'images.*.max' => 'حجم الصورة لا يتجاوز 5 ميغابايت.',
