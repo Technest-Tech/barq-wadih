@@ -29,13 +29,15 @@ class ExtendAdVisibilityWindow extends Command
         // owner's "تجديد" button, not to a bulk update.
         $ads = Ad::query()
             ->where('status', AdStatus::Active->value)
-            ->whereNotNull('published_at')
-            ->get(['id', 'published_at', 'expires_at']);
+            ->get(['id', 'created_at', 'expires_at']);
 
         $updated = 0;
 
         foreach ($ads as $ad) {
-            $fullWindow = $ad->published_at->copy()->addMonths(Ad::VISIBLE_MONTHS);
+            // Measured from creation, never from published_at: "تحديث" resets
+            // published_at to now, so anchoring there would hand a fresh 3
+            // months to every ad its owner bumps, every time this is run.
+            $fullWindow = $ad->created_at->copy()->addMonths(Ad::VISIBLE_MONTHS);
 
             // Already on the long window (or renewed past it) — leave it alone.
             if (! $ad->expires_at->lessThan($fullWindow)) {

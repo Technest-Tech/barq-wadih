@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AdService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -69,6 +70,14 @@ class AdVisibilityWindowTest extends TestCase
             'published_at' => now(),
             'expires_at' => Ad::nextExpiry(),
         ], $overrides));
+    }
+
+    /** Eloquent stamps created_at on insert, so backdating needs a raw write. */
+    private function backdateCreation(Ad $ad, \Illuminate\Support\Carbon $when): Ad
+    {
+        DB::table('ads')->where('id', $ad->id)->update(['created_at' => $when]);
+
+        return $ad->fresh();
     }
 
     public function test_a_new_ad_stays_visible_for_three_months(): void
@@ -164,12 +173,15 @@ class AdVisibilityWindowTest extends TestCase
     {
         $owner = User::factory()->create(['phone' => '+966500000109']);
 
-        // Published a week ago under the old rule: 30 days from publication.
-        $legacy = $this->makeAd($owner, [
-            'published_at' => now()->subWeek(),
-            'expires_at' => now()->subWeek()->addDays(30),
-        ]);
-        // Published today under the current rule.
+        // Created a week ago under the old rule: 30 days from publication.
+        $legacy = $this->backdateCreation(
+            $this->makeAd($owner, [
+                'published_at' => now()->subWeek(),
+                'expires_at' => now()->subWeek()->addDays(30),
+            ]),
+            now()->subWeek(),
+        );
+        // Created today under the current rule.
         $current = $this->makeAd($owner);
 
         Artisan::call('ads:extend-visibility');
@@ -183,6 +195,36 @@ class AdVisibilityWindowTest extends TestCase
         $this->assertEqualsWithDelta(
             $current->expires_at->timestamp,
             $current->fresh()->expires_at->timestamp,
+            1,
+        );
+    }
+
+    /**
+     * "تحديث" resets published_at to now. Anchoring the backfill there would
+     * read a bumped ad as short-changed and hand it a fresh 3 months on every
+     * run — the window has to be measured from creation.
+     */
+    public function test_the_backfill_does_not_reward_an_ad_for_being_refreshed(): void
+    {
+        $owner = User::factory()->create(['phone' => '+966500000111']);
+
+        // Created two months ago, bumped to the top of the feed today.
+        $bumped = $this->backdateCreation(
+            $this->makeAd($owner, [
+                'expires_at' => now()->subMonths(2)->addMonths(3),
+                'published_at' => now(),
+            ]),
+            now()->subMonths(2),
+        );
+        $originalExpiry = $bumped->expires_at->timestamp;
+
+        Artisan::call('ads:extend-visibility');
+        // Re-running must not keep pushing it out either.
+        Artisan::call('ads:extend-visibility');
+
+        $this->assertEqualsWithDelta(
+            $originalExpiry,
+            $bumped->fresh()->expires_at->timestamp,
             1,
         );
     }
