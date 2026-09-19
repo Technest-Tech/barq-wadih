@@ -10,6 +10,7 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\Region;
 use App\Models\User;
+use App\Services\BoostService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,6 +24,7 @@ class AdResource extends JsonResource
         /** @var Ad $ad */
         $ad = $this->resource;
         $isOwner = auth()->id() === $ad->user_id;
+        $nextRefreshAt = $isOwner ? app(BoostService::class)->nextRefreshAt($ad) : null;
 
         /** @var Category|null $category */
         $category = $ad->category;
@@ -139,6 +141,12 @@ class AdResource extends JsonResource
             'expires_at' => $ad->expires_at,
             'created_at' => $ad->created_at,
             'updated_at' => $ad->updated_at,
+
+            // Owner-only: null while somebody else is looking. Mirrors
+            // AdListResource so My Ads keeps the same locked "تحديث" state
+            // after a detail fetch.
+            'can_refresh' => $isOwner ? $nextRefreshAt === null : null,
+            'next_refresh_at' => $nextRefreshAt?->toISOString(),
         ];
     }
 }

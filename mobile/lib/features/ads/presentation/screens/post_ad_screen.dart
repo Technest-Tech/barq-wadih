@@ -133,6 +133,8 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen>
   static const int _lastStep = 4;
 
   static const int _maxImages = 10;
+  static const double _pickerMaxDimension = 1440;
+  static const int _pickerImageQuality = 76;
 
   /// Mirrors the API's `images.*|max:5120` rule.
   static const int _maxImageBytes = 5 * 1024 * 1024;
@@ -762,7 +764,11 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen>
     }
     final List<XFile> picked;
     try {
-      picked = await ImagePicker().pickMultiImage(imageQuality: 80);
+      picked = await ImagePicker().pickMultiImage(
+        maxWidth: _pickerMaxDimension,
+        maxHeight: _pickerMaxDimension,
+        imageQuality: _pickerImageQuality,
+      );
     } on PlatformException catch (e) {
       _toast(e.message ?? 'تعذّر فتح معرض الصور. تأكد من منح الإذن للتطبيق.');
       return;
@@ -780,7 +786,9 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen>
     try {
       picked = await ImagePicker().pickImage(
         source: ImageSource.camera,
-        imageQuality: 80,
+        maxWidth: _pickerMaxDimension,
+        maxHeight: _pickerMaxDimension,
+        imageQuality: _pickerImageQuality,
       );
     } on PlatformException catch (e) {
       _toast(e.message ?? 'تعذّر فتح الكاميرا. تأكد من منح الإذن للتطبيق.');
@@ -1262,6 +1270,12 @@ class _PostAdScreenState extends ConsumerState<PostAdScreen>
                             _next();
                           },
                           onNextLocked: null,
+                          // Editing opens on this step with the ad's category
+                          // already chosen. Reveal it inside its parent and
+                          // offer a way forward, otherwise the only way out of
+                          // the step was picking a category all over again.
+                          autoRevealSelected: _isEditMode,
+                          onContinue: _isEditMode ? _next : null,
                         ),
                         // ── Step 2: Details ────────────────────────────────────────
                         _Step2Details(
@@ -1766,6 +1780,14 @@ class _Step1Category extends ConsumerStatefulWidget {
   final void Function(CategoryModel) onSelect;
   final VoidCallback? onNextLocked;
 
+  /// Drill into the selected category's parent on the first build so an
+  /// already-chosen leaf is visible instead of buried under its parent.
+  final bool autoRevealSelected;
+
+  /// Keep the current category and move on. Null while there is nothing to
+  /// keep — a new ad advances by picking a category instead.
+  final VoidCallback? onContinue;
+
   const _Step1Category({
     required this.selected,
     required this.isLocked,
@@ -1773,6 +1795,8 @@ class _Step1Category extends ConsumerStatefulWidget {
     required this.onBrowse,
     required this.onSelect,
     this.onNextLocked,
+    this.autoRevealSelected = false,
+    this.onContinue,
   });
 
   @override
@@ -1780,6 +1804,38 @@ class _Step1Category extends ConsumerStatefulWidget {
 }
 
 class _Step1CategoryState extends ConsumerState<_Step1Category> {
+  /// One-shot: the seller must be able to back out of the sub-list without
+  /// being dropped straight back into it.
+  bool _didAutoReveal = false;
+
+  /// The ad being edited arrives after the first build, so this runs on
+  /// whichever build first has both the categories and the selection.
+  void _maybeRevealSelected(List<CategoryModel> cats) {
+    final selected = widget.selected;
+    if (_didAutoReveal ||
+        !widget.autoRevealSelected ||
+        selected == null ||
+        widget.browsing != null) {
+      return;
+    }
+
+    _didAutoReveal = true;
+
+    CategoryModel? parent;
+    for (final cat in cats) {
+      if (cat.children.any((child) => child.id == selected.id)) {
+        parent = cat;
+        break;
+      }
+    }
+    if (parent == null) return; // Already a top-level category.
+
+    final target = parent;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onBrowse(target);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.isLocked) return _buildLocked();
@@ -1808,15 +1864,76 @@ class _Step1CategoryState extends ConsumerState<_Step1Category> {
         ),
       ),
       data: (cats) {
+        _maybeRevealSelected(cats);
+
         final browsing = widget.browsing;
         // The seller may have drilled into a category before a refresh
         // reshuffled the list; fall back to the top level rather than showing
         // a stale branch.
-        if (browsing != null && cats.any((c) => c.id == browsing.id)) {
-          return _buildSubList(cats.firstWhere((c) => c.id == browsing.id));
-        }
-        return _buildParentList(cats);
+        final list = (browsing != null && cats.any((c) => c.id == browsing.id))
+            ? _buildSubList(cats.firstWhere((c) => c.id == browsing.id))
+            : _buildParentList(cats);
+
+        if (widget.onContinue == null || widget.selected == null) return list;
+
+        return Column(
+          children: [
+            Expanded(child: list),
+            _buildKeepCurrentBar(),
+          ],
+        );
       },
+    );
+  }
+
+  /// Footer for an edit: names the category the ad already has and moves on
+  /// without touching it. Picking a different one from the list still works.
+  Widget _buildKeepCurrentBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppTheme.neutralGray200)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppTheme.primaryBlue,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'التصنيف الحالي: ${widget.selected!.nameAr}',
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.neutralGray900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: _PrimaryButton(
+                label: 'التالي: التفاصيل',
+                icon: Icons.arrow_forward_ios_rounded,
+                onPressed: widget.onContinue,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

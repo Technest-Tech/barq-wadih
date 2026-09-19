@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AdStatus;
+use App\Enums\BoostType;
 use App\Enums\CommissionStatus;
 use App\Enums\ModerationStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -120,6 +121,23 @@ class Ad extends Model
     public function boosts(): HasMany
     {
         return $this->hasMany(AdBoost::class)->latest('boosted_at');
+    }
+
+    /**
+     * When the owner last tapped "تحديث" to bump this ad to the top of the
+     * feed, or null if they never have. Listing endpoints preload it with
+     * `withMax('boosts as last_refreshed_at', ...)` so rendering a page of ads
+     * costs one extra query instead of one per ad.
+     */
+    public function lastRefreshedAt(): ?Carbon
+    {
+        $value = array_key_exists('last_refreshed_at', $this->attributes)
+            ? $this->attributes['last_refreshed_at']
+            : AdBoost::where('ad_id', $this->id)
+                ->where('boost_type', BoostType::Refresh->value)
+                ->max('boosted_at');
+
+        return $value ? Carbon::parse($value) : null;
     }
 
     public function favorites(): HasMany

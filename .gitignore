@@ -116,3 +116,8 @@ backend/storage/firebase-service-account.json
 artifacts/releases/
 artifacts/marketing-test/
 artifacts/*.mp4
+
+# ─────────────────────────────────────────
+# Build artifacts (source bundles handed to the client)
+# ─────────────────────────────────────────
+artifacts/

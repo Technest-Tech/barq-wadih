@@ -36,6 +36,15 @@
   --admin-radius-sm:      8px;
   --admin-radius-lg:      16px;
 
+  /* Drawer stack, bottom to top: page chrome, the dimming veil, then the
+     drawer itself. The veil has to stay under the sidebar — above it, it
+     covers the menu it just opened and swallows every tap. The whole band
+     stays under 1000, where page lightboxes, modals and toasts live, so a
+     modal still covers the sidebar the way it always has. */
+  --admin-z-header:       100;
+  --admin-z-overlay:      190;
+  --admin-z-sidebar:      200;
+
   --admin-shadow:         0 1px 8px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.04);
   --admin-shadow-lg:      0 4px 24px rgba(15, 23, 42, 0.1), 0 8px 40px rgba(15, 23, 42, 0.06);
   --admin-shadow-glow:    0 0 0 3px rgba(99, 102, 241, 0.12);
@@ -194,7 +203,7 @@
     background: rgba(15, 23, 42, 0.5);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
-    z-index: 998;
+    z-index: var(--admin-z-overlay);
     animation: fadeIn 0.2s ease;
   }
 }

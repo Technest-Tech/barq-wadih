@@ -1,6 +1,6 @@
 # Barq Wadih — Production Deployment Documentation
 
-> **Last updated:** 2026-06-17  
+> **Last updated:** 2026-09-17
 > **Deployed by:** Technest-Tech  
 > **Status:** ✅ LIVE
 
@@ -25,8 +25,9 @@
 ## 🏗️ Server Architecture
 
 ```
-DigitalOcean Droplet (Ubuntu 24.04 LTS)
-IP: 192.81.212.150
+DigitalOcean Premium AMD Droplet (Ubuntu 24.04 LTS, FRA1)
+Primary IP: 165.232.120.115
+Capacity: 4 vCPU, 8 GiB RAM, 160 GB NVMe, 5 TB transfer
 
 Nginx (reverse proxy)
   barqwadih.com     → :3000 (Next.js via PM2)
@@ -36,9 +37,18 @@ Next.js (PM2 :3000)    Laravel 12 (PHP 8.3-FPM)
                               │
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
-         MySQL 8         Redis 7        Meilisearch
+       PostgreSQL 15     Redis 7        Meilisearch
          (Docker)        (Docker)        (Docker)
 ```
+
+The former NYC1 host at `192.81.212.150` is temporarily retained as a
+reverse-proxy bridge and rollback point while DNS caches expire. Do not deploy
+code or process queue jobs there. Remove it only after the Frankfurt host has
+been stable through the rollback window and the owner approves deletion.
+
+The Droplet costs USD 56/month. Weekly automated backups add USD 11.20/month,
+for USD 67.20/month total. Backups are enabled and scheduled for Wednesday
+between 04:00 and 08:00 UTC.
 
 ---
 
@@ -49,12 +59,12 @@ Next.js (PM2 :3000)    Laravel 12 (PHP 8.3-FPM)
 | Ubuntu | 24.04 LTS | Droplet OS |
 | Nginx | 1.24 | System service |
 | PHP | 8.3 | System (php8.3-fpm) |
-| Composer | 2.9.7 | System |
+| Composer | 2.7.1 | System |
 | Node.js | 20.x | System |
-| PM2 | 6.0.14 | Manages Next.js process |
+| PM2 | 7.0.4 | Manages Next.js process |
 | Supervisor | system | Manages Laravel queue workers |
-| Docker | 29.4.1 | Runs MySQL, Redis, Meilisearch |
-| Docker Compose | v5.1.3 | Services orchestration |
+| Docker | 29.1.3 | Runs PostgreSQL, Redis, Meilisearch |
+| Docker Compose | 2.40.3 | Services orchestration |
 | Certbot | latest | Let's Encrypt SSL (auto-renews) |
 | UFW | system | Firewall |
 
@@ -65,7 +75,7 @@ Next.js (PM2 :3000)    Laravel 12 (PHP 8.3-FPM)
 ### SSH Access
 
 ```
-Host: 192.81.212.150
+Host: 165.232.120.115
 User: root
 Droplet public key:
   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJtJzmKHrKBYJUpsQy/BzHSFqeB7AH9zNqfL/0MHl8vr root@droplet
@@ -79,15 +89,14 @@ Branch: main
 Path on server: /var/www/barq-wadih/
 ```
 
-### MySQL (Docker)
+### PostgreSQL (Docker)
 
 ```
-Host:          127.0.0.1:3306
+Host:          127.0.0.1:5432
 Database:      barq_wadih
 User:          barq_user
 Password:      <in server .env + password manager — ROTATE (was committed)>
-Root Password: <in password manager — ROTATE (was committed)>
-Container:     barq_mysql
+Container:     barq_postgres
 ```
 
 ### Redis (Docker)
@@ -204,7 +213,7 @@ Three TypeScript errors fixed during deployment:
 
 ### Redeploy backend after code change:
 ```bash
-ssh root@192.81.212.150
+ssh root@165.232.120.115
 cd /var/www/barq-wadih && git pull origin main
 cd backend
 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=ext-redis
@@ -216,7 +225,7 @@ supervisorctl restart barq-worker:*
 
 ### Redeploy frontend after code change:
 ```bash
-ssh root@192.81.212.150
+ssh root@165.232.120.115
 cd /var/www/barq-wadih && git pull origin main
 cd frontend
 npm install --legacy-peer-deps
@@ -226,7 +235,7 @@ pm2 restart barq-frontend
 
 ### Restart all services:
 ```bash
-ssh root@192.81.212.150
+ssh root@165.232.120.115
 pm2 restart barq-frontend
 supervisorctl restart barq-worker:*
 systemctl restart php8.3-fpm nginx
@@ -250,7 +259,7 @@ needs **one** system cron entry. Without it none of these ever fire:
 Install it once on the droplet:
 
 ```bash
-ssh root@192.81.212.150
+ssh root@165.232.120.115
 crontab -e
 # add:
 * * * * * cd /var/www/barq-wadih/backend && php artisan schedule:run >> /dev/null 2>&1
@@ -287,6 +296,20 @@ If Imagick is absent the code falls back to GD (needs `imagewebp`).
 | image | 1280px | detail carousel (web + mobile) | `image_url` |
 
 Files are uploaded with `Cache-Control: public, max-age=31536000, immutable`.
+
+Production upload limits must stay aligned with the API's ten-image, 5 MB per
+image validation rule. The live host uses:
+
+```nginx
+client_max_body_size 64M;
+client_body_timeout 300s;
+send_timeout 300s;
+fastcgi_read_timeout 300s;
+```
+
+PHP-FPM uses `upload_max_filesize=8M`, `post_max_size=64M`, and a 20-worker
+pool. Smaller defaults can reject or stall valid mobile uploads before Laravel
+receives them.
 
 **Backfill existing ads** (one-time, after deploy — re-processes old full-size images):
 ```bash
@@ -407,7 +430,7 @@ The debug keystore fingerprints above **will not work** for a production/Play St
 
 1. **Firebase Service Account** — Upload `firebase-service-account.json` manually:
    ```bash
-   scp backend/storage/firebase-service-account.json root@192.81.212.150:/var/www/barq-wadih/backend/storage/
+   scp backend/storage/firebase-service-account.json root@165.232.120.115:/var/www/barq-wadih/backend/storage/
    ```
 2. **DigitalOcean Spaces** — set these in `/var/www/barq-wadih/backend/.env`. The
    variable names **must match** `config/filesystems.php` → `do_spaces` (the disk

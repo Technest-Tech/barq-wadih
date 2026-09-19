@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/app_constants.dart';
+import 'retry_interceptor.dart';
 
 // ── Providers ───────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ final dioProvider = Provider<Dio>((ref) {
       },
     ),
   );
+
+  dio.interceptors.add(RetryInterceptor(dio));
 
   if (const bool.fromEnvironment('dart.vm.product') == false) {
     dio.interceptors.add(

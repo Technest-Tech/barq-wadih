@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AdStatus;
+use App\Enums\BoostType;
 use App\Enums\ModerationStatus;
 use App\Http\Requests\Ad\StoreAdRequest;
 use App\Http\Requests\Ad\UpdateAdRequest;
@@ -225,6 +226,12 @@ class AdController extends BaseController
             ->where('user_id', $user->id)
             ->with(['primaryImage', 'category', 'city', 'user'])
             ->withCount('images')
+            // Feeds `can_refresh` / `next_refresh_at` in AdListResource with a
+            // single subquery instead of one lookup per ad.
+            ->withMax(
+                ['boosts as last_refreshed_at' => fn ($query) => $query->where('boost_type', BoostType::Refresh->value)],
+                'boosted_at',
+            )
             ->latest()
             ->paginate(20);
 

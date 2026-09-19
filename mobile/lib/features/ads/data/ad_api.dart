@@ -1,7 +1,11 @@
 // lib/features/ads/data/ad_api.dart
 
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
 import '../domain/ad_model.dart';
@@ -157,13 +161,34 @@ class AdsFilter {
 class AdRepository {
   final Dio _dio;
 
+  static const _homeFeedCacheKey = 'api_cache_home_feed_v1';
+
   const AdRepository(this._dio);
+
+  static Future<void> _writeHomeFeedCache(Map<String, dynamic> body) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_homeFeedCacheKey, jsonEncode(body));
+    } catch (_) {
+      // Caching must never delay or fail a successful API response.
+    }
+  }
+
+  static Future<Map<String, dynamic>?> _readHomeFeedCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_homeFeedCacheKey);
+      return cached == null ? null : jsonDecode(cached) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
 
   static final _adUploadOptions = Options(
     contentType: 'multipart/form-data',
-    sendTimeout: Duration(seconds: 60),
+    sendTimeout: Duration(minutes: 5),
     // The API creates and stores resized variants before returning the ad.
-    receiveTimeout: Duration(seconds: 90),
+    receiveTimeout: Duration(minutes: 5),
   );
 
   ApiException _adUploadException(
@@ -203,24 +228,54 @@ class AdRepository {
         queryParameters: filter.toQueryParams(),
       );
       final body = response.data!;
-      final dataList = body['data'] as List<dynamic>;
-      final meta = body['meta'] as Map<String, dynamic>?;
-      final ads = dataList
-          .map((e) => AdListModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final hasMore = meta != null
-          ? (meta['current_page'] as int? ?? 1) <
-                (meta['last_page'] as int? ?? 1)
-          : false;
-      final total = meta?['total'] as int? ?? ads.length;
-      return (ads: ads, hasMore: hasMore, total: total);
+      if (_isHomeFeed(filter)) {
+        unawaited(_writeHomeFeedCache(body));
+      }
+      return _parseAdsPage(body);
     } on DioException catch (e) {
+      if (_isHomeFeed(filter)) {
+        final cached = await _readHomeFeedCache();
+        if (cached != null) {
+          return _parseAdsPage(cached);
+        }
+      }
       throw ApiException(
         message:
             e.response?.data?['message'] as String? ?? 'فشل في تحميل الإعلانات',
         statusCode: e.response?.statusCode,
       );
     }
+  }
+
+  bool _isHomeFeed(AdsFilter filter) {
+    return filter.page == 1 &&
+        filter.sort == 'newest' &&
+        filter.categoryId == null &&
+        filter.categoryIds == null &&
+        filter.cityId == null &&
+        filter.cityIds == null &&
+        filter.regionId == null &&
+        filter.priceMin == null &&
+        filter.priceMax == null &&
+        (filter.q == null || filter.q!.isEmpty) &&
+        filter.condition == null &&
+        filter.withImages == null &&
+        filter.negotiable == null;
+  }
+
+  ({List<AdListModel> ads, bool hasMore, int total}) _parseAdsPage(
+    Map<String, dynamic> body,
+  ) {
+    final dataList = body['data'] as List<dynamic>;
+    final meta = body['meta'] as Map<String, dynamic>?;
+    final ads = dataList
+        .map((e) => AdListModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final hasMore = meta != null
+        ? (meta['current_page'] as int? ?? 1) < (meta['last_page'] as int? ?? 1)
+        : false;
+    final total = meta?['total'] as int? ?? ads.length;
+    return (ads: ads, hasMore: hasMore, total: total);
   }
 
   /// GET /ads/{id} — single ad detail

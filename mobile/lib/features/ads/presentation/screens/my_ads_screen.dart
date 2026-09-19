@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -316,6 +317,29 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
   /// only hidden — never destroyed — and renewal brings them back.
   bool get _isHidden => ad.status == 'expired';
 
+  /// How long is left on the 24h wait between two "تحديث" bumps, or null once
+  /// the ad can be bumped again. The backend is the authority — it sends
+  /// `next_refresh_at` with every owner-visible ad and rejects an early bump —
+  /// so this only mirrors that state into the button.
+  Duration? get _refreshCooldownLeft {
+    final nextRefreshAt = ad.nextRefreshAt;
+    if (nextRefreshAt == null) return null;
+    final left = nextRefreshAt.difference(DateTime.now());
+    return left.isNegative ? null : left;
+  }
+
+  bool get _canRefresh => _refreshCooldownLeft == null;
+
+  /// "متبقي ٣ ساعات و١٢ دقيقة" — the same wording the API returns on a 422,
+  /// so the button's hint and the error message never disagree.
+  static String _waitLabel(Duration left) {
+    final minutes = (left.inSeconds / 60).ceil();
+    if (minutes < 60) return 'متبقي ${minutes < 1 ? 1 : minutes} دقيقة';
+    final hours = minutes ~/ 60;
+    final rest = minutes % 60;
+    return rest > 0 ? 'متبقي $hours ساعة و$rest دقيقة' : 'متبقي $hours ساعة';
+  }
+
   /// Renewal republishes a hidden ad for another 3 months. The backend
   /// rejects this while the ad is still visible, which is why the button is
   /// greyed out until then.
@@ -377,8 +401,9 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
     }
   }
 
-  /// "تحديث" — bumps the ad back to the top of the feed. The backend enforces
-  /// a cooldown (default 24h) and returns the reason if it's too soon.
+  /// "تحديث" — bumps the ad back to the top of the feed, then locks for 24h.
+  /// The backend owns the cooldown and rejects an early bump with the wait
+  /// spelled out; reloading My Ads afterwards picks up the new lock.
   Future<void> _handleRefresh() async {
     setState(() => _refreshingAd = true);
     try {
@@ -501,6 +526,7 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
         daysRemaining >= 0 &&
         ad.status == 'active';
     final isActive = ad.status == 'active';
+    final cooldownLeft = _refreshCooldownLeft;
 
     return Opacity(
       opacity: _deletingAd ? 0.5 : 1.0,
@@ -717,11 +743,18 @@ class _AdListTileState extends ConsumerState<_AdListTile> {
 
                     // Active ads only: bump to top, mark sold, and edit.
                     if (isActive) ...[
+                      // One bump per ad per 24h — locked with the remaining
+                      // wait until the window reopens.
                       _TileAction(
                         label: 'تحديث',
                         icon: Icons.refresh_rounded,
                         color: const Color(0xFF059669),
                         isLoading: _refreshingAd,
+                        enabled: _canRefresh,
+                        disabledHint: cooldownLeft == null
+                            ? null
+                            : 'يمكنك تحديث الإعلان مرة واحدة كل 24 ساعة — '
+                                  '${_waitLabel(cooldownLeft)}',
                         onTap: _handleRefresh,
                       ),
                       _TileAction(
@@ -900,7 +933,14 @@ class _TileAction extends StatelessWidget {
     final tint = enabled ? color : AppTheme.neutralGray400;
 
     final button = GestureDetector(
-      onTap: (isLoading || !enabled) ? null : onTap,
+      // A locked action still answers a tap — with the reason it is locked.
+      // The Tooltip below only surfaces on a long press, which nobody tries on
+      // a button that looks dead.
+      onTap: isLoading
+          ? null
+          : enabled
+          ? onTap
+          : (disabledHint == null ? null : () => _explainLock(context)),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -940,6 +980,18 @@ class _TileAction extends StatelessWidget {
       return Tooltip(message: disabledHint!, child: button);
     }
     return button;
+  }
+
+  void _explainLock(BuildContext context) {
+    HapticFeedback.selectionClick();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(disabledHint!, textDirection: TextDirection.rtl),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 }
 

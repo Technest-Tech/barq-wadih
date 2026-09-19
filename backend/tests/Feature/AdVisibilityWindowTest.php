@@ -160,6 +160,52 @@ class AdVisibilityWindowTest extends TestCase
         $this->assertTrue($flags[$hidden->id]);
     }
 
+    public function test_the_backfill_extends_ads_left_on_the_old_30_day_window(): void
+    {
+        $owner = User::factory()->create(['phone' => '+966500000109']);
+
+        // Published a week ago under the old rule: 30 days from publication.
+        $legacy = $this->makeAd($owner, [
+            'published_at' => now()->subWeek(),
+            'expires_at' => now()->subWeek()->addDays(30),
+        ]);
+        // Published today under the current rule.
+        $current = $this->makeAd($owner);
+
+        Artisan::call('ads:extend-visibility');
+
+        $this->assertEqualsWithDelta(
+            now()->subWeek()->addMonths(3)->timestamp,
+            $legacy->fresh()->expires_at->timestamp,
+            60,
+        );
+        // The ad already on the long window is untouched.
+        $this->assertEqualsWithDelta(
+            $current->expires_at->timestamp,
+            $current->fresh()->expires_at->timestamp,
+            1,
+        );
+    }
+
+    public function test_the_backfill_leaves_hidden_ads_to_the_renew_button(): void
+    {
+        $owner = User::factory()->create(['phone' => '+966500000110']);
+        $hidden = $this->makeAd($owner, [
+            'status' => AdStatus::Expired,
+            'published_at' => now()->subMonths(2),
+            'expires_at' => now()->subMonth(),
+        ]);
+
+        Artisan::call('ads:extend-visibility');
+
+        $this->assertEqualsWithDelta(
+            $hidden->expires_at->timestamp,
+            $hidden->fresh()->expires_at->timestamp,
+            1,
+        );
+        $this->assertSame(AdStatus::Expired, $hidden->fresh()->status);
+    }
+
     public function test_the_service_renews_without_sending_the_ad_back_to_moderation(): void
     {
         $owner = User::factory()->create(['phone' => '+966500000108']);

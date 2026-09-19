@@ -9,6 +9,9 @@ import { authApi } from '@/lib/api/auth';
 import { ApiClientError } from '@/lib';
 import styles from './admin-layout.module.css';
 
+/** Below this width the sidebar becomes a drawer — same breakpoint as the CSS. */
+const DRAWER_BREAKPOINT = '(max-width: 1024px)';
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -64,6 +67,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     verify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoginPage]);
+
+  // Rotating an iPad to landscape — or widening a Split View pane — hands the
+  // sidebar back to the grid, where it is always visible. Leaving `mobileOpen`
+  // set behind that would pop the drawer and its overlay straight back open on
+  // the way to portrait.
+  useEffect(() => {
+    const query = window.matchMedia(DRAWER_BREAKPOINT);
+    const closeIfDocked = () => {
+      if (!query.matches) setMobileOpen(false);
+    };
+
+    query.addEventListener('change', closeIfDocked);
+    return () => query.removeEventListener('change', closeIfDocked);
+  }, []);
 
   // Listen for global 401 events fired by the API client
   useEffect(() => {

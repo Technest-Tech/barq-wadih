@@ -7,11 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/router/app_router.dart';
+import 'core/services/app_session.dart';
 import 'core/services/fcm_service.dart';
 import 'core/services/app_update_service.dart';
 import 'core/widgets/app_update_dialog.dart';
 import 'core/services/marketing_tracking_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/ads/data/ad_api.dart';
 import 'features/notifications/data/notification_providers.dart';
 import 'features/settings/providers/theme_provider.dart';
 import 'features/settings/providers/locale_provider.dart';
@@ -69,10 +71,29 @@ class _BarqWadihAppState extends ConsumerState<BarqWadihApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+    // The user tapped "خروج" last time, but the process outlived the exit —
+    // start this foreground on a fresh home feed instead of wherever they were.
+    if (AppSession.consumeRestart()) _restartToHome();
     unawaited(_checkForUpdate());
     // Notifications may have been read on another device — or arrived while
     // this one was backgrounded — so re-sync the bell and the icon badge.
     unawaited(refreshUnreadNotifications(ref));
+  }
+
+  /// Rebuild the state a real cold start would have given us: no leftover
+  /// routes, no leftover filters, and a feed reloaded from the server.
+  void _restartToHome() {
+    final router = ref.read(appRouterProvider);
+    // Dialogs, bottom sheets and the sidebar live on the root navigator above
+    // anything go_router knows about, so they have to come down separately.
+    router.routerDelegate.navigatorKey.currentState?.popUntil(
+      (route) => route.isFirst,
+    );
+    router.go('/');
+    // Resets the feed's filter and refetches page one, whichever screen the
+    // user happened to leave the app on.
+    ref.read(adsFeedProvider.notifier).applyFilter(const AdsFilter());
+    ref.read(appResetSignalProvider.notifier).bump();
   }
 
   void _onInboundPush() {

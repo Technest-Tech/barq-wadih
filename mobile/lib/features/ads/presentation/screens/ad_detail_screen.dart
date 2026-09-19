@@ -344,7 +344,134 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Location + time + views
+                    // Seller — the name sits with the ad details, above
+                    // the description, so the ad reads: what → who → where.
+                    InkWell(
+                      onTap: ad.user == null
+                          ? null
+                          : () {
+                              HapticFeedback.selectionClick();
+                              context.push('/users/${ad.user!.id}');
+                            },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage:
+                                ad.user?.avatar != null &&
+                                    ad.user!.avatar!.isNotEmpty
+                                ? NetworkImage(
+                                    AppConstants.normalizeImageUrl(
+                                      ad.user!.avatar!,
+                                    ),
+                                  )
+                                : null,
+                            child:
+                                ad.user?.avatar == null ||
+                                    (ad.user?.avatar?.isEmpty ?? true)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 22,
+                                    color: Colors.grey,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        ad.user?.name ?? 'غير معروف',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          color: Color(0xFF0075C4),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (ad.user?.isVerified ?? false) ...[
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.verified_rounded,
+                                        size: 16,
+                                        color: Color(0xFF0075C4),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.chevron_left,
+                                      size: 18,
+                                      color: AppTheme.neutralGray500,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        '${ad.user?.totalAdsCount ?? 0} إعلان · عضو منذ ${_formatMemberSince(ad.user?.memberSince)}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.neutralGray500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if ((ad.user?.avgRating ?? 0) > 0) ...[
+                                      const SizedBox(width: 8),
+                                      const Icon(
+                                        Icons.star,
+                                        size: 12,
+                                        color: Color(0xFFFFC107),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '${ad.user!.avgRating!.toStringAsFixed(1)} (${ad.user!.ratingCount ?? 0})',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.neutralGray600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0075C4),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'الملف',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Location + time
                     Wrap(
                       spacing: 12,
                       runSpacing: 4,
@@ -386,197 +513,9 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                             ),
                           ],
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.visibility_outlined,
-                              size: 14,
-                              color: AppTheme.neutralGray500,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${ad.viewsCount} مشاهدة',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.neutralGray600,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ],
-                ),
-              ),
-
-              // Description
-              Container(
-                width: double.infinity,
-                color: Colors.white,
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(top: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'الوصف',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.neutralGray800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      ad.description.isEmpty
-                          ? 'لا يوجد وصف للإعلان.'
-                          : ad.description,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF475569),
-                        height: 1.8,
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Photos — shown after the written details.
-              AdImageGallery(adId: ad.id, images: ad.images),
-
-              // Seller Row
-              Container(
-                color: Colors.white,
-                margin: const EdgeInsets.only(top: 2),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: InkWell(
-                  onTap: ad.user == null
-                      ? null
-                      : () {
-                          HapticFeedback.selectionClick();
-                          context.push('/users/${ad.user!.id}');
-                        },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage:
-                            ad.user?.avatar != null &&
-                                ad.user!.avatar!.isNotEmpty
-                            ? NetworkImage(
-                                AppConstants.normalizeImageUrl(
-                                  ad.user!.avatar!,
-                                ),
-                              )
-                            : null,
-                        child:
-                            ad.user?.avatar == null ||
-                                (ad.user?.avatar?.isEmpty ?? true)
-                            ? const Icon(
-                                Icons.person,
-                                size: 22,
-                                color: Colors.grey,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    ad.user?.name ?? 'غير معروف',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Color(0xFF0075C4),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                if (ad.user?.isVerified ?? false) ...[
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.verified_rounded,
-                                    size: 16,
-                                    color: Color(0xFF0075C4),
-                                  ),
-                                ],
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.chevron_left,
-                                  size: 18,
-                                  color: AppTheme.neutralGray500,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    '${ad.user?.totalAdsCount ?? 0} إعلان · عضو منذ ${_formatMemberSince(ad.user?.memberSince)}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.neutralGray500,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if ((ad.user?.avgRating ?? 0) > 0) ...[
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.star,
-                                    size: 12,
-                                    color: Color(0xFFFFC107),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${ad.user!.avgRating!.toStringAsFixed(1)} (${ad.user!.ratingCount ?? 0})',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.neutralGray600,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0075C4),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'الملف',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 
@@ -612,6 +551,40 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
               if (ad.isVehicleCategory && (ad.user?.isDealer ?? false))
                 const DealerVehicleCommissionNotice(),
 
+              // Description
+              Container(
+                width: double.infinity,
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(top: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'الوصف',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.neutralGray800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      ad.description.isEmpty
+                          ? 'لا يوجد وصف للإعلان.'
+                          : ad.description,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF475569),
+                        height: 1.8,
+                      ),
+                      textDirection: TextDirection.rtl,
+                    ),
+                  ],
+                ),
+              ),
+
               // Disclaimer
               Container(
                 width: double.infinity,
@@ -645,6 +618,10 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                   ],
                 ),
               ),
+
+              // Photos — shown after the written details, right before
+              // the contact button.
+              AdImageGallery(adId: ad.id, images: ad.images),
 
               // Contact Button
               Container(

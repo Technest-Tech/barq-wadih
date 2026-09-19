@@ -1,7 +1,11 @@
 // lib/features/regions/data/region_api.dart
 
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
 import '../domain/region_model.dart';
@@ -13,73 +17,86 @@ class RegionRepository {
 
   const RegionRepository(this._dio);
 
-  Future<List<RegionModel>> getRegions() async {
+  Future<void> _writeCache(String cacheKey, List<dynamic> data) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/regions');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(cacheKey, jsonEncode(data));
+    } catch (_) {
+      // Caching must never delay or fail a successful API response.
+    }
+  }
+
+  Future<List<dynamic>?> _readCache(String cacheKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(cacheKey);
+      return cached == null ? null : jsonDecode(cached) as List<dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<T>> _getCachedList<T>(
+    String path,
+    String cacheKey,
+    T Function(Map<String, dynamic>) fromJson,
+    String fallbackMessage,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(path);
       final data = response.data!['data'] as List<dynamic>;
+      unawaited(_writeCache(cacheKey, data));
       return data
-          .map((e) => RegionModel.fromJson(e as Map<String, dynamic>))
+          .map((item) => fromJson(item as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
+      final cached = await _readCache(cacheKey);
+      if (cached != null) {
+        return cached
+            .map((item) => fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
       throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ?? 'فشل في تحميل المناطق',
+        message: e.response?.data?['message'] as String? ?? fallbackMessage,
         statusCode: e.response?.statusCode,
       );
     }
+  }
+
+  Future<List<RegionModel>> getRegions() async {
+    return _getCachedList(
+      '/regions',
+      'api_cache_regions_v1',
+      RegionModel.fromJson,
+      'فشل في تحميل المناطق',
+    );
   }
 
   Future<List<CityModel>> getCities(String regionSlug) async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/regions/$regionSlug/cities',
-      );
-      final data = response.data!['data'] as List<dynamic>;
-      return data
-          .map((e) => CityModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (e) {
-      throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ?? 'فشل في تحميل المدن',
-        statusCode: e.response?.statusCode,
-      );
-    }
+    return _getCachedList(
+      '/regions/$regionSlug/cities',
+      'api_cache_region_cities_${regionSlug}_v1',
+      CityModel.fromJson,
+      'فشل في تحميل المدن',
+    );
   }
 
   Future<List<CityModel>> getAllCities() async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>('/cities');
-      final data = response.data!['data'] as List<dynamic>;
-      return data
-          .map((e) => CityModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (e) {
-      throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ??
-            'فشل في تحميل جميع المدن',
-        statusCode: e.response?.statusCode,
-      );
-    }
+    return _getCachedList(
+      '/cities',
+      'api_cache_all_cities_v1',
+      CityModel.fromJson,
+      'فشل في تحميل جميع المدن',
+    );
   }
 
   Future<List<DistrictModel>> getDistricts(int cityId) async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/cities/$cityId/districts',
-      );
-      final data = response.data!['data'] as List<dynamic>;
-      return data
-          .map((e) => DistrictModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (e) {
-      throw ApiException(
-        message:
-            e.response?.data?['message'] as String? ?? 'فشل في تحميل الأحياء',
-        statusCode: e.response?.statusCode,
-      );
-    }
+    return _getCachedList(
+      '/cities/$cityId/districts',
+      'api_cache_city_districts_${cityId}_v1',
+      DistrictModel.fromJson,
+      'فشل في تحميل الأحياء',
+    );
   }
 }
 

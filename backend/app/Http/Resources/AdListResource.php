@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Region;
 use App\Models\User;
+use App\Services\BoostService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,6 +32,14 @@ class AdListResource extends JsonResource
         $region = $ad->region;
         /** @var User|null $user */
         $user = $ad->user;
+
+        $isOwner = $request->user()?->id === $ad->user_id;
+
+        // Owner-only: drives the "تحديث" button's locked state in My Ads, so
+        // the seller sees the 24h wait instead of discovering it via a 422.
+        $nextRefreshAt = $isOwner
+            ? app(BoostService::class)->nextRefreshAt($ad)
+            : null;
 
         return [
             'id' => $ad->id,
@@ -75,6 +84,11 @@ class AdListResource extends JsonResource
             'payment_amount' => $request->user()?->id === $ad->user_id ? $ad->payment_amount : null,
             // Owner-only: enables the "ترقية" button once the ad is hidden.
             'can_renew' => $request->user()?->can('renew', $ad) ?? false,
+            // Owner-only: false while the ad is inside its refresh cooldown.
+            'can_refresh' => $isOwner
+                ? ($request->user()->can('boost', $ad) && $nextRefreshAt === null)
+                : null,
+            'next_refresh_at' => $nextRefreshAt?->toISOString(),
         ];
     }
 }

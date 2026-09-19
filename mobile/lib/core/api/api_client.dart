@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/locale_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
+import '../network/retry_interceptor.dart';
 
 class ApiClient {
   static ApiClient? _instance;
@@ -32,6 +33,7 @@ class ApiClient {
     dio.interceptors.addAll([
       LocaleInterceptor(),
       AuthInterceptor(),
+      RetryInterceptor(dio),
       ErrorInterceptor(),
       if (kDebugMode)
         LogInterceptor(

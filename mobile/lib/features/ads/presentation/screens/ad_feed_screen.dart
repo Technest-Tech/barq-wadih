@@ -16,6 +16,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/app_session.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/exit_confirm_dialog.dart';
@@ -84,8 +85,18 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       _filter.negotiable != null;
 
   /// Reset the feed back to the unfiltered home state.
-  void _clearAllFilters() {
-    HapticFeedback.selectionClick();
+  ///
+  /// [reloadFeed] is false when the caller has already refetched page one — a
+  /// session restart does that centrally, and asking twice would throw away the
+  /// in-flight request and show a second loading flash.
+  /// Set while a restarted session waits for its refreshed first page. The
+  /// list that was on screen when the reset ran is thrown away by the reload,
+  /// and the replacement restores the offset it was built with, so the top has
+  /// to be re-asserted once the new ads are laid out.
+  bool _pendingTopReset = false;
+
+  void _clearAllFilters({bool haptic = true, bool reloadFeed = true}) {
+    if (haptic) HapticFeedback.selectionClick();
     _searchDebounce?.cancel();
     _suggestDebounce?.cancel();
     _searchController.clear();
@@ -100,8 +111,22 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       _showSuggestions = false;
     });
     _filter = const AdsFilter();
-    ref.read(adsFeedProvider.notifier).applyFilter(_filter);
-    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    if (reloadFeed) ref.read(adsFeedProvider.notifier).applyFilter(_filter);
+    _scrollToTop();
+  }
+
+  /// Send the feed back to the very top — header fully expanded, first ad
+  /// flush under the filter bar, exactly where a pull-to-refresh leaves it.
+  ///
+  /// Only the outer position is jumped. [NestedScrollView] routes it through
+  /// its coordinator, which resets the inner list along with it. Jumping the
+  /// inner controller as well would be read as a *global* offset past the
+  /// header's max extent, collapsing the categories bar onto the list so the
+  /// first ad sits clipped underneath it.
+  void _scrollToTop() {
+    for (final position in _scrollController.positions) {
+      position.jumpTo(0);
+    }
   }
 
   @override
@@ -382,7 +407,21 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
       });
     });
 
+    // Reopening the app after "خروج" starts a new session: the provider-level
+    // feed has already been refetched, so this only has to drop the filter
+    // chips, the search box and the scroll offset the old session left behind.
+    ref.listen<int>(appResetSignalProvider, (_, __) {
+      _clearAllFilters(haptic: false, reloadFeed: false);
+      _pendingTopReset = true;
+    });
+
     final feedState = ref.watch(adsFeedProvider);
+    if (_pendingTopReset && feedState.hasValue && !feedState.isLoading) {
+      _pendingTopReset = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToTop();
+      });
+    }
     final categories = ref.watch(categoriesProvider);
 
     return PopScope(
@@ -394,7 +433,7 @@ class _AdFeedScreenState extends ConsumerState<AdFeedScreen> {
         if (_isFeedFiltered) {
           _clearAllFilters();
         } else if (await showExitConfirmDialog(context)) {
-          SystemNavigator.pop();
+          await AppSession.exitApp();
         }
       },
       child: Scaffold(
@@ -1617,23 +1656,40 @@ class _MainCategoryTab extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? AppTheme.primaryBlue : Colors.transparent,
-              width: 3,
+      child: Center(
+        // A solid pill instead of a hairline underline: the selected category
+        // reads at a glance, and the unselected ones still look like buttons
+        // rather than plain text.
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.primaryBlue : AppTheme.neutralGray50,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(
+              color: selected ? AppTheme.primaryBlue : AppTheme.neutralGray200,
+              width: 1,
             ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppTheme.primaryBlue.withValues(alpha: .28),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
-        ),
-        child: Center(
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? AppTheme.primaryBlue : AppTheme.neutralGray600,
+              fontSize: 13.5,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? Colors.white : AppTheme.neutralGray700,
             ),
           ),
         ),

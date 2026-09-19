@@ -11,7 +11,7 @@
   overflow: hidden;
   position: sticky;
   top: 0;
-  z-index: 200;
+  z-index: var(--admin-z-sidebar);
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

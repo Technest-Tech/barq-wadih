@@ -8,6 +8,7 @@ use App\Models\Ad;
 use App\Models\AdBoost;
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BoostService
@@ -111,6 +112,34 @@ class BoostService
     }
 
     /**
+     * How long an ad owner must wait between two "تحديث" bumps.
+     */
+    public function refreshCooldownHours(): int
+    {
+        return max(0, (int) SystemSetting::get('boost_refresh_cooldown_hours', 24));
+    }
+
+    /**
+     * The moment this ad becomes refreshable again, or null when it already is.
+     *
+     * The window runs from the last refresh, not from publication — a freshly
+     * published ad can be bumped straight away, and every bump after that
+     * starts a new wait.
+     */
+    public function nextRefreshAt(Ad $ad): ?Carbon
+    {
+        $lastRefresh = $ad->lastRefreshedAt();
+
+        if ($lastRefresh === null) {
+            return null;
+        }
+
+        $nextRefreshAt = $lastRefresh->copy()->addHours($this->refreshCooldownHours());
+
+        return $nextRefreshAt->isFuture() ? $nextRefreshAt : null;
+    }
+
+    /**
      * Check if an ad can be refreshed.
      *
      * @return array{0: bool, 1: string, 2: ?string}  [canRefresh, reason, nextRefreshAt ISO]
@@ -125,23 +154,39 @@ class BoostService
             return [false, 'يمكن تحديث الإعلانات النشطة فقط.', null];
         }
 
-        // Cooldown check — last refresh for this specific ad
-        $cooldownHours = (int) SystemSetting::get('boost_refresh_cooldown_hours', 24);
-        $lastRefresh = AdBoost::where('ad_id', $ad->id)
-            ->where('boost_type', BoostType::Refresh->value)
-            ->latest('boosted_at')
-            ->first();
+        // Cooldown check — last refresh for this specific ad.
+        $nextRefreshAt = $this->nextRefreshAt($ad);
 
-        if ($lastRefresh && $lastRefresh->boosted_at->diffInHours(now()) < $cooldownHours) {
-            $nextRefreshAt = $lastRefresh->boosted_at->addHours($cooldownHours);
+        if ($nextRefreshAt !== null) {
             return [
                 false,
-                'يجب الانتظار قبل تحديث الإعلان مرة أخرى.',
+                'يمكنك تحديث الإعلان مرة واحدة كل ' . $this->refreshCooldownHours()
+                    . ' ساعة — ' . $this->waitLabel($nextRefreshAt) . '.',
                 $nextRefreshAt->toISOString(),
             ];
         }
 
         return [true, '', null];
+    }
+
+    /**
+     * "متبقي ٣ ساعات و١٢ دقيقة" — the wait spelled out, so the seller is not
+     * left guessing when the button comes back.
+     */
+    public function waitLabel(Carbon $nextRefreshAt): string
+    {
+        $minutes = (int) ceil(now()->diffInMinutes($nextRefreshAt, absolute: true));
+
+        if ($minutes < 60) {
+            return 'متبقي ' . max(1, $minutes) . ' دقيقة';
+        }
+
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
+
+        return $rest > 0
+            ? 'متبقي ' . $hours . ' ساعة و' . $rest . ' دقيقة'
+            : 'متبقي ' . $hours . ' ساعة';
     }
 
     // ── Config ───────────────────────────────────────────────────────────────

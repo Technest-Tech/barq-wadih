@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../services/app_session.dart';
 import '../widgets/exit_confirm_dialog.dart';
 
 import '../../features/ads/presentation/screens/ad_feed_screen.dart';
@@ -230,7 +229,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.search,
         onExit: (context, state) async {
           if (context.canPop()) return true;
-          if (await showExitConfirmDialog(context)) SystemNavigator.pop();
+          if (await showExitConfirmDialog(context)) await AppSession.exitApp();
           return false;
         },
         pageBuilder: (context, state) =>

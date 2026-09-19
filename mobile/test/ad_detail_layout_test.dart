@@ -6,18 +6,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:barq_wadih/core/network/api_client.dart';
+import 'package:barq_wadih/core/widgets/riyal_text.dart';
 import 'package:barq_wadih/features/ads/data/ad_api.dart';
 import 'package:barq_wadih/features/ads/domain/ad_model.dart';
 import 'package:barq_wadih/features/ads/presentation/screens/ad_detail_screen.dart';
 import 'package:barq_wadih/features/ads/presentation/widgets/ad_image_gallery.dart';
 
-/// The written details come before the photos on the ad page: a buyer reads
-/// what is for sale and its description, then scrolls into the pictures. The
-/// order lives in one Column that several sessions edit, so pin it here.
+/// The ad page reads top to bottom as: what is for sale and its price, who is
+/// selling it, where they are, the description, the "أخبرني" reminder, then the
+/// photos and the way to contact the seller. The order lives in one Column that
+/// several sessions edit, so pin it here.
 void main() {
   const adId = 77;
   const title = 'ثلاجة للبيع';
   const description = 'ثلاجة بحالة ممتازة، استعمال سنة واحدة فقط.';
+  const sellerName = 'محمد';
+  const cityName = 'الرياض';
 
   // The detail screen fires marketing tracking from initState over a platform
   // channel no host answers in tests.
@@ -39,9 +43,14 @@ void main() {
     'created_at': '2026-09-01T10:00:00Z',
     'published_at': '2026-09-01T10:00:00Z',
     'views_count': 12,
-    'city': {'id': 1, 'name_ar': 'الرياض'},
+    'city': {'id': 1, 'name_ar': cityName},
     'category': {'id': 3, 'name_ar': 'أجهزة'},
-    'user': {'id': 5, 'name': 'محمد', 'is_verified': false, 'is_dealer': false},
+    'user': {
+      'id': 5,
+      'name': sellerName,
+      'is_verified': false,
+      'is_dealer': false,
+    },
   });
 
   Future<void> pumpDetail(WidgetTester tester) async {
@@ -74,20 +83,42 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('title and description are rendered above the photos', (
+  testWidgets('the page runs title → seller → city → description → photos', (
     tester,
   ) async {
     await pumpDetail(tester);
 
-    final titleY = tester.getTopLeft(find.text(title)).dy;
-    final descriptionY = tester.getTopLeft(find.text(description)).dy;
-    final photosY = tester.getTopLeft(find.byType(AdImageGallery)).dy;
+    double topOf(Finder finder) => tester.getTopLeft(finder).dy;
 
-    expect(titleY, lessThan(descriptionY), reason: 'title leads the page');
+    final titleY = topOf(find.text(title));
+    final priceY = topOf(find.byType(RiyalText).first);
+    final sellerY = topOf(find.text(sellerName));
+    final cityY = topOf(find.text(cityName));
+    final descriptionY = topOf(find.text(description));
+    final disclaimerY = topOf(find.textContaining('أخبرني أنك عن طريق'));
+    final photosY = topOf(find.byType(AdImageGallery));
+    final contactY = topOf(find.text('تواصل مع البائع'));
+
+    expect(titleY, lessThan(priceY), reason: 'the item leads with its price');
+    expect(priceY, lessThan(sellerY), reason: 'then who is selling it');
+    expect(sellerY, lessThan(cityY), reason: 'then where they are');
+    expect(cityY, lessThan(descriptionY), reason: 'then the description');
     expect(
       descriptionY,
-      lessThan(photosY),
-      reason: 'the description is read before the photos are reached',
+      lessThan(disclaimerY),
+      reason: 'the "أخبرني" reminder closes the written part',
     );
+    expect(
+      disclaimerY,
+      lessThan(photosY),
+      reason: 'the photos come after everything written',
+    );
+    expect(photosY, lessThan(contactY), reason: 'contact closes the page');
+  });
+
+  testWidgets('the view counter is not shown on the ad page', (tester) async {
+    await pumpDetail(tester);
+
+    expect(find.textContaining('مشاهدة'), findsNothing);
   });
 }
