@@ -551,6 +551,42 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
               if (ad.isVehicleCategory && (ad.user?.isDealer ?? false))
                 const DealerVehicleCommissionNotice(),
 
+              // "Tell them you came from Barq Wadih" — this sits with
+              // the ad details, above the description, so the buyer
+              // reads it before the seller's own wording.
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                color: const Color(0xFFFFEBEE),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Color(0xFFD32F2F),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'أخبرني أنك عن طريق تطبيق برق واضح إبراءً للذمة',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFFD32F2F),
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // Description
               Container(
                 width: double.infinity,
@@ -580,40 +616,6 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
                         height: 1.8,
                       ),
                       textDirection: TextDirection.rtl,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Disclaimer
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(top: 2),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                color: const Color(0xFFFFEBEE),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: Color(0xFFD32F2F),
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'أخبرني أنك عن طريق تطبيق برق واضح إبراءً للذمة',
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFD32F2F),
-                          fontWeight: FontWeight.w600,
-                          height: 1.5,
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -666,6 +668,9 @@ class _HarajDetailScaffoldState extends ConsumerState<_HarajDetailScaffold> {
 
               // Comments Section
               AdCommentsSection(adId: ad.id, sellerId: ad.user?.id),
+
+              // Disclaimer
+              const _AdDisclaimer(),
 
               // Related Ads Section
               if (ad.category != null)
@@ -779,6 +784,66 @@ class _FieldValueChip extends StatelessWidget {
                 fontSize: 12,
                 color: Color(0xFF0075C4),
                 fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Disclaimer ───────────────────────────────────────────────────────────────
+
+/// The liability notice the website shows at the foot of every ad page.
+class _AdDisclaimer extends StatelessWidget {
+  const _AdDisclaimer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('⚠️', style: TextStyle(fontSize: 15)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'تنبيه: ',
+                      style: TextStyle(
+                        color: Color(0xFFB45309),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text:
+                          'برق واضح هي منصة وسيطة بين البائع '
+                          'والمشتري. الموقع غير مسؤول عن دقة '
+                          'المعلومات المقدمة من المُعلن. يُرجى '
+                          'التحقق من السلعة قبل إتمام الصفقة، '
+                          'وعدم دفع أي مبالغ مقدماً دون '
+                          'التأكد من الجودة.',
+                    ),
+                  ],
+                ),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFF92400E),
+                  height: 1.7,
+                ),
               ),
             ),
           ],
