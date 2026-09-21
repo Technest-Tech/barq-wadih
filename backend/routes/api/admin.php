@@ -43,6 +43,7 @@ Route::prefix('v1/admin')
         Route::get('users/{user}',         [AdminUserController::class, 'show'])->name('users.show');
         Route::patch('users/{user}/status', [AdminUserController::class, 'updateStatus'])->name('users.status');
         Route::patch('users/{user}/role',   [AdminUserController::class, 'updateRole'])->name('users.role');
+        Route::patch('users/{user}/verification', [AdminUserController::class, 'updateVerification'])->name('users.verification');
 
         // ── Sprint 15: Ad Moderation ────────────────────────────────────
         Route::get('ads',                  [AdminAdController::class, 'index'])->name('ads.index');

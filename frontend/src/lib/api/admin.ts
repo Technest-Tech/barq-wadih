@@ -58,6 +58,12 @@ export interface AdminUser {
   role_label: string;
   locale: string;
   is_verified: boolean;
+  /** When the badge was granted. Null for sellers verified before the audit trail existed. */
+  verified_at: string | null;
+  /** Why the badge was granted — usually the seller's verification payment reference. */
+  verification_note: string | null;
+  /** The super-admin who granted it. Only present when the relation is loaded. */
+  verified_by?: { id: number; name: string } | null;
   is_dealer: boolean;
   is_active: boolean;
   avg_rating: string;
@@ -156,6 +162,18 @@ export async function updateUserStatus(id: number, isActive: boolean) {
 
 export async function updateUserRole(id: number, role: string) {
   return apiClient.patch<AdminUser>(ENDPOINTS.ADMIN_USER_ROLE(id), { role });
+}
+
+/**
+ * Grant or revoke a seller's verification badge. Super-admin only — sellers
+ * pay for the badge, so `note` carries the payment reference into the audit
+ * trail. Revoking clears the trail along with the badge.
+ */
+export async function updateUserVerification(id: number, isVerified: boolean, note?: string) {
+  return apiClient.patch<AdminUser>(ENDPOINTS.ADMIN_USER_VERIFICATION(id), {
+    is_verified: isVerified,
+    note: note?.trim() || null,
+  });
 }
 
 // ── Sprint 15: Types ────────────────────────────────────────────────────

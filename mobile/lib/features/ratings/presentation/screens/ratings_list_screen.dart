@@ -102,7 +102,11 @@ class RatingsListScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => RatingSubmitSheet(adId: adId!, sellerName: userName),
+      builder: (_) =>
+          RatingSubmitSheet(
+            target: AdRatingTarget(adId!),
+            sellerName: userName,
+          ),
     ).then((submitted) {
       if (submitted == true) {
         ref.invalidate(userRatingsProvider(userId));

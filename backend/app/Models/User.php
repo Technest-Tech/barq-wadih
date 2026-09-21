@@ -36,6 +36,7 @@ class User extends Authenticatable
         'avatar', 'cover_image', 'bio',
         'region_id', 'city_id',
         'is_dealer', 'is_verified', 'is_active',
+        'verified_at', 'verified_by', 'verification_note',
         'role', 'firebase_uid', 'locale',
         'total_ads_count', 'avg_rating', 'rating_count',
         'commissions_paid_count', 'commissions_due_count',
@@ -59,6 +60,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'phone_verified_at' => 'datetime',
         'last_active_at' => 'datetime',
+        'verified_at' => 'datetime',
         'password' => 'hashed',
         'is_dealer' => 'boolean',
         'is_verified' => 'boolean',
@@ -163,6 +165,12 @@ class User extends Authenticatable
     public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
+    }
+
+    /** The admin who granted this seller's verification badge. */
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function ratingsGiven(): HasMany

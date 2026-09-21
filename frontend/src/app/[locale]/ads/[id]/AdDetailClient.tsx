@@ -447,8 +447,6 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                 </div>
               )}
 
-              <div className={styles.desktopDescWrapper}>{ad.description}</div>
-
               {ad.is_vehicle_category && ad.user?.is_dealer && (
                 <div className={styles.dealerCommissionNotice} role="note">
                   <span className={styles.dealerCommissionIcon} aria-hidden="true">
@@ -460,6 +458,19 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
                   </p>
                 </div>
               )}
+
+              {/* The same notice the app shows: it belongs with the ad
+                  details, above the seller's own description. */}
+              <div className={styles.platformNotice} role="note">
+                <span className={styles.platformNoticeIcon} aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                  </svg>
+                </span>
+                <p>أخبرني أنك عن طريق موقع برق واضح إبراءً للذمة</p>
+              </div>
+
+              <div className={styles.desktopDescWrapper}>{ad.description}</div>
 
               <div
                 className={styles.desktopDescWrapper}
@@ -823,7 +834,7 @@ export default function AdDetailClient({ ad }: AdDetailClientProps) {
       {/* ── Rating Modal ── */}
       {showRatingModal && ad?.user && (
         <RatingModal
-          adId={ad.id}
+          target={{ kind: 'ad', adId: ad.id }}
           sellerName={ad.user.name}
           onClose={() => setShowRatingModal(false)}
           onSuccess={() => setShowRatingModal(false)}

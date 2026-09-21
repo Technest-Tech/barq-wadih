@@ -2,18 +2,27 @@
 
 import React, { useState } from 'react';
 import StarRating from './StarRating';
-import { submitRating } from '@/lib/api/ratings';
+import { submitRating, submitSellerRating, type Rating } from '@/lib/api/ratings';
 import styles from './RatingModal.module.css';
 
+/**
+ * A review is written either against one listing (from the ad page) or against
+ * the seller themselves (from their profile). Both land in the same list and
+ * feed the same average — only the endpoint differs.
+ */
+export type RatingTarget =
+  | { kind: 'ad'; adId: number }
+  | { kind: 'seller'; userId: number };
+
 interface RatingModalProps {
-  adId: number;
+  target: RatingTarget;
   sellerName: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (rating: Rating) => void;
 }
 
 export default function RatingModal({
-  adId,
+  target,
   sellerName,
   onClose,
   onSuccess,
@@ -35,14 +44,18 @@ export default function RatingModal({
     setLoading(true);
     setError('');
 
+    const payload = {
+      stars,
+      comment: comment.trim() || undefined,
+      pledge_accepted: true as const,
+    };
+
     try {
-      await submitRating(adId, {
-        stars,
-        comment: comment.trim() || undefined,
-        pledge_accepted: true,
-      });
+      const rating = target.kind === 'ad'
+        ? await submitRating(target.adId, payload)
+        : await submitSellerRating(target.userId, payload);
       setSuccess(true);
-      setTimeout(() => { onSuccess(); onClose(); }, 1500);
+      setTimeout(() => { onSuccess(rating); onClose(); }, 1500);
     } catch (err: unknown) {
       const msg = (err as { message?: string })?.message;
       setError(msg ?? 'حدث خطأ، حاول مجدداً');

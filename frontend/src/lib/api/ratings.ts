@@ -69,6 +69,18 @@ export async function submitRating(
   return res.data!;
 }
 
+/**
+ * A review written from the seller's profile rather than against one listing.
+ * The backend stores it with a null ad, and allows one per rater per seller.
+ */
+export async function submitSellerRating(
+  userId: number,
+  payload: SubmitRatingPayload,
+): Promise<Rating> {
+  const res = await apiClient.post<Rating>(ENDPOINTS.USER_RATE(userId), payload);
+  return res.data!;
+}
+
 export async function deleteRating(ratingId: number): Promise<void> {
   await apiClient.delete(ENDPOINTS.DELETE_RATING(ratingId));
 }

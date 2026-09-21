@@ -28,6 +28,13 @@ class AdminUserResource extends JsonResource
             'role_label'             => $this->role->label(),
             'locale'                 => $this->locale,
             'is_verified'            => $this->is_verified,
+            'verified_at'            => $this->verified_at?->toISOString(),
+            'verification_note'      => $this->verification_note,
+            'verified_by'            => $this->whenLoaded('verifiedBy', function () {
+                /** @var \App\Models\User $admin */
+                $admin = $this->verifiedBy;
+                return ['id' => $admin->id, 'name' => $admin->name];
+            }),
             'is_dealer'              => $this->is_dealer,
             'is_active'              => $this->is_active,
             'avg_rating'             => $this->avg_rating,

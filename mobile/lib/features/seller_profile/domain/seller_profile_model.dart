@@ -23,6 +23,13 @@ class SellerProfileModel {
   final DateTime? memberSince;
   final DateTime? lastActiveAt;
 
+  /// Whether the signed-in viewer may leave a profile review for this seller.
+  /// False when signed out, on their own profile, or once they have reviewed.
+  final bool canReview;
+
+  /// The viewer's own profile review, when they have already written one.
+  final MyReviewModel? myReview;
+
   const SellerProfileModel({
     required this.id,
     required this.name,
@@ -40,6 +47,8 @@ class SellerProfileModel {
     required this.totalAdsCount,
     this.memberSince,
     this.lastActiveAt,
+    this.canReview = false,
+    this.myReview,
   });
 
   factory SellerProfileModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +74,36 @@ class SellerProfileModel {
           : null,
       lastActiveAt: json['last_active_at'] != null
           ? DateTime.tryParse(json['last_active_at'] as String)
+          : null,
+      canReview: json['can_review'] as bool? ?? false,
+      myReview: json['my_review'] != null
+          ? MyReviewModel.fromJson(json['my_review'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+/// The viewer's own profile review of a seller, as returned with the profile.
+class MyReviewModel {
+  final int id;
+  final int stars;
+  final String? comment;
+  final DateTime? createdAt;
+
+  const MyReviewModel({
+    required this.id,
+    required this.stars,
+    this.comment,
+    this.createdAt,
+  });
+
+  factory MyReviewModel.fromJson(Map<String, dynamic> json) {
+    return MyReviewModel(
+      id: json['id'] as int,
+      stars: json['stars'] as int? ?? 0,
+      comment: json['comment'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
     );
   }

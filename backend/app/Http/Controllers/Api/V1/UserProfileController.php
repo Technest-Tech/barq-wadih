@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 class UserProfileController extends BaseController
 {
     // ── Public seller profile ─────────────────────────────────────────────────
-    public function show(User $user): JsonResponse
+    public function show(Request $request, User $user): JsonResponse
     {
         $activeAdsCount = Ad::where('user_id', $user->id)
             ->active()
@@ -30,6 +30,23 @@ class UserProfileController extends BaseController
             fn (int $star) => [$star => $ratings->where('stars', $star)->count()],
         )->all();
 
+        // Public route, but the clients still send their Sanctum token — resolve
+        // it so the profile can tell the viewer whether the review form is open
+        // to them and, if they already wrote one, which review is theirs.
+        $viewer = $request->user('sanctum');
+
+        $myReview = $viewer
+            ? Rating::where('rater_id', $viewer->id)
+                ->where('rated_user_id', $user->id)
+                ->whereNull('ad_id')
+                ->first(['id', 'stars', 'comment', 'created_at'])
+            : null;
+
+        $canReview = $viewer !== null
+            && $viewer->id !== $user->id
+            && $myReview === null
+            && ! $viewer->cannotInteractWith($user);
+
         return $this->successResponse([
             'id' => $user->id,
             'name' => $user->name,
@@ -39,6 +56,7 @@ class UserProfileController extends BaseController
             'cover_image' => $user->cover_image_url,
             'bio' => $user->bio,
             'is_verified' => (bool) $user->is_verified,
+            'verified_at' => $user->verified_at?->toIso8601String(),
             'is_dealer' => (bool) $user->is_dealer,
             'avg_rating' => $avg,
             'rating_count' => $total,
@@ -48,6 +66,13 @@ class UserProfileController extends BaseController
             'total_ads_count' => $user->total_ads_count ?? ($activeAdsCount + $soldAdsCount),
             'member_since' => $user->created_at?->toIso8601String(),
             'last_active_at' => $user->last_active_at?->toIso8601String(),
+            'can_review' => $canReview,
+            'my_review' => $myReview ? [
+                'id' => $myReview->id,
+                'stars' => $myReview->stars,
+                'comment' => $myReview->comment,
+                'created_at' => $myReview->created_at?->toIso8601String(),
+            ] : null,
         ]);
     }
 

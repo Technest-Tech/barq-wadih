@@ -29,6 +29,13 @@ class AdminUserDetailResource extends JsonResource
             'role_label'             => $this->role->label(),
             'locale'                 => $this->locale,
             'is_verified'            => $this->is_verified,
+            'verified_at'            => $this->verified_at?->toISOString(),
+            'verification_note'      => $this->verification_note,
+            'verified_by'            => $this->whenLoaded('verifiedBy', function () {
+                /** @var \App\Models\User $admin */
+                $admin = $this->verifiedBy;
+                return ['id' => $admin->id, 'name' => $admin->name];
+            }),
             'is_dealer'              => $this->is_dealer,
             'is_active'              => $this->is_active,
             'firebase_uid'           => $this->firebase_uid ? '••••' . substr($this->firebase_uid, -4) : null,
@@ -108,7 +115,7 @@ class AdminUserDetailResource extends JsonResource
             'ratings_received' => $this->whenLoaded('ratingsReceived', function () {
                 return $this->ratingsReceived->map(fn ($rating) => [
                     'id'         => $rating->id,
-                    'score'      => $rating->score,
+                    'score'      => $rating->stars,
                     'comment'    => $rating->comment,
                     'rater'      => $rating->rater ? [
                         'id'   => $rating->rater->id,

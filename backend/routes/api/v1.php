@@ -139,6 +139,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Sprint 9: Ratings
     Route::post('ads/{ad}/ratings', [RatingController::class, 'store'])->name('ratings.store');
+    Route::post('users/{user}/ratings', [RatingController::class, 'storeForUser'])->name('users.ratings.store');
     Route::delete('ratings/{rating}', [RatingController::class, 'destroy'])->name('ratings.destroy');
 
     // Sprint 9: Favorites

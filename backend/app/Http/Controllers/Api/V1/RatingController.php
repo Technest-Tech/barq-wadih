@@ -93,6 +93,76 @@ class RatingController extends Controller
         return $this->successResponse(new RatingResource($rating), 'تم إرسال تقييمك بنجاح', 201);
     }
 
+    // ── POST /users/{user}/ratings ────────────────────────────────────────────
+
+    /**
+     * A review written from the seller's profile rather than against one of
+     * their listings. It is stored with a null `ad_id`, so it feeds the same
+     * average and the same review list as the per-ad ratings do, and each
+     * rater gets one of them per seller.
+     */
+    public function storeForUser(Request $request, User $user): JsonResponse
+    {
+        $data = $request->validate([
+            'stars'           => 'required|integer|min:1|max:5',
+            'comment'         => 'nullable|string|max:500',
+            'pledge_accepted' => 'required|accepted',
+        ]);
+
+        $rater = $request->user();
+
+        if ($user->id === $rater->id) {
+            return $this->errorResponse('لا يمكنك تقييم نفسك', 403);
+        }
+
+        if ($rater->cannotInteractWith($user)) {
+            return $this->errorResponse('لا يمكنك تقييم هذا المستخدم', 403);
+        }
+
+        // One profile-level review per rater per seller. Ratings left on the
+        // seller's individual ads are separate and do not block this one.
+        $exists = Rating::where('rater_id', $rater->id)
+            ->where('rated_user_id', $user->id)
+            ->whereNull('ad_id')
+            ->exists();
+
+        if ($exists) {
+            return $this->errorResponse('لقد قيّمت هذا البائع مسبقاً', 409);
+        }
+
+        $rating = DB::transaction(function () use ($rater, $user, $data): Rating {
+            $rating = Rating::create([
+                'rater_id'        => $rater->id,
+                'rated_user_id'   => $user->id,
+                'ad_id'           => null,
+                'stars'           => $data['stars'],
+                'comment'         => $data['comment'] ?? null,
+                'pledge_accepted' => true,
+                'is_approved'     => true,
+            ]);
+
+            $this->recalculateUserRating($user->id);
+
+            return $rating;
+        });
+
+        $rating->load('rater');
+
+        app(PushService::class)->sendToUser(
+            $user->id,
+            'new_rating',
+            'تقييم جديد',
+            "قيّمك {$rater->name} بـ {$data['stars']} نجوم على ملفك الشخصي",
+            [
+                'type'    => 'rating',
+                'user_id' => $user->id,
+                'rating'  => $data['stars'],
+            ],
+        );
+
+        return $this->successResponse(new RatingResource($rating), 'تم إرسال تقييمك بنجاح', 201);
+    }
+
     // ── GET /users/{user}/ratings ─────────────────────────────────────────────
 
     public function userRatings(User $user): AnonymousResourceCollection

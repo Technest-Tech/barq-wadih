@@ -42,6 +42,22 @@ class RatingRepository {
     return RatingModel.fromJson(res.data?['data'] as Map<String, dynamic>);
   }
 
+  // ── Submit a review from the seller's profile ─────────────────────────────
+
+  /// A review of the seller themselves rather than of one listing. The backend
+  /// stores it with a null ad and allows one per rater per seller.
+  Future<RatingModel> submitSellerRating({
+    required int userId,
+    required int stars,
+    String? comment,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/users/$userId/ratings',
+      data: {'stars': stars, 'comment': comment, 'pledge_accepted': true},
+    );
+    return RatingModel.fromJson(res.data?['data'] as Map<String, dynamic>);
+  }
+
   // ── Delete rating ─────────────────────────────────────────────────────────
 
   Future<void> deleteRating(int ratingId) async {

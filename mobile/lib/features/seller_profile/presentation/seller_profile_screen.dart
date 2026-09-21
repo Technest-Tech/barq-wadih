@@ -14,6 +14,8 @@ import '../../../shared/widgets/share_account_sheet.dart';
 import '../../ads/domain/ad_model.dart';
 import '../../ads/presentation/widgets/ad_card.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
+import '../../ratings/data/rating_providers.dart';
+import '../../ratings/presentation/widgets/rating_submit_sheet.dart';
 import '../../safety/presentation/user_safety_sheet.dart';
 import '../data/seller_profile_api.dart';
 import '../domain/seller_profile_model.dart';
@@ -203,7 +205,7 @@ class _ProfileBody extends ConsumerWidget {
         controller: tabController,
         children: [
           _SellerAdsTab(userId: userId),
-          _SellerReviewsTab(userId: userId),
+          _SellerReviewsTab(profile: profile),
         ],
       ),
     );
@@ -612,8 +614,300 @@ class _SellerAdsTab extends ConsumerWidget {
 // ── Reviews tab ────────────────────────────────────────────────────────────────
 
 class _SellerReviewsTab extends ConsumerWidget {
-  final int userId;
-  const _SellerReviewsTab({required this.userId});
+  final SellerProfileModel profile;
+  const _SellerReviewsTab({required this.profile});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviewsState = ref.watch(sellerReviewsProvider(profile.id));
+
+    return reviewsState.when(
+      data: (reviews) => ListView.separated(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        // The prompt sits above the list and stays put when there is nothing
+        // to list yet — it is the only way into writing a review. With no
+        // reviews the second slot carries the empty state instead.
+        itemCount: reviews.isEmpty ? 2 : reviews.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (context, i) {
+          if (i == 0) return _ReviewPrompt(profile: profile);
+          if (reviews.isEmpty) return const _NoReviewsYet();
+          return _ReviewCard(review: reviews[i - 1]);
+        },
+      ),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0075C4)),
+      ),
+      error: (_, __) => Center(
+        child: TextButton(
+          onPressed: () => ref.invalidate(sellerReviewsProvider(profile.id)),
+          child: const Text('إعادة المحاولة'),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoReviewsYet extends StatelessWidget {
+  const _NoReviewsYet();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.reviews_outlined, size: 56, color: Colors.grey),
+          SizedBox(height: 12),
+          Text('لا توجد تقييمات بعد'),
+        ],
+      ),
+    );
+  }
+}
+
+/// Invites the viewer to review the seller, or shows the review they already
+/// wrote with a way to withdraw it. Hidden on the viewer's own profile.
+class _ReviewPrompt extends ConsumerWidget {
+  final SellerProfileModel profile;
+  const _ReviewPrompt({required this.profile});
+
+  Future<void> _openSheet(BuildContext context, WidgetRef ref) async {
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => RatingSubmitSheet(
+        target: SellerRatingTarget(profile.id),
+        sellerName: profile.name,
+      ),
+    );
+    if (submitted == true) _refresh(ref);
+  }
+
+  Future<void> _deleteReview(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'حذف التقييم',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
+          content: const Text(
+            'هل تريد حذف تقييمك لهذا البائع؟',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text(
+                'حذف',
+                style: TextStyle(color: Color(0xFFEF4444)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref
+          .read(ratingRepositoryProvider)
+          .deleteRating(profile.myReview!.id);
+      _refresh(ref);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر حذف التقييم، حاول مجدداً')),
+        );
+      }
+    }
+  }
+
+  /// Writing or withdrawing a review moves the seller's average, their count
+  /// and the viewer's right to review — all server-owned. Re-read them.
+  void _refresh(WidgetRef ref) {
+    ref.invalidate(sellerProfileProvider(profile.id));
+    ref.invalidate(sellerReviewsProvider(profile.id));
+    ref.invalidate(userRatingsProvider(profile.id));
+    ref.invalidate(userRatingSummaryProvider(profile.id));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = ref.watch(currentUserProvider);
+    if (currentUser != null && currentUser.id == profile.id) {
+      return const SizedBox.shrink();
+    }
+
+    final mine = profile.myReview;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: mine != null
+            ? const Color(0xFF0075C4).withValues(alpha: .06)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: mine != null
+              ? const Color(0xFF0075C4).withValues(alpha: .25)
+              : AppTheme.neutralGray200,
+        ),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: mine != null
+          ? _buildMyReview(context, ref, mine)
+          : _buildInvite(context, ref, signedIn: currentUser != null),
+    );
+  }
+
+  Widget _buildInvite(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool signedIn,
+  }) {
+    final enabled = !signedIn || profile.canReview;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'قيّم هذا البائع',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.neutralGray900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          signedIn
+              ? 'شارك تجربتك مع ${profile.name} لمساعدة بقية المشترين.'
+              : 'سجّل الدخول لمشاركة تجربتك مع ${profile.name}.',
+          style: const TextStyle(
+            fontSize: 12.5,
+            color: AppTheme.neutralGray600,
+            height: 1.6,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: ElevatedButton.icon(
+            // Signed in but barred (a block either way) — the button stays
+            // visible and reads as disabled rather than doing nothing on tap.
+            onPressed: !signedIn
+                ? () => context.push('/login')
+                : profile.canReview
+                ? () => _openSheet(context, ref)
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0075C4),
+              disabledBackgroundColor: AppTheme.neutralGray200,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            icon: Icon(
+              signedIn ? Icons.star_rounded : Icons.login_rounded,
+              size: 18,
+              color: enabled ? Colors.white : AppTheme.neutralGray500,
+            ),
+            label: Text(
+              signedIn ? 'اكتب تقييماً' : 'تسجيل الدخول',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: enabled ? Colors.white : AppTheme.neutralGray500,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMyReview(
+    BuildContext context,
+    WidgetRef ref,
+    MyReviewModel mine,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'تقييمك لهذا البائع',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.neutralGray900,
+              ),
+            ),
+            const SizedBox(width: 8),
+            ...List.generate(
+              5,
+              (idx) => Icon(
+                idx < mine.stars
+                    ? Icons.star_rounded
+                    : Icons.star_border_rounded,
+                size: 15,
+                color: const Color(0xFFFFC107),
+              ),
+            ),
+          ],
+        ),
+        if (mine.comment != null && mine.comment!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            mine.comment!,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.neutralGray800,
+              height: 1.6,
+            ),
+          ),
+        ],
+        const SizedBox(height: 4),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton.icon(
+            onPressed: () => _deleteReview(context, ref),
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              size: 16,
+              color: Color(0xFFEF4444),
+            ),
+            label: const Text(
+              'حذف تقييمي',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFFEF4444)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewCard extends StatelessWidget {
+  final SellerReviewModel review;
+  const _ReviewCard({required this.review});
 
   String _timeAgo(DateTime? dt) {
     if (dt == null) return '';
@@ -625,165 +919,129 @@ class _SellerReviewsTab extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final reviewsState = ref.watch(sellerReviewsProvider(userId));
-    return reviewsState.when(
-      data: (reviews) {
-        if (reviews.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(40),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.reviews_outlined, size: 56, color: Colors.grey),
-                  SizedBox(height: 12),
-                  Text('لا توجد تقييمات بعد'),
-                ],
+  Widget build(BuildContext context) {
+    final r = review;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.neutralGray200),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppTheme.neutralGray200,
+                backgroundImage:
+                    r.rater.avatar != null && r.rater.avatar!.isNotEmpty
+                    ? NetworkImage(
+                        AppConstants.normalizeImageUrl(r.rater.avatar!),
+                      )
+                    : null,
+                child: r.rater.avatar == null || r.rater.avatar!.isEmpty
+                    ? const Icon(
+                        Icons.person,
+                        size: 20,
+                        color: Colors.grey,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.rater.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.neutralGray900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        ...List.generate(
+                          5,
+                          (idx) => Icon(
+                            idx < r.stars
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            size: 14,
+                            color: const Color(0xFFFFC107),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _timeAgo(r.createdAt),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.neutralGray500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (r.comment != null && r.comment!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              r.comment!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppTheme.neutralGray800,
+                height: 1.6,
               ),
             ),
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-          itemCount: reviews.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, i) {
-            final r = reviews[i];
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.neutralGray200),
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppTheme.neutralGray200,
-                        backgroundImage:
-                            r.rater.avatar != null && r.rater.avatar!.isNotEmpty
-                            ? NetworkImage(
-                                AppConstants.normalizeImageUrl(r.rater.avatar!),
-                              )
-                            : null,
-                        child: r.rater.avatar == null || r.rater.avatar!.isEmpty
-                            ? const Icon(
-                                Icons.person,
-                                size: 20,
-                                color: Colors.grey,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              r.rater.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: AppTheme.neutralGray900,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                ...List.generate(
-                                  5,
-                                  (idx) => Icon(
-                                    idx < r.stars
-                                        ? Icons.star_rounded
-                                        : Icons.star_border_rounded,
-                                    size: 14,
-                                    color: const Color(0xFFFFC107),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _timeAgo(r.createdAt),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppTheme.neutralGray500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (r.comment != null && r.comment!.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      r.comment!,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.neutralGray800,
-                        height: 1.6,
-                      ),
+          ],
+          if (r.ad != null) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => context.push('/ads/${r.ad!.id}'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0075C4).withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.tag,
+                      size: 12,
+                      color: Color(0xFF0075C4),
                     ),
-                  ],
-                  if (r.ad != null) ...[
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () => context.push('/ads/${r.ad!.id}'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0075C4).withValues(alpha: .08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.tag,
-                              size: 12,
-                              color: Color(0xFF0075C4),
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                r.ad!.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF0075C4),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        r.ad!.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF0075C4),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            );
-          },
-        );
-      },
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF0075C4)),
-      ),
-      error: (_, __) => Center(
-        child: TextButton(
-          onPressed: () => ref.invalidate(sellerReviewsProvider(userId)),
-          child: const Text('إعادة المحاولة'),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }

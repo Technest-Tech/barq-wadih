@@ -6,8 +6,10 @@ import {
   fetchAdminUser,
   updateUserStatus,
   updateUserRole,
+  updateUserVerification,
   type AdminUserDetail,
 } from '@/lib/api/admin';
+import { useAuthStore } from '@/store/auth.store';
 import MessageComposer from '@/components/admin/MessageComposer/MessageComposer';
 import styles from './user-detail.module.css';
 
@@ -32,6 +34,12 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [modal, setModal] = useState<ConfirmModal | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
+
+  // Sellers pay for the verification badge, so only a super-admin hands it out.
+  const currentAdmin = useAuthStore((state) => state.user);
+  const isSuperAdmin = currentAdmin?.role === 'super_admin';
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyNote, setVerifyNote] = useState('');
 
   const loadUser = async () => {
     setLoading(true);
@@ -82,6 +90,48 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           loadUser();
         } catch (err) {
           showToast(err instanceof Error ? err.message : 'فشلت العملية', 'error');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
+  };
+
+  const openVerifyModal = () => {
+    setVerifyNote(user?.verification_note ?? '');
+    setVerifyOpen(true);
+  };
+
+  const handleGrantVerification = async () => {
+    if (!user) return;
+    setVerifyOpen(false);
+    setActionLoading(true);
+    try {
+      await updateUserVerification(user.id, true, verifyNote);
+      showToast('تم منح شارة التوثيق بنجاح', 'success');
+      loadUser();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'فشل منح شارة التوثيق', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRevokeVerification = () => {
+    if (!user) return;
+    setModal({
+      title: 'سحب شارة التوثيق',
+      body: `هل أنت متأكد من سحب شارة التوثيق من "${user.name}"؟ ستختفي الشارة من ملفه وإعلاناته، وسيُمسح سجل التوثيق السابق.`,
+      type: 'danger',
+      onConfirm: async () => {
+        setModal(null);
+        setActionLoading(true);
+        try {
+          await updateUserVerification(user.id, false);
+          showToast('تم سحب شارة التوثيق', 'success');
+          loadUser();
+        } catch (err) {
+          showToast(err instanceof Error ? err.message : 'فشل سحب شارة التوثيق', 'error');
         } finally {
           setActionLoading(false);
         }
@@ -152,6 +202,45 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {/* Verification modal — the note carries the payment reference */}
+      {verifyOpen && (
+        <div className={styles.modalOverlay} onClick={() => setVerifyOpen(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🛡️ منح شارة التوثيق</h3>
+            <p className={styles.modalBody}>
+              سيحصل &quot;{user.name}&quot; على شارة التوثيق، وستظهر على ملفه الشخصي وعلى كل
+              إعلاناته، وسيصله إشعار بذلك.
+            </p>
+            <label className={styles.modalLabel} htmlFor="verification-note">
+              مرجع الدفع أو سبب التوثيق (اختياري)
+            </label>
+            <textarea
+              id="verification-note"
+              className={styles.modalTextarea}
+              value={verifyNote}
+              onChange={(e) => setVerifyNote(e.target.value.slice(0, 500))}
+              placeholder="مثال: سداد رسوم التوثيق — تحويل بنكي #4417"
+              rows={3}
+            />
+            <span className={styles.modalCharCount}>{verifyNote.length} / 500</span>
+            <div className={styles.modalActions}>
+              <button
+                className={`${styles.modalBtn} ${styles.confirm}`}
+                onClick={handleGrantVerification}
+              >
+                منح الشارة
+              </button>
+              <button
+                className={`${styles.modalBtn} ${styles.cancel}`}
+                onClick={() => setVerifyOpen(false)}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Back */}
       <Link href="/admin/users" className={styles.backLink}>
         → العودة للمستخدمين
@@ -188,6 +277,18 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 <span className={`${styles.badge} ${styles.verified}`}>🛡️ موثق</span>
               )}
             </div>
+
+            {user.is_verified && (
+              <div className={styles.verificationTrail}>
+                <span className={styles.metaItem}>
+                  🛡️ وُثّق {user.verified_at ? formatDate(user.verified_at) : '(قبل تفعيل سجل التوثيق)'}
+                  {user.verified_by ? ` بواسطة ${user.verified_by.name}` : ''}
+                </span>
+                {user.verification_note && (
+                  <span className={styles.verificationNote}>📝 {user.verification_note}</span>
+                )}
+              </div>
+            )}
 
             <div className={styles.profileMeta}>
               {user.phone && <span className={styles.metaItem}>📱 {user.phone}</span>}
@@ -228,6 +329,15 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             >
               {user.is_active ? '⛔ تعطيل الحساب' : '✅ تفعيل الحساب'}
             </button>
+            {isSuperAdmin && (
+              <button
+                className={`${styles.profileBtn} ${user.is_verified ? styles.danger : styles.verify}`}
+                onClick={user.is_verified ? handleRevokeVerification : openVerifyModal}
+                disabled={actionLoading}
+              >
+                {user.is_verified ? '🚫 سحب شارة التوثيق' : '🛡️ منح شارة التوثيق'}
+              </button>
+            )}
           </div>
         </div>
       </div>

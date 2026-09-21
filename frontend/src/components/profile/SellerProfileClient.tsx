@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header/Header';
 import Footer from '@/components/layout/Footer/Footer';
 import { fetchSellerProfile, fetchSellerAds, type SellerProfile } from '@/lib/api/users';
-import { fetchUserRatings, type Rating } from '@/lib/api/ratings';
+import { deleteRating, fetchUserRatings, type Rating } from '@/lib/api/ratings';
+import RatingModal from '@/components/ratings/RatingModal';
 import { useIsFollowingSeller } from '@/lib/sellerFollows';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/auth.store';
@@ -156,6 +157,9 @@ export default function SellerProfileClient({
 
   const [reviews, setReviews] = useState<Rating[]>([]);
   const [reviewsLoading, setRevLoad] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [deletingReview, setDeletingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const { following, busy: followBusy, toggle: toggleFollow } = useIsFollowingSeller(userId);
 
@@ -277,6 +281,52 @@ export default function SellerProfileClient({
     setAdsHasMore(res.meta.current_page < res.meta.last_page);
   }
 
+  /**
+   * Writing or removing a review moves the seller's average, their rating
+   * count and the viewer's own right to review — all of which the server
+   * owns. Re-read both rather than patching them locally and drifting.
+   */
+  async function reloadReviewState() {
+    setReviewError(null);
+    const [freshProfile, freshReviews] = await Promise.all([
+      fetchSellerProfile(userId),
+      fetchUserRatings(userId, 1),
+    ]);
+    setProfile(freshProfile);
+    setReviews(freshReviews.data);
+  }
+
+  function handleReviewSubmitted() {
+    setTab('reviews');
+    reloadReviewState().catch(() => {
+      setReviewError('تم حفظ تقييمك، لكن تعذر تحديث الصفحة. حدّث الصفحة لعرضه.');
+    });
+  }
+
+  async function removeMyReview() {
+    const mine = profile?.my_review;
+    if (!mine || deletingReview) return;
+    if (!window.confirm('هل تريد حذف تقييمك لهذا البائع؟')) return;
+
+    setDeletingReview(true);
+    setReviewError(null);
+    try {
+      await deleteRating(mine.id);
+      await reloadReviewState();
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : 'تعذر حذف التقييم');
+    } finally {
+      setDeletingReview(false);
+    }
+  }
+
+  function startReview() {
+    setTab('reviews');
+    // Signed-out visitors land on the reviews tab, where the sign-in card is —
+    // a modal would only fail once they pressed send.
+    if (currentUser) setShowRatingModal(true);
+  }
+
   if (loading) {
     return (
       <>
@@ -318,6 +368,57 @@ export default function SellerProfileClient({
   const dist = profile.rating_distribution;
   const distMax = Math.max(1, ...Object.values(dist));
   const lastActive = formatLastActive(profile.last_active_at);
+
+  // What the viewer sees above the review list: their own review if they wrote
+  // one, an invitation to write one if they may, or a nudge to sign in.
+  const reviewPrompt = isOwnProfile ? null : profile.my_review ? (
+    <section className={styles.myReviewCard}>
+      <div className={styles.myReviewHead}>
+        <h3 className={styles.sectionTitle}>تقييمك لهذا البائع</h3>
+        <Stars value={profile.my_review.stars} size={16} />
+      </div>
+      {profile.my_review.comment && (
+        <p className={styles.myReviewBody}>{profile.my_review.comment}</p>
+      )}
+      <div className={styles.myReviewFooter}>
+        <span className={styles.myReviewTime}>{formatRelative(profile.my_review.created_at)}</span>
+        <button
+          type="button"
+          className={styles.myReviewDelete}
+          onClick={removeMyReview}
+          disabled={deletingReview}
+        >
+          {deletingReview ? '...جارٍ الحذف' : '🗑 حذف تقييمي'}
+        </button>
+      </div>
+    </section>
+  ) : (
+    <section className={styles.writeReviewCard}>
+      <div className={styles.writeReviewText}>
+        <h3 className={styles.sectionTitle}>قيّم هذا البائع</h3>
+        <p className={styles.writeReviewHint}>
+          {currentUser
+            ? `شارك تجربتك مع ${profile.name} لمساعدة بقية المشترين.`
+            : `سجّل الدخول لمشاركة تجربتك مع ${profile.name}.`}
+        </p>
+      </div>
+      {currentUser ? (
+        <button
+          type="button"
+          className={styles.writeReviewBtn}
+          onClick={() => setShowRatingModal(true)}
+          disabled={!profile.can_review}
+          title={profile.can_review ? undefined : 'لا يمكنك تقييم هذا البائع'}
+        >
+          ⭐ اكتب تقييماً
+        </button>
+      ) : (
+        <Link href="/ar/login" className={styles.writeReviewBtn}>
+          تسجيل الدخول
+        </Link>
+      )}
+    </section>
+  );
 
   return (
     <>
@@ -461,6 +562,16 @@ export default function SellerProfileClient({
                 <Link href="/ar/messages" className={styles.messageBtn}>
                   ✉️ مراسلة
                 </Link>
+                {!isOwnProfile && !profile.my_review && (
+                  <button
+                    type="button"
+                    className={styles.rateBtn}
+                    onClick={startReview}
+                    disabled={Boolean(currentUser) && !profile.can_review}
+                  >
+                    ⭐ تقييم
+                  </button>
+                )}
                 <button
                   className={styles.iconBtn}
                   onClick={() => {
@@ -587,28 +698,43 @@ export default function SellerProfileClient({
                 )}
               </>
             )
-          ) : reviewsLoading ? (
-            <div className={styles.reviewsList}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className={styles.reviewSkeleton} />
-              ))}
-            </div>
-          ) : reviews.length === 0 ? (
-            <div className={styles.tabEmpty}>
-              <div className={styles.tabEmptyIcon}>⭐</div>
-              <p>لا توجد تقييمات بعد</p>
-            </div>
           ) : (
-            <div className={styles.reviewsList}>
-              {reviews.map((r) => (
-                <ReviewCard key={r.id} r={r} />
-              ))}
-            </div>
+            <>
+              {reviewPrompt}
+              {reviewError && <p className={styles.reviewError}>{reviewError}</p>}
+              {reviewsLoading ? (
+                <div className={styles.reviewsList}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className={styles.reviewSkeleton} />
+                  ))}
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className={styles.tabEmpty}>
+                  <div className={styles.tabEmptyIcon}>⭐</div>
+                  <p>لا توجد تقييمات بعد</p>
+                </div>
+              ) : (
+                <div className={styles.reviewsList}>
+                  {reviews.map((r) => (
+                    <ReviewCard key={r.id} r={r} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
 
       <Footer />
+
+      {showRatingModal && (
+        <RatingModal
+          target={{ kind: 'seller', userId }}
+          sellerName={profile.name}
+          onClose={() => setShowRatingModal(false)}
+          onSuccess={handleReviewSubmitted}
+        />
+      )}
     </>
   );
 }

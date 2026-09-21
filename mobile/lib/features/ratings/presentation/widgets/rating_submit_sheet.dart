@@ -5,14 +5,30 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/rating_providers.dart';
 
+/// What a review is written against: one listing, or the seller themselves
+/// (from their profile). Both feed the same average — only the endpoint differs.
+sealed class RatingTarget {
+  const RatingTarget();
+}
+
+class AdRatingTarget extends RatingTarget {
+  const AdRatingTarget(this.adId);
+  final int adId;
+}
+
+class SellerRatingTarget extends RatingTarget {
+  const SellerRatingTarget(this.userId);
+  final int userId;
+}
+
 class RatingSubmitSheet extends ConsumerStatefulWidget {
   const RatingSubmitSheet({
     super.key,
-    required this.adId,
+    required this.target,
     required this.sellerName,
   });
 
-  final int adId;
+  final RatingTarget target;
   final String sellerName;
 
   @override
@@ -50,16 +66,24 @@ class _RatingSubmitSheetState extends ConsumerState<RatingSubmitSheet> {
       _error = '';
     });
 
+    final comment = _commentCtrl.text.trim().isEmpty
+        ? null
+        : _commentCtrl.text.trim();
+
     try {
-      await ref
-          .read(ratingRepositoryProvider)
-          .submitRating(
-            adId: widget.adId,
-            stars: _stars,
-            comment: _commentCtrl.text.trim().isEmpty
-                ? null
-                : _commentCtrl.text.trim(),
-          );
+      final repo = ref.read(ratingRepositoryProvider);
+      await switch (widget.target) {
+        AdRatingTarget(:final adId) => repo.submitRating(
+          adId: adId,
+          stars: _stars,
+          comment: comment,
+        ),
+        SellerRatingTarget(:final userId) => repo.submitSellerRating(
+          userId: userId,
+          stars: _stars,
+          comment: comment,
+        ),
+      };
       setState(() => _success = true);
       await Future<void>.delayed(const Duration(milliseconds: 1200));
       if (mounted) Navigator.of(context).pop(true);

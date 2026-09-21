@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BaseController;
 use App\Http\Resources\AdminUserDetailResource;
 use App\Http\Resources\AdminUserResource;
 use App\Models\User;
+use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -86,6 +87,7 @@ class AdminUserController extends BaseController
         $user->load([
             'region',
             'city',
+            'verifiedBy:id,name',
             'ads'                => fn ($q) => $q->with(['category:id,name_ar,name_en', 'city:id,name_ar,name_en'])->latest()->limit(20),
             'commissionPayments' => fn ($q) => $q->latest()->limit(20),
             'ratingsReceived'    => fn ($q) => $q->with('rater:id,name')->latest()->limit(20),
@@ -118,6 +120,51 @@ class AdminUserController extends BaseController
         return $this->successResponse(
             new AdminUserResource($user->load(['region', 'city'])),
             $validated['is_active'] ? 'تم تفعيل الحساب بنجاح' : 'تم تعطيل الحساب بنجاح'
+        );
+    }
+
+    /**
+     * PATCH /api/v1/admin/users/{user}/verification
+     *
+     * Grant or revoke the seller's verification badge. Sellers pay for the
+     * badge outside the app, so only a super_admin may hand it out, and every
+     * grant records who did it and against which payment.
+     */
+    public function updateVerification(Request $request, User $user): JsonResponse
+    {
+        if (! $request->user()->isSuperAdmin()) {
+            return $this->errorResponse('صلاحيات المشرف العام مطلوبة لمنح شارة التوثيق', 403);
+        }
+
+        $validated = $request->validate([
+            'is_verified' => ['required', 'boolean'],
+            'note'        => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $granting = $validated['is_verified'];
+
+        $user->update([
+            'is_verified'       => $granting,
+            // Keep the trail pointing at the most recent decision either way:
+            // a revoke clears the grant rather than leaving a stale one behind.
+            'verified_at'       => $granting ? now() : null,
+            'verified_by'       => $granting ? $request->user()->id : null,
+            'verification_note' => $validated['note'] ?? null,
+        ]);
+
+        if ($granting) {
+            app(PushService::class)->sendToUser(
+                $user->id,
+                'account_verified',
+                'تم توثيق حسابك',
+                'تهانينا! أصبح حسابك موثقاً وستظهر شارة التوثيق على ملفك وإعلاناتك.',
+                ['type' => 'verification', 'user_id' => $user->id],
+            );
+        }
+
+        return $this->successResponse(
+            new AdminUserResource($user->load(['region', 'city', 'verifiedBy:id,name'])),
+            $granting ? 'تم منح شارة التوثيق بنجاح' : 'تم سحب شارة التوثيق'
         );
     }
 

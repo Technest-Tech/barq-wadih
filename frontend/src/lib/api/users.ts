@@ -16,6 +16,8 @@ export interface SellerProfile {
   cover_image: string | null;
   bio: string | null;
   is_verified: boolean;
+  /** When the badge was granted. Null for sellers verified before the audit trail existed. */
+  verified_at: string | null;
   is_dealer: boolean;
   avg_rating: number | string;
   rating_count: number;
@@ -25,6 +27,10 @@ export interface SellerProfile {
   total_ads_count: number;
   member_since: string | null;
   last_active_at: string | null;
+  /** Whether the signed-in viewer may leave a profile review for this seller. */
+  can_review: boolean;
+  /** The viewer's own profile review, when they have already written one. */
+  my_review: { id: number; stars: number; comment: string | null; created_at: string | null } | null;
 }
 
 // ── API functions ─────────────────────────────────────────────────────────────

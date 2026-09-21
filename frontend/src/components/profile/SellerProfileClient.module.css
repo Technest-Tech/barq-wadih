@@ -385,6 +385,29 @@
   color: var(--color-primary-700);
 }
 
+.rateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-primary);
+  color: #92400E;
+  border: 1.5px solid #FCD34D;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.rateBtn:hover:not(:disabled) {
+  background: #FFFBEB;
+  border-color: #FBBF24;
+}
+
+.rateBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .iconBtn {
   width: 40px;
   height: 40px;
@@ -705,6 +728,119 @@
 
 /* ── Reviews ── */
 
+.writeReviewCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface-primary);
+  border: 1.5px dashed var(--color-primary-300);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 14px;
+}
+
+.writeReviewText { min-width: 0; }
+
+/* The cards reuse .sectionTitle, whose 16px bottom margin is too much here. */
+.writeReviewCard .sectionTitle,
+.myReviewCard .sectionTitle { margin-bottom: 4px; }
+
+.writeReviewHint {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.writeReviewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #2A5298, #1B3A6B);
+  color: #fff;
+  border: none;
+  padding: 11px 24px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(42, 82, 152, 0.32);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.writeReviewBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 9px 22px rgba(42, 82, 152, 0.42);
+}
+
+.writeReviewBtn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+.myReviewCard {
+  background: var(--color-primary-50);
+  border: 1.5px solid var(--color-primary-200);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 14px;
+}
+
+.myReviewHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.myReviewBody {
+  font-size: 0.93rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 8px 0 0;
+}
+
+.myReviewFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.myReviewTime {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.myReviewDelete {
+  background: none;
+  border: none;
+  color: var(--color-error);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.myReviewDelete:hover:not(:disabled) { background: #FEF2F2; }
+.myReviewDelete:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.reviewError {
+  background: #FEF2F2;
+  color: #B91C1C;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin: 0 0 12px;
+}
+
 .reviewsList {
   display: flex;
   flex-direction: column;
@@ -923,6 +1059,8 @@
   .statsGrid { grid-template-columns: repeat(2, 1fr); }
   .adsGrid { grid-template-columns: repeat(2, 1fr); }
   .tab { padding: 10px 14px; font-size: 0.86rem; }
+  .writeReviewCard { flex-direction: column; align-items: stretch; text-align: center; }
+  .writeReviewBtn { justify-content: center; }
 }
 
 @media (max-width: 380px) {

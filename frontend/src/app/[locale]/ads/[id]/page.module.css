@@ -415,6 +415,34 @@
   line-height: 1;
 }
 
+/* The "tell them you came from Barq Wadih" notice — mirrors the red
+   notice the mobile app shows in the same slot. */
+.platformNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+  color: #d32f2f;
+  background: #ffebee;
+  border: 1px solid #f7c2c2;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.platformNotice p {
+  margin: 0;
+}
+
+.platformNoticeIcon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
 /* ── Right column ─────────────────────────────────────────────────────────── */
 .rightCol {
   position: sticky;

@@ -79,6 +79,8 @@ const ENDPOINTS = {
   USER_RATINGS: (id: number) => `/v1/users/${id}/ratings`,
   /** Rating summary (avg + distribution) — GET /v1/users/{id}/rating-summary */
   USER_RATING_SUMMARY: (id: number) => `/v1/users/${id}/rating-summary`,
+  /** Review a seller from their profile — POST /v1/users/{id}/ratings */
+  USER_RATE: (id: number) => `/v1/users/${id}/ratings`,
   /** Delete own rating — DELETE /v1/ratings/{id} */
   DELETE_RATING: (id: number) => `/v1/ratings/${id}`,
 
@@ -163,6 +165,8 @@ const ENDPOINTS = {
   ADMIN_USER_STATUS: (id: number) => `/v1/admin/users/${id}/status`,
   /** Change user role — PATCH /v1/admin/users/{id}/role */
   ADMIN_USER_ROLE: (id: number) => `/v1/admin/users/${id}/role`,
+  /** Grant or revoke the verification badge — PATCH /v1/admin/users/{id}/verification */
+  ADMIN_USER_VERIFICATION: (id: number) => `/v1/admin/users/${id}/verification`,
 
   // ── Sprint 15: Admin Ad Moderation ─────────────────────────────────────
   ADMIN_ADS: '/v1/admin/ads',
