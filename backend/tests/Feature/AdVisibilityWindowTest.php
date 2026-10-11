@@ -91,8 +91,27 @@ class AdVisibilityWindowTest extends TestCase
         );
     }
 
-    public function test_the_expire_command_hides_the_ad_without_deleting_it(): void
+    /** Expiry is paused (config/ads.php) — a lapsed date must not hide an ad. */
+    public function test_expiry_is_paused_so_a_lapsed_ad_stays_active(): void
     {
+        $ad = $this->makeAd(
+            User::factory()->create(['phone' => '+966500000102']),
+            ['expires_at' => now()->subDay()],
+        );
+
+        Artisan::call('ads:expire');
+
+        $ad->refresh();
+        $this->assertSame(AdStatus::Active, $ad->status);
+        $this->assertNull($ad->deleted_at);
+        $this->assertDatabaseHas('ads', ['id' => $ad->id, 'status' => 'active']);
+    }
+
+    /** Keeps the expiry path covered for whenever the switch goes back on. */
+    public function test_the_expire_command_hides_the_ad_without_deleting_it_once_re_enabled(): void
+    {
+        config(['ads.auto_expire' => true]);
+
         $ad = $this->makeAd(
             User::factory()->create(['phone' => '+966500000102']),
             ['expires_at' => now()->subDay()],

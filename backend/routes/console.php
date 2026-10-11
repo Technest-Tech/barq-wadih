@@ -9,7 +9,11 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // ── Sprint 5: Ad expiry ────────────────────────────────────────────────────
-Schedule::command('ads:expire')->daily();
+// Paused at the owner's request until they ask for expiry back — see
+// config/ads.php. Nothing ages an ad out of the feed while this is off.
+if (config('ads.auto_expire')) {
+    Schedule::command('ads:expire')->daily();
+}
 
 // ── Sprint 12: Banner auto-deactivation ────────────────────────────────────
 Schedule::command('banners:deactivate-expired')->daily();

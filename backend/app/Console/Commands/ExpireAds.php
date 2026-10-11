@@ -24,6 +24,15 @@ class ExpireAds extends Command
      */
     public function handle(): int
     {
+        // Paused at the owner's request — see config/ads.php. Guarded here as
+        // well as at the schedule so a hand-run or a stale cached schedule
+        // still cannot expire anything.
+        if (! config('ads.auto_expire')) {
+            $this->warn('Ad expiry is paused (ads.auto_expire=false) — no ads were changed.');
+
+            return self::SUCCESS;
+        }
+
         $count = Ad::where('status', AdStatus::Active->value)
             ->where('moderation_status', ModerationStatus::Approved->value)
             ->where('expires_at', '<', now())
